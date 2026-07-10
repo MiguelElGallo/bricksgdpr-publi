@@ -1,0 +1,37 @@
+{
+  "name": "bricksgdpr-browser-lab",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "predev": "npm run wheelhouse",
+    "dev": "vite",
+    "prebuild": "npm run check:fixtures && npm run wheelhouse",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:dbt": "node scripts/test-dbt-project.mjs",
+    "typecheck": "tsc -b",
+    "check:fixtures": "node scripts/check-fixtures.mjs",
+    "wheelhouse": "node scripts/sync-wheelhouse.mjs",
+    "wheelhouse:lock": "node scripts/sync-wheelhouse.mjs --update-lock"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^26.1.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "jsdom": "^29.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.4",
+    "vitest": "^4.1.10"
+  }
+}

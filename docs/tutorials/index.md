@@ -7,13 +7,35 @@ icon: lucide/graduation-cap
 These tutorials are lessons. They use the repository's deterministic synthetic data so you can
 perform an action, see the result, and connect that result to the next layer of the project.
 
-Follow them in order the first time. Each tutorial assumes the result of the previous one.
+## Browser lab — phase one
+
+[Launch the browser lab](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/) to build and
+inspect a focused dbt project with DuckDB. It runs locally in the browser, uses only synthetic
+fixtures, and needs no Databricks workspace, credentials, or backend service.
+
+To run the same lab from a local checkout:
+
+```bash
+cd tutorial
+npm ci
+npm run dev
+```
+
+The browser lab teaches portable transformation, testing, and quarantine concepts. It does not
+implement or prove Unity Catalog grants, tags, masks, secrets, identities, or case-view access.
+Those remain part of the canonical Databricks tutorials below. See the
+[`tutorial/README.md`](https://github.com/MiguelElGallo/bricksgdpr-publi/blob/main/tutorial/README.md)
+for the complete local validation workflow and runtime boundary.
+
+## Databricks tutorials
+
+Follow these in order the first time. Each tutorial assumes the result of the previous one.
 
 !!! note
     The records use reserved `example.invalid` values, but the project governs them as if they
     were real Personal Data. Pseudonymized values are still Personal Data; they are not anonymous.
 
-## Start here
+### Start here
 
 1. [Build and explore the demo](build-and-explore-the-demo.md)
    establishes a working build and checks the fixture counts.

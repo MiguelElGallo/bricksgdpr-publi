@@ -7,6 +7,12 @@ icon: lucide/triangle-alert
 In this tutorial, we will follow `INV-0105`, a synthetic invoice that names a service which does
 not exist. We will see the source row, its deterministic classification, and its quarantine row.
 
+!!! tip "Run the phase-one lesson in your browser"
+    [Launch the browser lab](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/) to edit
+    the focused invoice model, run a real dbt build against DuckDB, and inspect its accepted and
+    quarantined rows without credentials or a Databricks workspace. Continue below for the
+    canonical Databricks version of the lesson.
+
 ## Build the invoice path
 
 The project tags invoice resolution as `layer2_invoices` and raw rejections as `quarantine`.

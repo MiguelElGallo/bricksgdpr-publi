@@ -35,6 +35,25 @@ uv sync --locked --only-group docs
 uv run --locked --only-group docs zensical serve
 ```
 
+### Browser tutorial — phase one
+
+[Launch the phase-one browser lab](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/)
+to run a focused dbt project with DuckDB entirely in your browser. It uses only the repository's
+synthetic fixtures and requires no Databricks workspace, credentials, or backend service. The lab
+teaches the portable transformation and quarantine flow; it does not simulate or prove the
+Databricks-specific Unity Catalog security controls described by the canonical project.
+
+Run the lab locally with Node.js 24 or newer:
+
+```bash
+cd tutorial
+npm ci
+npm run dev
+```
+
+See [`tutorial/README.md`](tutorial/README.md) for the browser runtime boundary and the complete
+validation commands.
+
 ## What is built
 
 | Area | Relations |

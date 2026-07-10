@@ -1,0 +1,71 @@
+name: bricksgdpr_tutorial
+version: "1.0.0"
+config-version: 2
+
+profile: bricksgdpr_tutorial
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target"]
+
+flags:
+  static_parser: false
+  partial_parse: false
+  send_anonymous_usage_stats: false
+
+models:
+  bricksgdpr_tutorial:
+    +materialized: view
+
+seeds:
+  bricksgdpr_tutorial:
+    +quote_columns: false
+    customer:
+      +column_types:
+        customer_change_id: varchar
+        customer_pk: varchar
+        customer_id: varchar
+        customer_ssn: varchar
+        first_name: varchar
+        last_name: varchar
+        email: varchar
+        phone: varchar
+        birth_date: varchar
+        address_line1: varchar
+        address_line2: varchar
+        city: varchar
+        postal_code: varchar
+        country_code: varchar
+        customer_segment: varchar
+        is_active: varchar
+        source_operation: varchar
+        source_updated_at: varchar
+    customer_services:
+      +column_types:
+        service_id: varchar
+        customer_ssn: varchar
+        service_type: varchar
+        installation_address_line1: varchar
+        installation_address_line2: varchar
+        installation_city: varchar
+        installation_postal_code: varchar
+        installation_country_code: varchar
+        is_valid: varchar
+        valid_from: varchar
+        valid_to: varchar
+        source_updated_at: varchar
+    invoices:
+      +column_types:
+        invoice_id: varchar
+        customer_ssn: varchar
+        service_id: varchar
+        amount: varchar
+        currency_code: varchar
+        issued_date: varchar
+        due_date: varchar
+        is_paid: varchar
+        paid_at: varchar
+        is_due: varchar
+        source_updated_at: varchar

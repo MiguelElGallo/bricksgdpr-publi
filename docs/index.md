@@ -20,9 +20,11 @@ column masks, Databricks SQL functions and secrets, and a Databricks Asset Bundl
     also cover lawful basis, retention, operational approvals, source systems, storage history,
     caches, exports, backups, and incident response.
 
-!!! tip "New here? Start with the tutorial."
-    [Build and explore the demo](tutorials/build-and-explore-the-demo.md) uses deterministic
-    synthetic fixtures to take you through a working build and its first observable checks.
+!!! tip "New here? Start in the browser."
+    [Launch the phase-one browser lab](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/)
+    to run a focused dbt and DuckDB lesson without credentials or a Databricks workspace. Continue
+    with [Build and explore the demo](tutorials/build-and-explore-the-demo.md) when you are ready to
+    exercise the canonical Databricks implementation.
 
 ## The governed path
 

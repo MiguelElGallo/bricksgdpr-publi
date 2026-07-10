@@ -1,0 +1,190 @@
+{
+  "generatedBy": "tutorial/scripts/sync-wheelhouse.mjs --update-lock",
+  "pyodide": "0.27.7",
+  "dbtCore": "1.10.8",
+  "dbtDuckdb": "1.9.6",
+  "packages": [
+    {
+      "name": "agate",
+      "version": "1.9.1",
+      "filename": "agate-1.9.1-py2.py3-none-any.whl",
+      "sha256": "1cf329510b3dde07c4ad1740b7587c9c679abc3dcd92bb1107eabc10c2e03c50",
+      "url": "https://files.pythonhosted.org/packages/d1/53/89b197cb472a3175d73384761a3413fd58e6b65a794c1102d148b8de87bd/agate-1.9.1-py2.py3-none-any.whl"
+    },
+    {
+      "name": "babel",
+      "version": "2.18.0",
+      "filename": "babel-2.18.0-py3-none-any.whl",
+      "sha256": "e2b422b277c2b9a9630c1d7903c2a00d0830c409c59ac8cae9081c92f1aeba35",
+      "url": "https://files.pythonhosted.org/packages/77/f5/21d2de20e8b8b0408f0681956ca2c69f1320a3848ac50e6e7f39c6159675/babel-2.18.0-py3-none-any.whl"
+    },
+    {
+      "name": "colorama",
+      "version": "0.4.6",
+      "filename": "colorama-0.4.6-py2.py3-none-any.whl",
+      "sha256": "4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6",
+      "url": "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl"
+    },
+    {
+      "name": "daff",
+      "version": "1.4.2",
+      "filename": "daff-1.4.2-py3-none-any.whl",
+      "sha256": "88981a21d065e4378b5c4bd40b975dbfdea9b7ff540071f3bb5e20cc8b3590b5",
+      "url": "https://files.pythonhosted.org/packages/29/fe/d54a874e8d7b88bc03c459f63a993305db50039b734fab751a0466dabfc1/daff-1.4.2-py3-none-any.whl"
+    },
+    {
+      "name": "dbt-adapters",
+      "version": "1.16.3",
+      "filename": "dbt_adapters-1.16.3-py3-none-any.whl",
+      "sha256": "234af35140ce42753d093ff056d4cd40a7d2d80c062ed9030891494dff9a18b7",
+      "url": "https://files.pythonhosted.org/packages/c0/54/36267e4067d91bbafed68cc2c524cee8532021c880e7df53c396ea0385d8/dbt_adapters-1.16.3-py3-none-any.whl"
+    },
+    {
+      "name": "dbt-common",
+      "version": "1.27.1",
+      "filename": "dbt_common-1.27.1-py3-none-any.whl",
+      "sha256": "9753e8f79d2d648c7716dd9e07dbbdd518ca3c3d101b6d2ee6e423ea9b6a20b5",
+      "url": "https://files.pythonhosted.org/packages/b7/e7/b504d0814a99c0f33ea5d5735692025469dee01468ac1930c963f215635f/dbt_common-1.27.1-py3-none-any.whl"
+    },
+    {
+      "name": "dbt-core",
+      "version": "1.10.8",
+      "filename": "dbt_core-1.10.8-py3-none-any.whl",
+      "sha256": "117029971a32b78abc598548f63375990a9a5fcec7471aca14182dc2da7e5002",
+      "url": "https://files.pythonhosted.org/packages/4b/17/fdc3adfd4af08dfec7f75d7fc5e8c661549f88391fa9a271429433ea3533/dbt_core-1.10.8-py3-none-any.whl"
+    },
+    {
+      "name": "dbt-duckdb",
+      "version": "1.9.6",
+      "filename": "dbt_duckdb-1.9.6-py3-none-any.whl",
+      "sha256": "00cc7ead3aaf91a7e1117e1af68ed09fc6cc20d9a4f759e83cded53a38924295",
+      "url": "https://files.pythonhosted.org/packages/57/45/4f830eadaac6f698694293840a55755f43d31af6018896e76517f8383c3e/dbt_duckdb-1.9.6-py3-none-any.whl"
+    },
+    {
+      "name": "dbt-protos",
+      "version": "1.0.541",
+      "filename": "dbt_protos-1.0.541-py3-none-any.whl",
+      "sha256": "4e03f88e6b5c13a8cac68c6aa78267d8eb4396e6341a807112d619ab938318d5",
+      "url": "https://files.pythonhosted.org/packages/3f/23/a35738c4a934b314c42d90ed3c681503f4015c5301182e4b4b0c40a1af2e/dbt_protos-1.0.541-py3-none-any.whl"
+    },
+    {
+      "name": "dbt-semantic-interfaces",
+      "version": "0.9.0",
+      "filename": "dbt_semantic_interfaces-0.9.0-py3-none-any.whl",
+      "sha256": "1b54c06ba89190a47a7f0563360930a0cce869e55b484ca09d261ade0e319155",
+      "url": "https://files.pythonhosted.org/packages/b3/82/41708b2b69d5fead88dea5ca0d863d6291da83ca6f1bd19246842d397e2b/dbt_semantic_interfaces-0.9.0-py3-none-any.whl"
+    },
+    {
+      "name": "deepdiff",
+      "version": "7.0.1",
+      "filename": "deepdiff-7.0.1-py3-none-any.whl",
+      "sha256": "447760081918216aa4fd4ca78a4b6a848b81307b2ea94c810255334b759e1dc3",
+      "url": "https://files.pythonhosted.org/packages/18/e6/d27d37dc55dbf40cdbd665aa52844b065ac760c9a02a02265f97ea7a4256/deepdiff-7.0.1-py3-none-any.whl"
+    },
+    {
+      "name": "importlib-metadata",
+      "version": "8.9.0",
+      "filename": "importlib_metadata-8.9.0-py3-none-any.whl",
+      "sha256": "e0f761b6ea91ced3b0844c14c9d955224d538105921f8e6754c00f6ca79fba7f",
+      "url": "https://files.pythonhosted.org/packages/7d/f9/97f2ca8bb3ec6e4b1d64f983ebe98b9a192faddff67fac3d6303a537e670/importlib_metadata-8.9.0-py3-none-any.whl"
+    },
+    {
+      "name": "isodate",
+      "version": "0.6.1",
+      "filename": "isodate-0.6.1-py2.py3-none-any.whl",
+      "sha256": "0751eece944162659049d35f4f549ed815792b38793f07cf73381c1c87cbed96",
+      "url": "https://files.pythonhosted.org/packages/b6/85/7882d311924cbcfc70b1890780763e36ff0b140c7e51c110fc59a532f087/isodate-0.6.1-py2.py3-none-any.whl"
+    },
+    {
+      "name": "jinja2",
+      "version": "3.1.6",
+      "filename": "jinja2-3.1.6-py3-none-any.whl",
+      "sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67",
+      "url": "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl"
+    },
+    {
+      "name": "leather",
+      "version": "0.4.1",
+      "filename": "leather-0.4.1-py3-none-any.whl",
+      "sha256": "ec61cba1ca3ccb96ed90e38b116fc58757d97d352171006b3288c47ce3fbd183",
+      "url": "https://files.pythonhosted.org/packages/1a/d4/c4dcb02ed11f8884e169b3350fc40aa4c08edf8bed77a8f0f267542e6452/leather-0.4.1-py3-none-any.whl"
+    },
+    {
+      "name": "mashumaro",
+      "version": "3.14",
+      "filename": "mashumaro-3.14-py3-none-any.whl",
+      "sha256": "c12a649599a8f7b1a0b35d18f12e678423c3066189f7bc7bd8dd431c5c8132c3",
+      "url": "https://files.pythonhosted.org/packages/1b/35/8d63733a2c12149d0c7663c29bf626bdbeea5f0ff963afe58a42b4810981/mashumaro-3.14-py3-none-any.whl"
+    },
+    {
+      "name": "networkx",
+      "version": "3.4.2",
+      "filename": "networkx-3.4.2-py3-none-any.whl",
+      "sha256": "df5d4365b724cf81b8c6a7312509d0c22386097011ad1abe274afd5e9d3bbc5f",
+      "url": "https://files.pythonhosted.org/packages/b9/54/dd730b32ea14ea797530a4479b2ed46a6fb250f682a9cfb997e968bf0261/networkx-3.4.2-py3-none-any.whl"
+    },
+    {
+      "name": "ordered-set",
+      "version": "4.1.0",
+      "filename": "ordered_set-4.1.0-py3-none-any.whl",
+      "sha256": "046e1132c71fcf3330438a539928932caf51ddbc582496833e23de611de14562",
+      "url": "https://files.pythonhosted.org/packages/33/55/af02708f230eb77084a299d7b08175cff006dea4f2721074b92cdb0296c0/ordered_set-4.1.0-py3-none-any.whl"
+    },
+    {
+      "name": "parsedatetime",
+      "version": "2.6",
+      "filename": "parsedatetime-2.6-py3-none-any.whl",
+      "sha256": "cb96edd7016872f58479e35879294258c71437195760746faffedb692aef000b",
+      "url": "https://files.pythonhosted.org/packages/9d/a4/3dd804926a42537bf69fb3ebb9fd72a50ba84f807d95df5ae016606c976c/parsedatetime-2.6-py3-none-any.whl"
+    },
+    {
+      "name": "pathspec",
+      "version": "0.12.1",
+      "filename": "pathspec-0.12.1-py3-none-any.whl",
+      "sha256": "a0d503e138a4c123b27490a4f7beda6a01c6f288df0e4a8b79c7eb0dc7b4cc08",
+      "url": "https://files.pythonhosted.org/packages/cc/20/ff623b09d963f88bfde16306a54e12ee5ea43e9b597108672ff3a408aad6/pathspec-0.12.1-py3-none-any.whl"
+    },
+    {
+      "name": "python-slugify",
+      "version": "8.0.4",
+      "filename": "python_slugify-8.0.4-py2.py3-none-any.whl",
+      "sha256": "276540b79961052b66b7d116620b36518847f52d5fd9e3a70164fc8c50faa6b8",
+      "url": "https://files.pythonhosted.org/packages/a4/62/02da182e544a51a5c3ccf4b03ab79df279f9c60c5e82d5e8bec7ca26ac11/python_slugify-8.0.4-py2.py3-none-any.whl"
+    },
+    {
+      "name": "pytimeparse",
+      "version": "1.1.8",
+      "filename": "pytimeparse-1.1.8-py2.py3-none-any.whl",
+      "sha256": "04b7be6cc8bd9f5647a6325444926c3ac34ee6bc7e69da4367ba282f076036bd",
+      "url": "https://files.pythonhosted.org/packages/1b/b4/afd75551a3b910abd1d922dbd45e49e5deeb4d47dc50209ce489ba9844dd/pytimeparse-1.1.8-py2.py3-none-any.whl"
+    },
+    {
+      "name": "snowplow-tracker",
+      "version": "1.1.0",
+      "filename": "snowplow_tracker-1.1.0-py3-none-any.whl",
+      "sha256": "24ea32ddac9cca547421bf9ab162f5f33c00711c6ef118ad5f78093cee962224",
+      "url": "https://files.pythonhosted.org/packages/78/10/1c76269cbf2d6e127f4415044d9ddb0295858230678bbf4bfba905593c82/snowplow_tracker-1.1.0-py3-none-any.whl"
+    },
+    {
+      "name": "sqlparse",
+      "version": "0.5.5",
+      "filename": "sqlparse-0.5.5-py3-none-any.whl",
+      "sha256": "12a08b3bf3eec877c519589833aed092e2444e68240a3577e8e26148acc7b1ba",
+      "url": "https://files.pythonhosted.org/packages/49/4b/359f28a903c13438ef59ebeee215fb25da53066db67b305c125f1c6d2a25/sqlparse-0.5.5-py3-none-any.whl"
+    },
+    {
+      "name": "text-unidecode",
+      "version": "1.3",
+      "filename": "text_unidecode-1.3-py2.py3-none-any.whl",
+      "sha256": "1311f10e8b895935241623731c2ba64f4c455287888b18189350b67134a822e8",
+      "url": "https://files.pythonhosted.org/packages/a6/a5/c0b6468d3824fe3fde30dbb5e1f687b291608f9473681bbf7dabbf5a87d7/text_unidecode-1.3-py2.py3-none-any.whl"
+    },
+    {
+      "name": "zipp",
+      "version": "4.1.0",
+      "filename": "zipp-4.1.0-py3-none-any.whl",
+      "sha256": "25ad4e16390cd314347dd8f1de67a2ac538ae658ed4ab9db16029c07c188e97f",
+      "url": "https://files.pythonhosted.org/packages/3a/13/547360d81e6d88d58492968ffda9f9542854f11310ee556fef14260cc886/zipp-4.1.0-py3-none-any.whl"
+    }
+  ]
+}

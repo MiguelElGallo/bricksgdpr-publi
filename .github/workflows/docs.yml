@@ -7,6 +7,7 @@ on:
       - "zensical.toml"
       - "pyproject.toml"
       - "uv.lock"
+      - "tutorial/**"
       - ".github/workflows/docs.yml"
   push:
     branches:
@@ -16,6 +17,7 @@ on:
       - "zensical.toml"
       - "pyproject.toml"
       - "uv.lock"
+      - "tutorial/**"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
@@ -27,6 +29,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: tutorial/package-lock.json
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.13"
@@ -35,15 +42,25 @@ jobs:
           enable-cache: false
       - name: Install the locked documentation environment
         run: uv sync --locked --only-group docs
+      - name: Install the locked tutorial environment
+        working-directory: tutorial
+        run: npm ci --no-audit --no-fund
       - name: Build the site (strict)
         run: uv run --locked --only-group docs zensical build --clean --strict
-      - if: github.event_name != 'pull_request' && github.event.repository.private == false
+      - name: Build the browser tutorial
+        working-directory: tutorial
+        run: npm run build
+      - name: Add the browser tutorial to the Pages artifact
+        run: |
+          mkdir -p site/tutorial
+          cp -R tutorial/dist/. site/tutorial/
+      - if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.event.repository.private == false
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
           path: site
 
   deploy:
-    if: github.event_name != 'pull_request' && github.event.repository.private == false
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.event.repository.private == false
     needs: build
     runs-on: ubuntu-latest
     permissions:

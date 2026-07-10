@@ -1,0 +1,10 @@
+bricksgdpr_tutorial:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('TUTORIAL_DUCKDB_PATH', '/project/tutorial.duckdb') }}"
+      schema: main
+      threads: 1
+      settings:
+        TimeZone: UTC

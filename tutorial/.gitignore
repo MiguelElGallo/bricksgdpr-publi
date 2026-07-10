@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.tsbuildinfo
+lesson/project/target/
+lesson/project/logs/
+lesson/project/*.duckdb
+public/wheelhouse/

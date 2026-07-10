@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: stg_customer
+    description: Typed synthetic customer change feed at one row per source change.
+    columns:
+      - name: customer_change_id
+        data_tests: [not_null, unique]
+      - name: customer_id
+        data_tests: [not_null]
+      - name: source_operation
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["UPSERT", "DELETE"]
+
+  - name: stg_customer_services
+    description: Typed synthetic service periods used to classify invoice references.
+    columns:
+      - name: service_id
+        data_tests: [not_null]
+      - name: customer_ssn
+        data_tests: [not_null]
+
+  - name: stg_invoices
+    description: Typed synthetic invoices kept intact before deterministic classification.
+    columns:
+      - name: invoice_id
+        data_tests: [not_null, unique]
+
+  - name: int_invoices_resolved
+    description: Accepted synthetic invoices after the portable teaching classifier.
+    columns:
+      - name: invoice_id
+        data_tests: [not_null, unique]
+
+  - name: quarantine_invoices
+    description: Rejected synthetic invoices with stable remediation reason codes.
+    columns:
+      - name: invoice_id
+        data_tests: [not_null, unique]
+      - name: quarantine_reason
+        data_tests: [not_null]
