@@ -1,0 +1,35 @@
+resources:
+  jobs:
+    bricksgdpr_dbt_workflow:
+      name: bricksgdpr_dbt_workflow
+      description: Builds and validates the GDPR Personal Data demo with dbt.
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+
+      tasks:
+        - task_key: build_and_validate
+          description: Build every governed layer, enforce access controls, and run the full dbt test suite.
+          environment_key: dbt_environment
+          timeout_seconds: 3600
+          max_retries: 0
+          retry_on_timeout: false
+          dbt_task:
+            source: WORKSPACE
+            project_directory: ../
+            warehouse_id: ${var.warehouse_id}
+            catalog: workspace
+            schema: default
+            commands:
+              - dbt run-operation bootstrap_project_catalog
+              - dbt build --exclude tag:access_control
+              - dbt run-operation apply_access_controls
+              - dbt test --select tag:access_control
+              - dbt build
+
+      environments:
+        - environment_key: dbt_environment
+          spec:
+            environment_version: "4"
+            dependencies:
+              - dbt-core==1.11.12
+              - dbt-databricks==1.12.2

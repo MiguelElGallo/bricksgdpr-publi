@@ -1,0 +1,145 @@
+# Zensical configuration for the bricksgdpr documentation site.
+#
+# The content follows the Diataxis framework: Tutorials, How-to guides,
+# Reference, and Explanation. The visual conventions intentionally match the
+# bricks-cli documentation site.
+
+[project]
+
+site_name = "bricksgdpr"
+site_description = "A dbt-first Databricks demonstration of GDPR Personal Data controls."
+site_author = "bricksgdpr contributors"
+
+copyright = """
+Copyright &copy; 2026 bricksgdpr contributors
+"""
+
+nav = [
+  { "bricksgdpr" = "index.md" },
+  { "Tutorial - User Guide" = [
+      { "Tutorial - User Guide" = "tutorials/index.md" },
+      { "Build and explore the demo" = "tutorials/build-and-explore-the-demo.md" },
+      { "Follow a customer through the layers" = "tutorials/follow-a-customer-through-the-layers.md" },
+      { "Trace an invoice into quarantine" = "tutorials/trace-an-invoice-into-quarantine.md" },
+      { "Observe terminal deletion" = "tutorials/observe-terminal-deletion.md" },
+      { "Prove a protected-layer invariant" = "tutorials/prove-a-protected-layer-invariant.md" },
+  ]},
+  { "How-to guides" = [
+      { "How-to guides" = "how-to-guides/index.md" },
+      { "Configure a development environment" = "how-to-guides/configure-a-development-environment.md" },
+      { "Configure GitHub Actions validation" = "how-to-guides/configure-github-actions.md" },
+      { "Deploy the demo for the first time" = "how-to-guides/deploy-the-demo-for-the-first-time.md" },
+      { "Deploy and run the Databricks bundle" = "how-to-guides/deploy-and-run-the-databricks-bundle.md" },
+      { "Run a focused build" = "how-to-guides/run-a-focused-build.md" },
+      { "Use an isolated development schema" = "how-to-guides/use-an-isolated-development-schema.md" },
+      { "Reconcile access controls" = "how-to-guides/reconcile-access-controls.md" },
+      { "Provision persona identities" = "how-to-guides/provision-persona-identities.md" },
+      { "Validate persona access" = "how-to-guides/validate-persona-access.md" },
+      { "Verify terminal deletion" = "how-to-guides/verify-terminal-deletion.md" },
+  ]},
+  { "Reference" = [
+      { "Reference" = "reference/index.md" },
+      { "Project layout" = "reference/project-layout.md" },
+      { "Configuration" = "reference/configuration.md" },
+      { "Commands" = "reference/commands.md" },
+      { "Catalogs and schemas" = "reference/catalogs-and-schemas.md" },
+      { "Sources and Layer1" = "reference/sources-and-layer1.md" },
+      { "priva_map" = "reference/priva-map.md" },
+      { "Layer2" = "reference/layer2.md" },
+      { "Layer3 and case views" = "reference/layer3-and-case.md" },
+      { "Functions and macros" = "reference/functions-and-macros.md" },
+      { "Tests and selectors" = "reference/tests-and-selectors.md" },
+      { "Access control" = "reference/access-control.md" },
+      { "Identity and acceptance" = "reference/identity-and-acceptance.md" },
+      { "Bundle job" = "reference/bundle-job.md" },
+      { "Glossary" = "reference/glossary.md" },
+  ]},
+  { "Explanation" = [
+      { "Explanation" = "explanation/index.md" },
+      { "Architecture and trust boundaries" = "explanation/architecture-and-trust-boundaries.md" },
+      { "Pseudonymized data is not anonymous" = "explanation/personal-data-not-anonymous.md" },
+      { "Versioned, domain-separated keys" = "explanation/versioned-domain-separated-keys.md" },
+      { "Stored masks and pseudonymous joins" = "explanation/stored-masks-and-joins.md" },
+      { "Quarantine instead of silent dropping" = "explanation/quarantine-not-silent-dropping.md" },
+      { "Terminal deletion versus physical erasure" = "explanation/terminal-deletion-vs-erasure.md" },
+      { "Case views and least privilege" = "explanation/case-views-and-least-privilege.md" },
+      { "Executable security controls" = "explanation/executable-security-controls.md" },
+      { "Demo and production boundaries" = "explanation/demo-and-production-boundaries.md" },
+  ]},
+]
+
+[project.theme]
+variant = "modern"
+font.text = "Inter"
+font.code = "JetBrains Mono"
+
+features = [
+  "announce.dismiss",
+  "content.code.annotate",
+  "content.code.copy",
+  "content.code.select",
+  "content.footnote.tooltips",
+  "content.tabs.link",
+  "content.tooltips",
+  "navigation.footer",
+  "navigation.indexes",
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  "navigation.path",
+  "navigation.sections",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+  "toc.follow",
+]
+
+[project.theme.icon]
+logo = "lucide/database"
+
+[[project.theme.palette]]
+scheme = "default"
+primary = "indigo"
+accent = "indigo"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+primary = "indigo"
+accent = "orange"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+[project.markdown_extensions.abbr]
+[project.markdown_extensions.admonition]
+[project.markdown_extensions.attr_list]
+[project.markdown_extensions.def_list]
+[project.markdown_extensions.footnotes]
+[project.markdown_extensions.md_in_html]
+[project.markdown_extensions.toc]
+permalink = true
+[project.markdown_extensions.pymdownx.betterem]
+[project.markdown_extensions.pymdownx.caret]
+[project.markdown_extensions.pymdownx.details]
+[project.markdown_extensions.pymdownx.emoji]
+emoji_generator = "zensical.extensions.emoji.to_svg"
+emoji_index = "zensical.extensions.emoji.twemoji"
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+[project.markdown_extensions.pymdownx.inlinehilite]
+[project.markdown_extensions.pymdownx.keys]
+[project.markdown_extensions.pymdownx.magiclink]
+[project.markdown_extensions.pymdownx.mark]
+[project.markdown_extensions.pymdownx.smartsymbols]
+[project.markdown_extensions.pymdownx.superfences]
+custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" }
+]
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+combine_header_slug = true
+[project.markdown_extensions.pymdownx.tasklist]
+custom_checkbox = true
+[project.markdown_extensions.pymdownx.tilde]

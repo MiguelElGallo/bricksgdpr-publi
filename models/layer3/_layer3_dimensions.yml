@@ -1,0 +1,206 @@
+version: 2
+
+models:
+  - name: dim_customer
+    description: >
+      Type-1 current customer dimension at one row per active pseudonymous customer. All customer
+      attributes that are Personal Data remain represented only by versioned keys.
+    config:
+      contract:
+        enforced: true
+      tags: [layer3_dimensions, personal_data]
+      databricks_tags:
+        contains_personal_data: "true"
+        personal_data_state: "PSEUDONYMIZED"
+    columns:
+      - name: customer_key
+        data_type: string
+        description: Pseudonymous customer dimension key.
+        databricks_tags: &national_identifier_tag
+          personal_data_category: "NATIONAL_IDENTIFIER"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null, unique]
+      - name: customer_pk_key
+        data_type: string
+        description: Pseudonymous source-row identifier.
+        databricks_tags:
+          personal_data_category: "SOURCE_RECORD_IDENTIFIER"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null, unique]
+      - name: customer_id_key
+        data_type: string
+        description: Pseudonymous customer business identifier.
+        databricks_tags:
+          personal_data_category: "CUSTOMER_IDENTIFIER"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null, unique]
+      - name: first_name_key
+        data_type: string
+        description: Pseudonymous first name.
+        databricks_tags: &name_tag
+          personal_data_category: "NAME"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null]
+      - name: last_name_key
+        data_type: string
+        description: Pseudonymous last name.
+        databricks_tags: *name_tag
+        data_tests: [not_null]
+      - name: full_name_key
+        data_type: string
+        description: Pseudonymous full name.
+        databricks_tags: *name_tag
+        data_tests: [not_null]
+      - name: email_key
+        data_type: string
+        description: Pseudonymous email.
+        databricks_tags:
+          personal_data_category: "EMAIL"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null]
+      - name: phone_key
+        data_type: string
+        description: Pseudonymous telephone number.
+        databricks_tags:
+          personal_data_category: "PHONE"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null]
+      - name: birth_date_key
+        data_type: string
+        description: Pseudonymous birth date.
+        databricks_tags:
+          personal_data_category: "BIRTH_DATE"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null]
+      - name: address_key
+        data_type: string
+        description: Pseudonymous customer address.
+        databricks_tags: &address_tag
+          personal_data_category: "ADDRESS"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null]
+      - name: customer_segment
+        data_type: string
+        description: Non-identifying commercial segment.
+      - name: is_active
+        data_type: boolean
+        description: Current customer lifecycle flag.
+        data_tests: [not_null]
+      - name: source_updated_at
+        data_type: timestamp
+        description: Timestamp of the current accepted source state.
+        data_tests: [not_null]
+
+  - name: dim_service
+    description: >
+      Type-2-style service dimension at one row per accepted service validity period. Customer,
+      service, and installation address identifiers are pseudonymous keys.
+    config:
+      contract:
+        enforced: true
+      tags: [layer3_dimensions, personal_data]
+      databricks_tags:
+        contains_personal_data: "true"
+        personal_data_state: "PSEUDONYMIZED"
+    columns:
+      - name: customer_key
+        data_type: string
+        description: Pseudonymous owning customer key.
+        databricks_tags: *national_identifier_tag
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customer')
+                field: customer_key
+      - name: service_key
+        data_type: string
+        description: Pseudonymous service identifier.
+        databricks_tags: &service_identifier_tag
+          personal_data_category: "SERVICE_IDENTIFIER"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null]
+      - name: service_version_key
+        data_type: string
+        description: Primary key for this service validity period.
+        databricks_tags: *service_identifier_tag
+        data_tests: [not_null, unique]
+      - name: installation_address_key
+        data_type: string
+        description: Pseudonymous installation address.
+        databricks_tags: *address_tag
+        data_tests: [not_null]
+      - name: service_type
+        data_type: string
+        description: Normalized service category.
+        data_tests: [not_null]
+      - name: is_valid
+        data_type: boolean
+        description: Accepted source validity flag.
+        data_tests: [not_null]
+      - name: valid_from
+        data_type: date
+        description: First date in this service period.
+        data_tests: [not_null]
+      - name: valid_to
+        data_type: date
+        description: Last date in this service period.
+        data_tests: [not_null]
+      - name: source_updated_at
+        data_type: timestamp
+        description: Last source update timestamp.
+        data_tests: [not_null]
+
+  - name: dim_date
+    description: Conformed calendar dimension spanning the configured inclusive date range.
+    config:
+      contract:
+        enforced: true
+      tags: [layer3_dimensions, non_personal_data]
+      databricks_tags:
+        contains_personal_data: "false"
+    columns:
+      - name: date_key
+        data_type: int
+        description: Integer date key in YYYYMMDD form.
+        data_tests: [not_null, unique]
+      - name: date_day
+        data_type: date
+        description: Calendar date.
+        data_tests: [not_null, unique]
+      - name: calendar_year
+        data_type: int
+        description: Four-digit year.
+        data_tests: [not_null]
+      - name: calendar_quarter
+        data_type: int
+        description: Calendar quarter number.
+        data_tests: [not_null]
+      - name: month_number
+        data_type: int
+        description: Calendar month number.
+        data_tests: [not_null]
+      - name: month_name
+        data_type: string
+        description: English calendar month name.
+        data_tests: [not_null]
+      - name: day_of_month
+        data_type: int
+        description: Day number within the month.
+        data_tests: [not_null]
+      - name: day_of_week
+        data_type: int
+        description: Databricks day-of-week number where Sunday is 1.
+        data_tests: [not_null]
+      - name: day_name
+        data_type: string
+        description: English day name.
+        data_tests: [not_null]
+      - name: iso_week_number
+        data_type: int
+        description: Week-of-year number.
+        data_tests: [not_null]
+      - name: is_weekend
+        data_type: boolean
+        description: True for Saturday or Sunday.
+        data_tests: [not_null]

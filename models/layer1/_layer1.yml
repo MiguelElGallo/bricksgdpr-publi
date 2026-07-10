@@ -1,0 +1,448 @@
+version: 2
+
+models:
+  - name: stg_customer
+    description: >
+      Typed customer change feed at one row per source change. It intentionally retains both the
+      prior upsert and the later deletion tombstone so downstream current-state logic can prove
+      that erasure wins over older attributes.
+    config:
+      contract:
+        enforced: true
+      tags: [personal_data]
+    columns:
+      - name: customer_change_id
+        data_type: string
+        description: Stable identifier for one source change record.
+        data_tests: [not_null, unique]
+      - name: customer_pk
+        data_type: bigint
+        description: Source-system numeric row identifier, reused across changes for a customer.
+        data_tests: [not_null]
+      - name: customer_id
+        data_type: string
+        description: Direct source customer identifier retained only in governed Layer1.
+        data_tests: [not_null]
+      - name: customer_ssn
+        data_type: string
+        description: Synthetic national identifier used to resolve source records.
+        data_tests: [not_null]
+      - name: first_name
+        data_type: string
+        description: Source first name; null on a minimal deletion tombstone.
+      - name: last_name
+        data_type: string
+        description: Source last name; null on a minimal deletion tombstone.
+      - name: email
+        data_type: string
+        description: Source email address; null on a minimal deletion tombstone.
+      - name: phone
+        data_type: string
+        description: Source telephone number; null on a minimal deletion tombstone.
+      - name: birth_date
+        data_type: date
+        description: Source birth date; null on a minimal deletion tombstone.
+      - name: address_line1
+        data_type: string
+        description: First source customer-address line.
+      - name: address_line2
+        data_type: string
+        description: Optional second source customer-address line.
+      - name: city
+        data_type: string
+        description: Customer-address locality.
+      - name: postal_code
+        data_type: string
+        description: Customer-address postal code.
+      - name: country_code
+        data_type: string
+        description: Uppercase ISO-style country code supplied by the source.
+      - name: customer_segment
+        data_type: string
+        description: Non-identifying commercial segment used by later dimensions.
+      - name: is_active
+        data_type: boolean
+        description: Source lifecycle flag at the time of this change.
+      - name: source_operation
+        data_type: string
+        description: Whether the change upserts or deletes the customer.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["UPSERT", "DELETE"]
+      - name: source_updated_at
+        data_type: timestamp
+        description: Source ordering timestamp used to choose the latest change.
+        data_tests: [not_null]
+
+  - name: stg_customer_events
+    description: >
+      Typed measured interactions at one row per event. Customer resolution is intentionally
+      deferred so late and deleted subjects remain observable to the control models.
+    config:
+      contract:
+        enforced: true
+      tags: [personal_data]
+    columns:
+      - name: event_id
+        data_type: string
+        description: Stable source identifier for one customer event.
+        data_tests: [not_null, unique]
+      - name: customer_ssn
+        data_type: string
+        description: Synthetic source national identifier used only for controlled resolution.
+        data_tests: [not_null]
+      - name: event_type
+        data_type: string
+        description: Normalized interaction category.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["USAGE", "SUPPORT"]
+      - name: occurred_at
+        data_type: timestamp
+        description: Timestamp at which the measured event occurred.
+        data_tests: [not_null]
+      - name: measure_value
+        data_type: decimal(18,2)
+        description: Numeric event measure whose meaning is determined by measure_unit.
+        data_tests: [not_null]
+      - name: measure_unit
+        data_type: string
+        description: Unit for measure_value, such as GB or MINUTES.
+        data_tests: [not_null]
+      - name: source_updated_at
+        data_type: timestamp
+        description: Last source update timestamp for the event.
+        data_tests: [not_null]
+
+  - name: stg_customer_services
+    description: >
+      Typed service periods at one row per service identifier and validity interval. It preserves
+      late, deleted, and deliberately invalid examples for explicit downstream quarantine.
+    config:
+      contract:
+        enforced: true
+      tags: [personal_data]
+    columns:
+      - name: service_id
+        data_type: string
+        description: Stable source service identifier.
+        data_tests: [not_null]
+      - name: customer_ssn
+        data_type: string
+        description: Synthetic source national identifier used only for controlled resolution.
+        data_tests: [not_null]
+      - name: service_type
+        data_type: string
+        description: Normalized service category.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["INTERNET", "MOBILE"]
+      - name: installation_address_line1
+        data_type: string
+        description: First line of the installation address, treated as Personal Data.
+      - name: installation_address_line2
+        data_type: string
+        description: Optional second installation-address line.
+      - name: installation_city
+        data_type: string
+        description: Installation-address locality.
+      - name: installation_postal_code
+        data_type: string
+        description: Installation-address postal code.
+      - name: installation_country_code
+        data_type: string
+        description: Uppercase installation-address country code.
+      - name: is_valid
+        data_type: boolean
+        description: Source assertion that the service is valid.
+        data_tests: [not_null]
+      - name: valid_from
+        data_type: date
+        description: First date on which the service period applies.
+        data_tests: [not_null]
+      - name: valid_to
+        data_type: date
+        description: Last date on which the service period applies.
+        data_tests: [not_null]
+      - name: source_updated_at
+        data_type: timestamp
+        description: Last source update timestamp for this service period.
+        data_tests: [not_null]
+
+  - name: stg_invoices
+    description: >
+      Typed invoice extract at one row per invoice. It preserves inconsistent and unresolved
+      records so later controls can quarantine them instead of silently dropping them.
+    config:
+      contract:
+        enforced: true
+      tags: [personal_data]
+    columns:
+      - name: invoice_id
+        data_type: string
+        description: Stable source identifier for one invoice.
+        data_tests: [not_null, unique]
+      - name: customer_ssn
+        data_type: string
+        description: Synthetic source national identifier used only for controlled resolution.
+        data_tests: [not_null]
+      - name: service_id
+        data_type: string
+        description: Source service identifier billed by this invoice.
+        data_tests: [not_null]
+      - name: amount
+        data_type: decimal(18,2)
+        description: Gross invoice amount in currency_code.
+        data_tests: [not_null]
+      - name: currency_code
+        data_type: string
+        description: Uppercase billing currency code.
+        data_tests: [not_null]
+      - name: issued_date
+        data_type: date
+        description: Date on which the invoice was issued.
+        data_tests: [not_null]
+      - name: due_date
+        data_type: date
+        description: Contractual payment deadline.
+        data_tests: [not_null]
+      - name: is_paid
+        data_type: boolean
+        description: Source payment-state flag.
+        data_tests: [not_null]
+      - name: paid_at
+        data_type: date
+        description: Payment date when supplied; invalid combinations are quarantined later.
+      - name: is_due
+        data_type: boolean
+        description: Source due-state flag retained for comparison with deterministic dbt logic.
+        data_tests: [not_null]
+      - name: source_updated_at
+        data_type: timestamp
+        description: Last source update timestamp for the invoice.
+        data_tests: [not_null]
+
+  - name: quarantine_customer_events
+    description: >
+      Raw Layer1 quarantine at one row per unresolved nondeleted customer event. It is restricted
+      to privacy administrators and is replaced on rebuild so resolved late arrivals leave it.
+    config:
+      contract:
+        enforced: true
+      tags: [quarantine, layer2_events, personal_data]
+    columns:
+      - name: event_id
+        data_type: string
+        description: Stable source event identifier.
+        data_tests: [not_null, unique]
+      - name: customer_ssn
+        data_type: string
+        description: Raw synthetic national identifier retained for controlled remediation.
+        databricks_tags:
+          personal_data_category: "NATIONAL_IDENTIFIER"
+          personal_data_state: "RAW"
+        data_tests: [not_null]
+      - name: event_type
+        data_type: string
+        description: Source event category.
+        data_tests: [not_null]
+      - name: occurred_at
+        data_type: timestamp
+        description: Source event occurrence timestamp.
+        data_tests: [not_null]
+      - name: measure_value
+        data_type: decimal(18,2)
+        description: Source numeric event measure.
+        data_tests: [not_null]
+      - name: measure_unit
+        data_type: string
+        description: Source measure unit.
+        data_tests: [not_null]
+      - name: source_updated_at
+        data_type: timestamp
+        description: Last source update timestamp.
+        data_tests: [not_null]
+      - name: quarantine_reason
+        data_type: string
+        description: Deterministic reason the event is not accepted.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["CUSTOMER_NOT_FOUND"]
+      - name: quarantined_at
+        data_type: timestamp
+        description: Processing timestamp fixed for this table build.
+        data_tests: [not_null]
+
+  - name: quarantine_customer_services
+    description: >
+      Raw Layer1 quarantine at one row per unresolved or invalid nondeleted service period. It is
+      restricted to privacy administrators and replaced when late arrivals become resolvable.
+    config:
+      contract:
+        enforced: true
+      tags: [quarantine, layer2_services, personal_data]
+    columns:
+      - name: service_id
+        data_type: string
+        description: Stable source service identifier.
+        data_tests: [not_null]
+      - name: customer_ssn
+        data_type: string
+        description: Raw synthetic national identifier retained for controlled remediation.
+        databricks_tags:
+          personal_data_category: "NATIONAL_IDENTIFIER"
+          personal_data_state: "RAW"
+        data_tests: [not_null]
+      - name: service_type
+        data_type: string
+        description: Source service category.
+        data_tests: [not_null]
+      - name: installation_address_line1
+        data_type: string
+        description: Raw first installation-address line.
+        databricks_tags:
+          personal_data_category: "ADDRESS"
+          personal_data_state: "RAW"
+      - name: installation_address_line2
+        data_type: string
+        description: Raw optional second installation-address line.
+        databricks_tags:
+          personal_data_category: "ADDRESS"
+          personal_data_state: "RAW"
+      - name: installation_city
+        data_type: string
+        description: Raw installation locality.
+        databricks_tags:
+          personal_data_category: "ADDRESS"
+          personal_data_state: "RAW"
+      - name: installation_postal_code
+        data_type: string
+        description: Raw installation postal code.
+        databricks_tags:
+          personal_data_category: "ADDRESS"
+          personal_data_state: "RAW"
+      - name: installation_country_code
+        data_type: string
+        description: Raw installation country code.
+        databricks_tags:
+          personal_data_category: "ADDRESS"
+          personal_data_state: "RAW"
+      - name: is_valid
+        data_type: boolean
+        description: Source validity flag.
+        data_tests: [not_null]
+      - name: valid_from
+        data_type: date
+        description: First date in the source service period.
+        data_tests: [not_null]
+      - name: valid_to
+        data_type: date
+        description: Last date in the source service period.
+        data_tests: [not_null]
+      - name: source_updated_at
+        data_type: timestamp
+        description: Last source update timestamp.
+        data_tests: [not_null]
+      - name: quarantine_reason
+        data_type: string
+        description: Deterministic reason the service period is not accepted.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - CUSTOMER_NOT_FOUND
+                  - INVALID_VALIDITY_FLAG
+                  - INVALID_VALIDITY_PERIOD
+                  - PRIVA_MAP_ENTRY_NOT_FOUND
+      - name: quarantined_at
+        data_type: timestamp
+        description: Processing timestamp fixed for this table build.
+        data_tests: [not_null]
+
+  - name: quarantine_invoices
+    description: >
+      Raw Layer1 quarantine at one row per unresolved or invalid nondeleted invoice. It preserves
+      source values and a deterministic reason for controlled remediation.
+    config:
+      contract:
+        enforced: true
+      tags: [quarantine, layer2_invoices, personal_data]
+    columns:
+      - name: invoice_id
+        data_type: string
+        description: Stable source invoice identifier.
+        data_tests: [not_null, unique]
+      - name: customer_ssn
+        data_type: string
+        description: Raw synthetic national identifier retained for controlled remediation.
+        databricks_tags:
+          personal_data_category: "NATIONAL_IDENTIFIER"
+          personal_data_state: "RAW"
+        data_tests: [not_null]
+      - name: service_id
+        data_type: string
+        description: Source service identifier referenced by the invoice.
+        data_tests: [not_null]
+      - name: amount
+        data_type: decimal(18,2)
+        description: Source gross invoice amount.
+        data_tests: [not_null]
+      - name: currency_code
+        data_type: string
+        description: Source billing currency code.
+        data_tests: [not_null]
+      - name: issued_date
+        data_type: date
+        description: Source invoice issue date.
+        data_tests: [not_null]
+      - name: due_date
+        data_type: date
+        description: Source invoice due date.
+        data_tests: [not_null]
+      - name: is_paid
+        data_type: boolean
+        description: Source payment-state flag.
+        data_tests: [not_null]
+      - name: paid_at
+        data_type: date
+        description: Source payment date when supplied.
+      - name: source_is_due
+        data_type: boolean
+        description: Source due-state flag retained for remediation context.
+        data_tests: [not_null]
+      - name: source_updated_at
+        data_type: timestamp
+        description: Last source update timestamp.
+        data_tests: [not_null]
+      - name: quarantine_reason
+        data_type: string
+        description: Deterministic reason the invoice is not accepted.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - CUSTOMER_NOT_FOUND
+                  - SERVICE_NOT_FOUND
+                  - CUSTOMER_SERVICE_MISMATCH
+                  - SERVICE_INVALID
+                  - SERVICE_NOT_VALID_ON_ISSUE_DATE
+                  - SERVICE_VERSION_AMBIGUOUS
+                  - SERVICE_MAP_ENTRY_NOT_FOUND
+                  - INVALID_INVOICE_DATE_RANGE
+                  - PAYMENT_DATE_MISSING
+                  - PAYMENT_DATE_UNEXPECTED
+                  - PAYMENT_BEFORE_ISSUE_DATE
+      - name: quarantined_at
+        data_type: timestamp
+        description: Processing timestamp fixed for this table build.
+        data_tests: [not_null]

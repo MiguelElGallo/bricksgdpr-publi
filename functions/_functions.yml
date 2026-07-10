@@ -1,0 +1,63 @@
+version: 2
+
+functions:
+  - name: hash_personal_data
+    description: >
+      Internal four-argument SHA-256 function. It length-delimits the purpose, version, domain,
+      canonical value, and pepper so matching is stable while unrelated domains remain separate.
+    config:
+      database: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}"
+      schema: priva_internal
+      tags: [gdpr, personal_data_control]
+    arguments:
+      - name: canonical_value
+        data_type: string
+        description: Caller-canonicalized Personal Data value, or null.
+      - name: domain
+        data_type: string
+        description: Stable namespace such as customer.email or customer.ssn.
+      - name: hash_version
+        data_type: string
+        description: Immutable version paired with one pepper key.
+      - name: pepper
+        data_type: string
+        description: Secret value supplied only by a trusted caller, never by a model variable.
+    returns:
+      data_type: string
+
+  - name: pseudonymize_personal_data_v1
+    description: >
+      Version-one wrapper that expands the shared framed-hash expression with the immutable v1
+      and fixed Databricks secret reference. The secret call remains directly inside SHA-256 so
+      Databricks permits protected DML. Only the scope/key names are compiled; the value is not.
+    config:
+      database: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}"
+      schema: priva_internal
+      tags: [gdpr, personal_data_control]
+    arguments:
+      - name: canonical_value
+        data_type: string
+        description: Caller-canonicalized Personal Data value, or null.
+      - name: domain
+        data_type: string
+        description: Stable namespace that separates unrelated uses of the same value.
+    returns:
+      data_type: string
+
+  - name: mask_priva_map_value
+    description: >
+      Column-mask function that returns the raw value only to privacy administrators or case
+      users. Other callers receive the already-stored pseudonymous equivalent.
+    config:
+      database: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}"
+      schema: priva_internal
+      tags: [gdpr, personal_data_control]
+    arguments:
+      - name: raw_value
+        data_type: string
+        description: Raw string representation of a Personal Data value.
+      - name: pseudonymous_value
+        data_type: string
+        description: Versioned pseudonymous value stored in the same mapping row.
+    returns:
+      data_type: string

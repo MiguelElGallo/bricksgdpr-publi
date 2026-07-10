@@ -1,0 +1,84 @@
+version: 2
+
+models:
+  - name: int_terminal_deleted_customer_keys
+    description: >
+      Ephemeral terminal-deletion control at one row per current or historical SSN key associated
+      with a deleted customer ID. It is expanded into classifiers and never persists a deleted
+      customer's pseudonymous key as a durable relation.
+    columns:
+      - name: customer_key
+        description: Transient versioned key used only to anti-join deleted subjects.
+
+  - name: int_customer_events_keyed
+    description: >
+      Ephemeral event boundary at one row per source event. The raw SSN is replaced immediately by
+      its versioned customer key before any Layer2 resolution or join.
+    columns:
+      - name: event_id
+        description: Stable source event identifier.
+      - name: customer_key
+        description: Versioned customer key derived in the customer.ssn domain.
+
+  - name: int_customer_event_resolution
+    description: >
+      Ephemeral classifier at one row per nondeleted source event. It assigns ACCEPTED when the
+      customer map resolves and CUSTOMER_NOT_FOUND otherwise.
+    columns:
+      - name: event_id
+        description: Stable source event identifier.
+      - name: resolution_status
+        description: Deterministic event acceptance or quarantine status.
+
+  - name: int_customer_events_resolved
+    description: >
+      Protected Layer2 customer events at one row per accepted event. It contains only a
+      pseudonymous customer key and non-identifying event measures; raw Personal Data is absent.
+    config:
+      contract:
+        enforced: true
+      tags: [layer2_events]
+      databricks_tags:
+        contains_personal_data: "true"
+        personal_data_state: "PSEUDONYMIZED"
+    columns:
+      - name: event_id
+        data_type: string
+        description: Stable source event identifier.
+        data_tests: [not_null, unique]
+      - name: customer_key
+        data_type: string
+        description: Versioned pseudonymous customer key.
+        databricks_tags:
+          personal_data_category: "NATIONAL_IDENTIFIER"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fa_pd_customer')
+                field: customer_key
+      - name: event_type
+        data_type: string
+        description: Normalized event category.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["USAGE", "SUPPORT"]
+      - name: occurred_at
+        data_type: timestamp
+        description: Event occurrence timestamp.
+        data_tests: [not_null]
+      - name: measure_value
+        data_type: decimal(18,2)
+        description: Numeric event measure.
+        data_tests: [not_null]
+      - name: measure_unit
+        data_type: string
+        description: Unit for measure_value.
+        data_tests: [not_null]
+      - name: source_updated_at
+        data_type: timestamp
+        description: Last source update timestamp.
+        data_tests: [not_null]

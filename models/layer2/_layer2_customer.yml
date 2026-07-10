@@ -1,0 +1,100 @@
+version: 2
+
+models:
+  - name: int_customer_protected
+    description: >
+      Protected Layer2 customer projection at one row per active customer. Every identifying or
+      linkable source attribute is represented only by a stable versioned pseudonymous key.
+    config:
+      contract:
+        enforced: true
+      tags: [layer2_customer]
+      databricks_tags:
+        contains_personal_data: "true"
+        personal_data_state: "PSEUDONYMIZED"
+    columns:
+      - name: customer_key
+        data_type: string
+        description: Stable customer key derived in the customer.ssn domain.
+        databricks_tags:
+          personal_data_category: "NATIONAL_IDENTIFIER"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null, unique]
+      - name: customer_pk_key
+        data_type: string
+        description: Pseudonymous source-row identifier.
+        databricks_tags:
+          personal_data_category: "SOURCE_RECORD_IDENTIFIER"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null, unique]
+      - name: customer_id_key
+        data_type: string
+        description: Pseudonymous customer business identifier.
+        databricks_tags:
+          personal_data_category: "CUSTOMER_IDENTIFIER"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null, unique]
+      - name: first_name_key
+        data_type: string
+        description: Domain-separated pseudonymous first name.
+        databricks_tags:
+          personal_data_category: "NAME"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null]
+      - name: last_name_key
+        data_type: string
+        description: Domain-separated pseudonymous last name.
+        databricks_tags:
+          personal_data_category: "NAME"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null]
+      - name: full_name_key
+        data_type: string
+        description: Domain-separated pseudonymous full name.
+        databricks_tags:
+          personal_data_category: "NAME"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null]
+      - name: email_key
+        data_type: string
+        description: Domain-separated pseudonymous email.
+        databricks_tags:
+          personal_data_category: "EMAIL"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null]
+      - name: phone_key
+        data_type: string
+        description: Domain-separated pseudonymous telephone number.
+        databricks_tags:
+          personal_data_category: "PHONE"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null]
+      - name: birth_date_key
+        data_type: string
+        description: Domain-separated pseudonymous birth date.
+        databricks_tags:
+          personal_data_category: "BIRTH_DATE"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null]
+      - name: address_key
+        data_type: string
+        description: Domain-separated pseudonymous customer address.
+        databricks_tags:
+          personal_data_category: "ADDRESS"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null]
+      - name: customer_segment
+        data_type: string
+        description: Non-identifying commercial segment.
+      - name: is_active
+        data_type: boolean
+        description: Current accepted lifecycle state; always true.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [true]
+      - name: source_updated_at
+        data_type: timestamp
+        description: Timestamp of the accepted current source state.
+        data_tests: [not_null]

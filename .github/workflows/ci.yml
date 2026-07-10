@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DBT_SEND_ANONYMOUS_USAGE_STATS: "false"
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: false
+
+      - name: Install the locked environment
+        run: uv sync --locked --group dev
+
+      - name: Verify deterministic seeds
+        run: |
+          uv run --locked python scripts/generate_seeds.py
+          git diff --exit-code -- seeds/
+
+      - name: Lint Python
+        run: uv run --locked ruff check .
+
+      - name: Type-check Python
+        run: uv run --locked ty check scripts
+
+      - name: Check Bash syntax
+        run: bash -n scripts/*.sh
+
+      # Pull-request code never receives repository secrets. These reserved placeholders are
+      # sufficient because dbt parse renders configuration without contacting Databricks.
+      - name: Parse dbt project without repository secrets
+        if: github.event_name == 'pull_request' || github.ref != 'refs/heads/main'
+        env:
+          DATABRICKS_HOST: example.invalid
+          DATABRICKS_HTTP_PATH: /sql/1.0/warehouses/example
+        run: uv run --locked dbt parse --profiles-dir . --no-use-colors
+
+      - name: Check trusted dbt configuration
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        id: dbt_config
+        shell: bash
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
+        run: |
+          if [[ -n "$DATABRICKS_HOST" && -n "$DATABRICKS_HTTP_PATH" ]]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Require dbt configuration on trusted events
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.dbt_config.outputs.available != 'true'
+        run: |
+          echo "::error::Configure DATABRICKS_HOST and DATABRICKS_HTTP_PATH as repository secrets."
+          exit 1
+
+      - name: Parse dbt project with configured metadata
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.dbt_config.outputs.available == 'true'
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
+        run: uv run --locked dbt parse --profiles-dir . --no-use-colors

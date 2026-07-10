@@ -1,0 +1,25 @@
+name: Publication safety
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          fetch-depth: 0
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install --yes ripgrep
+      - name: Check the publishable tree
+        run: scripts/check_publication_safety.sh --tree
+      - name: Check reachable Git history
+        run: scripts/check_publication_safety.sh --history

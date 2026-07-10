@@ -1,0 +1,172 @@
+version: 2
+
+models:
+  - name: int_customer_services_keyed
+    description: >
+      Ephemeral service boundary at one row per source service period. Raw SSN and installation
+      address are replaced immediately by stable domain-separated keys.
+    columns:
+      - name: service_version_key
+        description: Versioned key for one service identifier and valid-from pair.
+
+  - name: int_customer_service_resolution
+    description: >
+      Ephemeral deterministic classifier at one row per nondeleted service period. It prioritizes
+      missing customers before validity failures and mapping drift.
+    columns:
+      - name: resolution_status
+        description: Deterministic service acceptance or quarantine status.
+
+  - name: int_customer_services_resolved
+    description: >
+      Protected Layer2 services at one row per accepted validity period. Customer, service, and
+      installation address are represented only by versioned pseudonymous keys.
+    config:
+      contract:
+        enforced: true
+      tags: [layer2_services]
+      databricks_tags:
+        contains_personal_data: "true"
+        personal_data_state: "PSEUDONYMIZED"
+    columns:
+      - name: customer_key
+        data_type: string
+        description: Versioned pseudonymous customer key.
+        databricks_tags:
+          personal_data_category: "NATIONAL_IDENTIFIER"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fa_pd_customer')
+                field: customer_key
+      - name: service_key
+        data_type: string
+        description: Versioned pseudonymous service identifier.
+        databricks_tags:
+          personal_data_category: "SERVICE_IDENTIFIER"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null]
+      - name: service_version_key
+        data_type: string
+        description: Versioned key for this service validity period.
+        databricks_tags:
+          personal_data_category: "SERVICE_IDENTIFIER"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('fa_pd_service_address')
+                field: service_version_key
+      - name: installation_address_key
+        data_type: string
+        description: Versioned pseudonymous installation address.
+        databricks_tags:
+          personal_data_category: "ADDRESS"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null]
+      - name: service_type
+        data_type: string
+        description: Normalized service category.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["INTERNET", "MOBILE"]
+      - name: is_valid
+        data_type: boolean
+        description: Accepted source validity flag; always true.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [true]
+      - name: valid_from
+        data_type: date
+        description: First date in the accepted service period.
+        data_tests: [not_null]
+      - name: valid_to
+        data_type: date
+        description: Last date in the accepted service period.
+        data_tests: [not_null]
+      - name: source_updated_at
+        data_type: timestamp
+        description: Last source update timestamp.
+        data_tests: [not_null]
+
+unit_tests:
+  - name: service_arriving_before_customer_is_quarantined
+    description: The service classifier must report CUSTOMER_NOT_FOUND before its customer exists.
+    model: int_customer_service_resolution
+    given:
+      - input: ref('int_customer_services_keyed')
+        format: sql
+        rows: |
+          select
+            'SVC-LATE-A' as service_id,
+            'customer-key' as customer_key,
+            'service-key' as service_key,
+            'service-version-key' as service_version_key,
+            'address-key' as installation_address_key,
+            true as is_valid,
+            cast('2026-01-01' as date) as valid_from,
+            cast('2027-01-01' as date) as valid_to
+      - input: ref('int_terminal_deleted_customer_keys')
+        format: sql
+        rows: |
+          select cast(null as string) as customer_key where false
+      - input: ref('fa_pd_customer')
+        format: sql
+        rows: |
+          select cast(null as string) as customer_key where false
+      - input: ref('fa_pd_service_address')
+        format: sql
+        rows: |
+          select
+            cast(null as string) as customer_key,
+            cast(null as string) as service_key,
+            cast(null as string) as service_version_key,
+            cast(null as string) as installation_address_key
+          where false
+    expect:
+      rows:
+        - {service_id: SVC-LATE-A, resolution_status: CUSTOMER_NOT_FOUND}
+
+  - name: quarantined_service_recovers_when_customer_arrives
+    description: The identical keyed service must become ACCEPTED after both mapping rows exist.
+    model: int_customer_service_resolution
+    given:
+      - input: ref('int_customer_services_keyed')
+        format: sql
+        rows: |
+          select
+            'SVC-LATE-A' as service_id,
+            'customer-key' as customer_key,
+            'service-key' as service_key,
+            'service-version-key' as service_version_key,
+            'address-key' as installation_address_key,
+            true as is_valid,
+            cast('2026-01-01' as date) as valid_from,
+            cast('2027-01-01' as date) as valid_to
+      - input: ref('int_terminal_deleted_customer_keys')
+        format: sql
+        rows: |
+          select cast(null as string) as customer_key where false
+      - input: ref('fa_pd_customer')
+        format: sql
+        rows: |
+          select 'customer-key' as customer_key
+      - input: ref('fa_pd_service_address')
+        format: sql
+        rows: |
+          select
+            'customer-key' as customer_key,
+            'service-key' as service_key,
+            'service-version-key' as service_version_key,
+            'address-key' as installation_address_key
+    expect:
+      rows:
+        - {service_id: SVC-LATE-A, resolution_status: ACCEPTED}

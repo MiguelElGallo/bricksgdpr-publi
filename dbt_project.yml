@@ -1,0 +1,73 @@
+name: bricksgdpr
+version: 0.1.0
+config-version: 2
+
+flags:
+  use_materialization_v2: true
+
+profile: bricksgdpr
+
+model-paths: ["models"]
+function-paths: ["functions"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+
+clean-targets:
+  - target
+  - dbt_packages
+
+vars:
+  schema_prefix: "{{ env_var('DBT_SCHEMA_PREFIX', '') }}"
+  as_of_date: "2026-03-01"
+  date_dimension_start: "2025-01-01"
+  date_dimension_end: "2028-12-31"
+  personal_data_hash_version: "v1"
+  personal_data_secret_scope: "bricksgdpr"
+  personal_data_secret_key: "pepper_v1"
+
+models:
+  bricksgdpr:
+    +database: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}"
+    +persist_docs:
+      relation: true
+      columns: true
+    layer1:
+      +schema: layer1
+      +materialized: view
+      +tags: [gdpr, layer1]
+      +grants:
+        select: [privacy_admins]
+    priva_map:
+      +schema: priva_map
+      +materialized: table
+      +tags: [gdpr, personal_data, priva_map]
+      +grants:
+        select: [privacy_admins, restricted_users]
+    layer2:
+      +schema: layer2
+      +materialized: table
+      +tags: [gdpr, personal_data, layer2]
+      +grants:
+        select: [privacy_admins, restricted_users]
+    layer3:
+      +schema: layer3
+      +materialized: table
+      +tags: [gdpr, layer3]
+      +grants:
+        select: [privacy_admins, restricted_users, case_users]
+    layer3_case:
+      +schema: layer3_case
+      +materialized: view
+      +tags: [gdpr, personal_data, layer3_case]
+      +grants:
+        select: [privacy_admins, case_users]
+
+seeds:
+  bricksgdpr:
+    +database: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}"
+    +schema: layer1_source
+    +quote_columns: false
+    +tags: [gdpr, layer1, personal_data, source_simulator]
+    +grants:
+      select: [privacy_admins]

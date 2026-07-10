@@ -1,0 +1,29 @@
+[project]
+name = "bricksgdpr"
+version = "0.1.0"
+description = "dbt and Databricks GDPR Personal Data pseudonymization demo"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "dbt-core==1.11.12",
+    "dbt-databricks==1.12.2",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.0",
+    "ty>=0.0.1a18",
+]
+docs = [
+    "zensical==0.0.50",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.ty.src]
+include = ["scripts"]

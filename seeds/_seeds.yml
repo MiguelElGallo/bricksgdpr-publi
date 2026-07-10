@@ -1,0 +1,79 @@
+version: 2
+
+seeds:
+  - name: customer
+    description: >
+      Synthetic customer change feed used to exercise current-state upserts and an explicit
+      deletion tombstone. Upserts carry the complete source attributes; deletes retain only the
+      minimum identifiers needed to propagate erasure.
+    config:
+      column_types:
+        customer_change_id: string
+        customer_pk: string
+        customer_id: string
+        customer_ssn: string
+        first_name: string
+        last_name: string
+        email: string
+        phone: string
+        birth_date: string
+        address_line1: string
+        address_line2: string
+        city: string
+        postal_code: string
+        country_code: string
+        customer_segment: string
+        is_active: string
+        source_operation: string
+        source_updated_at: string
+
+  - name: customer_events
+    description: >
+      Synthetic event extract with one row per measured customer interaction. SSN is the only
+      direct Personal Data value; one late customer and one deleted customer exercise controls.
+    config:
+      column_types:
+        event_id: string
+        customer_ssn: string
+        event_type: string
+        occurred_at: string
+        measure_value: string
+        measure_unit: string
+        source_updated_at: string
+
+  - name: customer_services
+    description: >
+      Synthetic service-validity extract with one row per service period. The installation
+      address is conservatively classified as Personal Data because it relates to a customer.
+    config:
+      column_types:
+        service_id: string
+        customer_ssn: string
+        service_type: string
+        installation_address_line1: string
+        installation_address_line2: string
+        installation_city: string
+        installation_postal_code: string
+        installation_country_code: string
+        is_valid: string
+        valid_from: string
+        valid_to: string
+        source_updated_at: string
+
+  - name: invoices
+    description: >
+      Synthetic invoice extract with one row per invoice. It carries the source SSN and service
+      reference together with deterministic payment and due-state examples.
+    config:
+      column_types:
+        invoice_id: string
+        customer_ssn: string
+        service_id: string
+        amount: string
+        currency_code: string
+        issued_date: string
+        due_date: string
+        is_paid: string
+        paid_at: string
+        is_due: string
+        source_updated_at: string

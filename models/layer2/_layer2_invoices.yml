@@ -1,0 +1,103 @@
+version: 2
+
+models:
+  - name: int_invoices_keyed
+    description: >
+      Ephemeral invoice boundary at one row per source invoice. The raw SSN and service reference
+      are replaced immediately by domain-separated keys.
+    columns:
+      - name: invoice_id
+        description: Stable source invoice identifier.
+      - name: customer_key
+        description: Versioned customer key derived in the customer.ssn domain.
+
+  - name: int_invoice_resolution
+    description: >
+      Ephemeral invoice classifier at one row per nondeleted source invoice. Customer, service,
+      validity-period, invoice-date, and payment controls are evaluated in deterministic priority.
+    columns:
+      - name: resolution_status
+        description: Deterministic invoice acceptance or quarantine status.
+
+  - name: int_invoices_resolved
+    description: >
+      Protected Layer2 invoices at one row per accepted invoice. It contains pseudonymous customer
+      and service keys, monetary measures, dates, and an as-of-date due-state calculation.
+    config:
+      contract:
+        enforced: true
+      tags: [layer2_invoices]
+      databricks_tags:
+        contains_personal_data: "true"
+        personal_data_state: "PSEUDONYMIZED"
+    columns:
+      - name: invoice_id
+        data_type: string
+        description: Stable source invoice identifier.
+        data_tests: [not_null, unique]
+      - name: customer_key
+        data_type: string
+        description: Versioned pseudonymous customer key.
+        databricks_tags:
+          personal_data_category: "NATIONAL_IDENTIFIER"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fa_pd_customer')
+                field: customer_key
+      - name: service_key
+        data_type: string
+        description: Versioned pseudonymous service identifier.
+        databricks_tags:
+          personal_data_category: "SERVICE_IDENTIFIER"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests: [not_null]
+      - name: service_version_key
+        data_type: string
+        description: Versioned accepted service-period key effective on issued_date.
+        databricks_tags:
+          personal_data_category: "SERVICE_IDENTIFIER"
+          personal_data_state: "PSEUDONYMIZED"
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('int_customer_services_resolved')
+                field: service_version_key
+      - name: amount
+        data_type: decimal(18,2)
+        description: Gross invoice amount.
+        data_tests: [not_null]
+      - name: currency_code
+        data_type: string
+        description: Billing currency code.
+        data_tests: [not_null]
+      - name: issued_date
+        data_type: date
+        description: Invoice issue date.
+        data_tests: [not_null]
+      - name: due_date
+        data_type: date
+        description: Contractual payment deadline.
+        data_tests: [not_null]
+      - name: is_paid
+        data_type: boolean
+        description: Validated source payment-state flag.
+        data_tests: [not_null]
+      - name: paid_at
+        data_type: date
+        description: Validated payment date when the invoice is paid.
+      - name: source_is_due
+        data_type: boolean
+        description: Source due-state flag retained for audit comparison.
+        data_tests: [not_null]
+      - name: is_due
+        data_type: boolean
+        description: Deterministic due state calculated from is_paid, due_date, and as_of_date.
+        data_tests: [not_null]
+      - name: source_updated_at
+        data_type: timestamp
+        description: Last source update timestamp.
+        data_tests: [not_null]

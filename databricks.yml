@@ -1,0 +1,23 @@
+bundle:
+  name: bricksgdpr
+  uuid: 5c8a5dea-1acc-4756-9aa5-019b2c949c82
+  databricks_cli_version: ">= 1.7.0"
+
+include:
+  - resources/*.yml
+
+variables:
+  warehouse_id:
+    description: SQL warehouse used by the dbt task.
+
+sync:
+  exclude:
+    - acceptance/**
+    - docs/**
+    - scripts/**
+    - profiles.yml
+
+targets:
+  dev:
+    mode: development
+    default: true
