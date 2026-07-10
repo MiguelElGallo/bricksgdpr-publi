@@ -2,11 +2,31 @@ import { describe, expect, it } from "vitest";
 import { parseDbtCommand } from "./command";
 
 describe("parseDbtCommand", () => {
-  it("accepts the phase-one build command", () => {
-    expect(parseDbtCommand("dbt build --select +quarantine_invoices")).toEqual([
+  it("accepts the invoice lesson's cautious indirect selection", () => {
+    expect(
+      parseDbtCommand(
+        "dbt build --select +assert_invoice_partition --indirect-selection cautious",
+      ),
+    ).toEqual([
       "build",
       "--select",
-      "+quarantine_invoices",
+      "+assert_invoice_partition",
+      "--indirect-selection",
+      "cautious",
+    ]);
+  });
+
+  it("accepts the customer lesson's cautious indirect selection", () => {
+    expect(
+      parseDbtCommand(
+        "dbt build --select +assert_customer_flow_fixture --indirect-selection cautious",
+      ),
+    ).toEqual([
+      "build",
+      "--select",
+      "+assert_customer_flow_fixture",
+      "--indirect-selection",
+      "cautious",
     ]);
   });
 
@@ -17,5 +37,8 @@ describe("parseDbtCommand", () => {
     expect(() => parseDbtCommand("dbt build; curl example.invalid")).toThrow(
       "Allowed commands",
     );
+    expect(() =>
+      parseDbtCommand("dbt build --indirect-selection eager"),
+    ).toThrow("must be cautious");
   });
 });

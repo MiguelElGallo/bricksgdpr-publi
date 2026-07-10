@@ -1,9 +1,44 @@
 {{ config(materialized='ephemeral') }}
 
-select distinct customers.customer_ssn
-from {{ ref('stg_customer') }} as customers
-left join {{ ref('int_terminal_deleted_customer_ssns') }} as deleted
-    on customers.customer_ssn = deleted.customer_ssn
-where
-    customers.source_operation = 'UPSERT'
-    and deleted.customer_ssn is null
+with ranked_upserts as (
+    select
+        customers.*,
+        row_number() over (
+            partition by customers.customer_id
+            order by customers.source_updated_at desc, customers.customer_change_id desc
+        ) as change_rank
+    from {{ ref('stg_customer') }} as customers
+    where customers.source_operation = 'UPSERT'
+),
+
+current_customers as (
+    select upserts.*
+    from ranked_upserts as upserts
+    left join {{ ref('int_terminal_deleted_customer_ssns') }} as deleted
+        on upserts.customer_ssn = deleted.customer_ssn
+    where
+        upserts.change_rank = 1
+        and upserts.is_active
+        and deleted.customer_ssn is null
+)
+
+select
+    customer_change_id,
+    customer_pk,
+    customer_id,
+    customer_ssn,
+    first_name,
+    last_name,
+    email,
+    phone,
+    birth_date,
+    address_line1,
+    address_line2,
+    city,
+    postal_code,
+    country_code,
+    customer_segment,
+    is_active,
+    source_operation,
+    source_updated_at
+from current_customers

@@ -14,6 +14,123 @@ models:
               arguments:
                 values: ["UPSERT", "DELETE"]
 
+  - name: int_current_customers
+    description: >
+      Latest active synthetic customer upsert at one row per customer. Historical identifiers for
+      any customer with a deletion tombstone are excluded before this current-state relation is
+      used by the invoice and customer lessons.
+    columns:
+      - name: customer_id
+        description: Readable synthetic customer identifier retained inside the tutorial boundary.
+        data_tests: [not_null, unique]
+      - name: customer_ssn
+        description: Readable synthetic SSN used to connect the focused tutorial models.
+        data_tests: [not_null, unique]
+      - name: is_active
+        description: Current source lifecycle state; only true rows are retained.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [true]
+
+  - name: demo_customer_map
+    description: >
+      Browser-only synthetic customer map at one row per current active customer. It stores
+      readable values beside deterministic demo-v1 keys so learners can inspect the mapping
+      boundary. Its public teaching constant is not a secret, and DuckDB provides no masks,
+      grants, or production pseudonymization control.
+    columns:
+      - name: customer_key
+        description: Demo-v1 key for the canonical SSN in the customer.ssn domain.
+        data_tests: [not_null, unique]
+      - name: customer_pk_key
+        description: Demo-v1 key for the source numeric record identifier.
+        data_tests: [not_null, unique]
+      - name: customer_id_key
+        description: Demo-v1 key for the readable customer business identifier.
+        data_tests: [not_null, unique]
+      - name: first_name_key
+        description: Domain-separated demo-v1 first-name key.
+      - name: last_name_key
+        description: Domain-separated demo-v1 last-name key.
+      - name: full_name_key
+        description: Domain-separated demo-v1 full-name key.
+      - name: email_key
+        description: Domain-separated demo-v1 email key.
+      - name: phone_key
+        description: Domain-separated demo-v1 digits-only telephone key.
+      - name: birth_date_key
+        description: Domain-separated demo-v1 ISO birth-date key.
+      - name: address_key
+        description: Domain-separated demo-v1 composed-address key.
+      - name: customer_pk_value
+        description: Readable synthetic source record identifier in the ungoverned browser map.
+      - name: customer_id_value
+        description: Readable synthetic customer identifier in the ungoverned browser map.
+        data_tests: [not_null, unique]
+      - name: customer_ssn_value
+        description: Readable synthetic SSN in the ungoverned browser map.
+      - name: first_name_value
+        description: Readable synthetic first name in the ungoverned browser map.
+      - name: last_name_value
+        description: Readable synthetic last name in the ungoverned browser map.
+      - name: full_name_value
+        description: Readable synthetic composed name in the ungoverned browser map.
+      - name: email_value
+        description: Readable synthetic email in the ungoverned browser map.
+      - name: phone_value
+        description: Readable synthetic telephone number in the ungoverned browser map.
+      - name: birth_date_value
+        description: Readable synthetic birth date in ISO form in the browser map.
+      - name: address_value
+        description: Readable synthetic composed address in the ungoverned browser map.
+      - name: customer_segment
+        description: Non-identifying commercial segment preserved for analytical use.
+      - name: is_active
+        description: Current lifecycle state; only true rows are mapped.
+      - name: source_updated_at
+        description: Timestamp of the current accepted source state.
+
+  - name: int_customer_protected
+    description: >
+      Portable Layer2 teaching projection at one row per active customer. Identifying attributes
+      appear only as demo-v1 keys; readable values remain in demo_customer_map.
+    columns: &protected_customer_columns
+      - name: customer_key
+        description: Stable demo-v1 customer key propagated from the synthetic map.
+        data_tests: [not_null, unique]
+      - name: customer_pk_key
+        description: Demo-v1 source-record key.
+      - name: customer_id_key
+        description: Demo-v1 customer business-identifier key.
+      - name: first_name_key
+        description: Domain-separated demo-v1 first-name key.
+      - name: last_name_key
+        description: Domain-separated demo-v1 last-name key.
+      - name: full_name_key
+        description: Domain-separated demo-v1 full-name key.
+      - name: email_key
+        description: Domain-separated demo-v1 email key.
+      - name: phone_key
+        description: Domain-separated demo-v1 phone key.
+      - name: birth_date_key
+        description: Domain-separated demo-v1 birth-date key.
+      - name: address_key
+        description: Domain-separated demo-v1 address key.
+      - name: customer_segment
+        description: Non-identifying commercial segment.
+      - name: is_active
+        description: Current lifecycle state; always true.
+      - name: source_updated_at
+        description: Timestamp of the accepted current state.
+
+  - name: dim_customer
+    description: >
+      Type-1 teaching dimension at one row per active demo-v1 customer. It preserves the exact
+      protected Layer2 grain and contains no readable customer identifiers.
+    columns: *protected_customer_columns
+
   - name: stg_customer_services
     description: Typed synthetic service periods used to classify invoice references.
     columns:

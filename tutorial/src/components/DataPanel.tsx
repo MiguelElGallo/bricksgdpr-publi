@@ -117,7 +117,7 @@ export function DataPanel({
                 <Icon name="table" size={22} />
               </span>
               <h2>No query result yet</h2>
-              <p>Boot the engine, then run the lesson to inspect the classified invoice.</p>
+              <p>Boot the engine, then run this lesson to inspect its semantic proof.</p>
               <button type="button" onClick={() => setActiveTab("database")}>
                 Browse loaded relations
                 <Icon name="chevron" size={14} />

@@ -9,8 +9,8 @@ export function BoundaryNotice() {
       <p>
         <strong id="teaching-boundary-title">DuckDB teaching edition</strong>
         <span aria-hidden="true">·</span>
-        Synthetic data only. This browser lab teaches the transformation flow; it does not prove
-        Databricks or Unity Catalog security controls.
+        Synthetic data only. demo-v1 uses a public constant; it is not pseudonymization or a
+        security control. This lab does not prove Databricks or Unity Catalog controls.
       </p>
       <a href="../explanation/demo-and-production-boundaries/">
         Read the boundary

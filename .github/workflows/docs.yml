@@ -47,10 +47,10 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Build the site (strict)
         run: uv run --locked --only-group docs zensical build --clean --strict
-      - name: Build the browser tutorial
+      - name: Build the browser lessons
         working-directory: tutorial
         run: npm run build
-      - name: Add the browser tutorial to the Pages artifact
+      - name: Add the browser lessons to the Pages artifact
         run: |
           mkdir -p site/tutorial
           cp -R tutorial/dist/. site/tutorial/

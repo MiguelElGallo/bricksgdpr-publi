@@ -35,13 +35,22 @@ uv sync --locked --only-group docs
 uv run --locked --only-group docs zensical serve
 ```
 
-### Browser tutorial — phase one
+### Browser tutorials
 
-[Launch the phase-one browser lab](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/)
-to run a focused dbt project with DuckDB entirely in your browser. It uses only the repository's
-synthetic fixtures and requires no Databricks workspace, credentials, or backend service. The lab
-teaches the portable transformation and quarantine flow; it does not simulate or prove the
-Databricks-specific Unity Catalog security controls described by the canonical project.
+[Open the browser lab](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/) to run real dbt
+Core against DuckDB entirely in your browser. Choose:
+
+- [Follow a customer through the teaching flow](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/?lesson=customer-flow)
+  to trace synthetic `CUST-0001` from readable staging into a local keyed analytical output;
+- [Trace an invoice into quarantine](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/?lesson=invoice-quarantine)
+  to prove that `INV-0105` is classified as `SERVICE_NOT_FOUND` and excluded from accepted output.
+
+The browser lessons use only synthetic fixtures and require no Databricks workspace, credentials,
+or backend service. The customer lesson's deterministic `demo-v1:` keys are a local teaching
+convention, not the canonical Databricks `v1:` pseudonymization implementation. The lessons
+demonstrate portable transformation, key propagation, testing, and quarantine behavior; they do
+not implement or prove Unity Catalog grants, tags, masks, secrets, identity isolation, or case-view
+authorization.
 
 Run the lab locally with Node.js 24 or newer:
 

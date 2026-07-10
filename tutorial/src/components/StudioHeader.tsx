@@ -73,8 +73,8 @@ export function StudioHeader({
             className="icon-button"
             type="button"
             onClick={onReset}
-            aria-label="Reset lesson"
-            title="Reset lesson"
+            aria-label="Reset lab"
+            title="Reset lab"
           >
             <Icon name="refresh" />
           </button>

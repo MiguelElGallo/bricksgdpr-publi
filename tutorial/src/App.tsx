@@ -2,10 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import { TutorialWorkspace } from "./components";
 import { BrowserDbtEngine, parseDbtCommand } from "./engine";
 import type { CatalogRelation, RawQueryResult, RuntimeInfo } from "./engine";
-import { createTutorialFiles, mergeProjectFiles } from "./lesson/project";
+import {
+  LESSON_OPTIONS,
+  LESSONS,
+  getLessonSpec,
+  invocationIncludesLessonResources,
+  lessonIdFromSearch,
+} from "./lesson/lessons";
+import { createTutorialFiles, filesForLesson, mergeProjectFiles } from "./lesson/project";
 import type {
   EngineStatus,
   LessonDefinition,
+  LessonId,
+  LessonTask,
   QueryResult,
   RelationKind,
   RelationSummary,
@@ -16,71 +25,73 @@ import type {
   TutorialFile,
 } from "./types";
 
-const initialLesson: LessonDefinition = {
-  number: 1,
-  total: 5,
-  title: "Trace an invoice into quarantine",
-  summary:
-    "Run real dbt Core in your browser and follow one deliberately invalid synthetic invoice through deterministic classification.",
-  objective:
-    "INV-0105 is preserved with SERVICE_NOT_FOUND, excluded from accepted analytics, and placed in exactly one output partition.",
-  duration: "12 min",
-  tasks: [
-    {
-      id: "boot",
-      title: "Start the local lab",
-      detail: "Load dbt Core, DuckDB and the synthetic project in this browser tab.",
-      status: "active",
-    },
-    {
-      id: "build",
-      title: "Build the invoice path",
-      detail: "Run dbt build to create the staging, accepted and quarantine relations.",
-      status: "pending",
-    },
-    {
-      id: "inspect",
-      title: "Inspect INV-0105",
-      detail: "Confirm that its source service ID is SVC-7777-A.",
-      status: "pending",
-    },
-    {
-      id: "classify",
-      title: "Read the decision",
-      detail: "Observe the stable SERVICE_NOT_FOUND quarantine reason.",
-      status: "pending",
-    },
-    {
-      id: "partition",
-      title: "Prove the partition",
-      detail: "Verify the invoice appears once in quarantine and zero times in accepted Layer2.",
-      status: "pending",
-    },
-  ],
-};
+interface LessonSessionState {
+  tasks: LessonTask[];
+  activeFilePath: string;
+  selectedRelation: string | null;
+  result: QueryResult | null;
+}
 
-const defaultCommand = "dbt build";
-const validationSql = `
-select
-    quarantine.invoice_id,
-    quarantine.service_id,
-    quarantine.quarantine_reason,
-    (
-        select count(*)
-        from main.int_invoices_resolved as accepted
-        where accepted.invoice_id = quarantine.invoice_id
-    ) as accepted_rows
-from main.quarantine_invoices as quarantine
-where quarantine.invoice_id = 'INV-0105'
-`;
+type LessonSessions = Record<LessonId, LessonSessionState>;
 
 const initialTerminal: TerminalEntry[] = [
   {
     id: "welcome",
     tone: "info",
-    text: "Synthetic data and all compute stay inside this browser tab. Boot the engine to begin.",
+    text: "Synthetic data and all compute stay inside this browser tab. Choose a lesson and boot the engine to begin.",
   },
 ];
+
+function createInitialTasks(lessonId: LessonId): LessonTask[] {
+  return getLessonSpec(lessonId).tasks.map((task, index) => ({
+    ...task,
+    status: index === 0 ? "active" : "pending",
+  }));
+}
+
+function createInitialLessonSessions(): LessonSessions {
+  return LESSONS.reduce((sessions, lesson) => {
+    sessions[lesson.id] = {
+      tasks: createInitialTasks(lesson.id),
+      activeFilePath: lesson.filePaths[0],
+      selectedRelation: null,
+      result: null,
+    };
+    return sessions;
+  }, {} as LessonSessions);
+}
+
+function withTaskProgress(
+  tasks: LessonTask[],
+  completedIds: readonly string[],
+  activeId?: string,
+): LessonTask[] {
+  return tasks.map((task) => ({
+    ...task,
+    status: completedIds.includes(task.id)
+      ? "complete"
+      : task.id === activeId
+        ? "active"
+        : "pending",
+  }));
+}
+
+function toLessonDefinition(
+  lessonId: LessonId,
+  session: LessonSessionState,
+): LessonDefinition {
+  const lesson = getLessonSpec(lessonId);
+  return {
+    id: lesson.id,
+    number: lesson.number,
+    total: LESSONS.length,
+    title: lesson.title,
+    summary: lesson.summary,
+    objective: lesson.objective,
+    duration: lesson.duration,
+    tasks: session.tasks,
+  };
+}
 
 function resultCell(value: unknown): ResultCell {
   if (value === null || ["string", "number", "boolean"].includes(typeof value)) {
@@ -107,8 +118,10 @@ function toQueryResult(raw: RawQueryResult, label: string, elapsedMs?: number): 
 }
 
 function relationLayer(name: string) {
+  if (name === "demo_customer_map") return "Mapping";
   if (["customer", "customer_services", "invoices"].includes(name)) return "Sources";
   if (name.startsWith("stg_") || name.startsWith("quarantine_")) return "Layer1";
+  if (name.startsWith("dim_") || name.startsWith("fct_")) return "Layer3";
   return "Layer2";
 }
 
@@ -129,17 +142,33 @@ function toRelationSummary(relation: CatalogRelation): RelationSummary {
 }
 
 export default function App() {
+  const [activeLessonId, setActiveLessonId] = useState<LessonId>(() =>
+    lessonIdFromSearch(window.location.search),
+  );
+  const [lessonSessions, setLessonSessions] = useState<LessonSessions>(() =>
+    createInitialLessonSessions(),
+  );
   const [engineStatus, setEngineStatus] = useState<EngineStatus>("idle");
   const [engineMessage, setEngineMessage] = useState("Runtime not started");
-  const [lesson, setLesson] = useState<LessonDefinition>(initialLesson);
   const [files, setFiles] = useState<TutorialFile[]>(() => createTutorialFiles());
-  const [activeFilePath, setActiveFilePath] = useState(() => createTutorialFiles()[0].path);
   const [relations, setRelations] = useState<RelationSummary[]>([]);
-  const [selectedRelation, setSelectedRelation] = useState<string | null>(null);
-  const [result, setResult] = useState<QueryResult | null>(null);
   const [terminal, setTerminal] = useState<TerminalEntry[]>(initialTerminal);
   const engineRef = useRef<BrowserDbtEngine | null>(null);
   const entrySequence = useRef(0);
+
+  const activeLessonSpec = getLessonSpec(activeLessonId);
+  const activeSession = lessonSessions[activeLessonId];
+  const lesson = toLessonDefinition(activeLessonId, activeSession);
+  const visibleFiles = filesForLesson(files, activeLessonId);
+  const visibleRelationNames = new Set(activeLessonSpec.visibleRelationNames);
+  const visibleRelations = relations.filter((relation) => visibleRelationNames.has(relation.name));
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("lesson") === activeLessonId) return;
+    url.searchParams.set("lesson", activeLessonId);
+    window.history.replaceState(window.history.state, "", url);
+  }, [activeLessonId]);
 
   useEffect(
     () => () => {
@@ -162,25 +191,64 @@ export default function App() {
     setTerminal((current) => [...current.slice(-399), entry]);
   }
 
-  function markTaskProgress(completedIds: string[], activeId?: string) {
-    setLesson((current) => ({
+  function markTaskProgress(
+    lessonId: LessonId,
+    completedIds: readonly string[],
+    activeId?: string,
+  ) {
+    setLessonSessions((current) => ({
       ...current,
-      tasks: current.tasks.map((task) => ({
-        ...task,
-        status: completedIds.includes(task.id)
-          ? "complete"
-          : task.id === activeId
-            ? "active"
-            : "pending",
-      })),
+      [lessonId]: {
+        ...current[lessonId],
+        tasks: withTaskProgress(current[lessonId].tasks, completedIds, activeId),
+      },
     }));
   }
 
-  function invalidateLessonProof(bootComplete: boolean) {
-    setResult(null);
-    setRelations([]);
-    setSelectedRelation(null);
-    markTaskProgress(bootComplete ? ["boot"] : [], bootComplete ? "build" : "boot");
+  function markEngineReadyForAllLessons() {
+    setLessonSessions((current) =>
+      LESSONS.reduce((next, candidate) => {
+        next[candidate.id] = {
+          ...current[candidate.id],
+          tasks: withTaskProgress(current[candidate.id].tasks, ["boot"], "build"),
+        };
+        return next;
+      }, { ...current }),
+    );
+  }
+
+  function invalidateLessonProof(lessonId: LessonId, bootComplete: boolean) {
+    setLessonSessions((current) => ({
+      ...current,
+      [lessonId]: {
+        ...current[lessonId],
+        result: null,
+        selectedRelation: null,
+        tasks: withTaskProgress(
+          current[lessonId].tasks,
+          bootComplete ? ["boot"] : [],
+          bootComplete ? "build" : "boot",
+        ),
+      },
+    }));
+  }
+
+  function invalidateAllLessonProofs(bootComplete: boolean) {
+    setLessonSessions((current) =>
+      LESSONS.reduce((next, candidate) => {
+        next[candidate.id] = {
+          ...current[candidate.id],
+          result: null,
+          selectedRelation: null,
+          tasks: withTaskProgress(
+            current[candidate.id].tasks,
+            bootComplete ? ["boot"] : [],
+            bootComplete ? "build" : "boot",
+          ),
+        };
+        return next;
+      }, { ...current }),
+    );
   }
 
   function isCurrentEngine(engine: BrowserDbtEngine) {
@@ -221,7 +289,7 @@ export default function App() {
       if (!isCurrentEngine(engine)) return;
       setEngineStatus("ready");
       setEngineMessage(`dbt ${runtime.dbtVersion} · DuckDB ${runtime.duckdbVersion}`);
-      markTaskProgress(["boot"], "build");
+      markEngineReadyForAllLessons();
       appendTerminal(
         "success",
         `Ready: dbt ${runtime.dbtVersion}, DuckDB ${runtime.duckdbVersion}, Python ${runtime.pythonVersion}.`,
@@ -242,37 +310,38 @@ export default function App() {
     return summaries;
   }
 
-  async function validateLesson(engine: BrowserDbtEngine) {
+  async function validateLesson(engine: BrowserDbtEngine, lessonId: LessonId) {
+    const lessonSpec = getLessonSpec(lessonId);
     const startedAt = performance.now();
-    const raw = await engine.query(validationSql);
+    const raw = await engine.query(lessonSpec.proof.sql);
     if (!isCurrentEngine(engine)) return;
     const queryResult = toQueryResult(
       raw,
-      "INV-0105 quarantine proof",
+      lessonSpec.proof.label,
       Math.round(performance.now() - startedAt),
     );
-    setResult(queryResult);
-    setSelectedRelation("quarantine_invoices");
+    setLessonSessions((current) => ({
+      ...current,
+      [lessonId]: {
+        ...current[lessonId],
+        result: queryResult,
+        selectedRelation: lessonSpec.proof.selectedRelation,
+      },
+    }));
 
-    const row = raw.rows[0] ?? [];
-    const passed =
-      row[0] === "INV-0105" &&
-      row[1] === "SVC-7777-A" &&
-      row[2] === "SERVICE_NOT_FOUND" &&
-      Number(row[3]) === 0;
-    if (passed) {
-      markTaskProgress(["boot", "build", "inspect", "classify", "partition"]);
-      appendTerminal(
-        "success",
-        "Lesson complete: INV-0105 is quarantined as SERVICE_NOT_FOUND and has 0 accepted rows.",
+    if (lessonSpec.proof.validate(raw)) {
+      markTaskProgress(
+        lessonId,
+        lessonSpec.tasks.map((task) => task.id),
       );
+      appendTerminal("success", lessonSpec.proof.successMessage);
     } else {
-      markTaskProgress(["boot", "build"], "inspect");
-      appendTerminal("error", "The build passed, but the phase-one semantic proof did not match.");
+      markTaskProgress(lessonId, ["boot", "build"], lessonSpec.tasks[2]?.id);
+      appendTerminal("error", lessonSpec.proof.failureMessage);
     }
   }
 
-  async function runDbtCommand(command: string) {
+  async function runDbtCommand(command: string, lessonId: LessonId) {
     const engine = engineRef.current;
     if (!engine || engineStatus !== "ready") {
       appendTerminal("error", "Boot the local engine before running dbt.");
@@ -287,8 +356,10 @@ export default function App() {
       return;
     }
 
-    const gradesLesson = args[0] === "build" || args[0] === "run";
-    if (gradesLesson) invalidateLessonProof(true);
+    const lessonSpec = getLessonSpec(lessonId);
+    const invalidatesLessonProof = args[0] === "build" || args[0] === "run";
+    const gradesLesson = args[0] === "build";
+    if (invalidatesLessonProof) invalidateLessonProof(lessonId, true);
 
     setEngineStatus("running");
     setEngineMessage(`Running ${command}`);
@@ -310,27 +381,26 @@ export default function App() {
         failures.length === 0 ? "success" : "error",
         `${invocation.results.length} dbt nodes finished; ${failures.length} failed.`,
       );
-      const refreshedRelations = await refreshCatalog(engine);
+      await refreshCatalog(engine);
       if (!isCurrentEngine(engine)) return;
 
       if (gradesLesson) {
-        const isPartialCommand = args.some((argument) =>
-          ["--select", "-s", "--exclude"].includes(argument),
-        );
-        const hasInvoicePath = ["quarantine_invoices", "int_invoices_resolved"].every((name) =>
-          refreshedRelations?.some((relation) => relation.name === name),
-        );
-        if (!isPartialCommand && hasInvoicePath) {
-          markTaskProgress(["boot", "build"], "inspect");
-          await validateLesson(engine);
+        if (invocationIncludesLessonResources(lessonSpec, invocation.results)) {
+          markTaskProgress(lessonId, ["boot", "build"], lessonSpec.tasks[2]?.id);
+          await validateLesson(engine, lessonId);
           if (!isCurrentEngine(engine)) return;
         } else {
-          markTaskProgress(["boot"], "build");
+          markTaskProgress(lessonId, ["boot"], "build");
           appendTerminal(
             "info",
-            "dbt succeeded, but the full invoice path was not rebuilt. Run dbt build without selectors to grade the lesson.",
+            `dbt succeeded, but it did not rebuild every required resource for “${lessonSpec.title}”. Run the lesson command to grade it.`,
           );
         }
+      } else if (args[0] === "run") {
+        appendTerminal(
+          "info",
+          "dbt run rebuilt models but did not execute the lesson test. Use the lesson’s dbt build command to grade it.",
+        );
       }
       setEngineStatus("ready");
       setEngineMessage("Engine ready for another command");
@@ -343,7 +413,7 @@ export default function App() {
   }
 
   function handleRun(request: RunRequest) {
-    void runDbtCommand(request.command);
+    void runDbtCommand(request.command, request.lessonId);
   }
 
   function handleReset() {
@@ -352,26 +422,40 @@ export default function App() {
     engine?.terminate();
     setEngineStatus("idle");
     setEngineMessage("Runtime not started");
-    setLesson(initialLesson);
-    const resetFiles = createTutorialFiles();
-    setFiles(resetFiles);
-    setActiveFilePath(resetFiles[0].path);
+    setLessonSessions(createInitialLessonSessions());
+    setFiles(createTutorialFiles());
     setRelations([]);
-    setSelectedRelation(null);
-    setResult(null);
     setTerminal(initialTerminal);
+    entrySequence.current = 0;
+  }
+
+  function handleLessonSelect(lessonId: LessonId) {
+    if (engineStatus === "booting" || engineStatus === "running") return;
+    setActiveLessonId(lessonId);
+  }
+
+  function handleFileSelect(path: string) {
+    setLessonSessions((current) => ({
+      ...current,
+      [activeLessonId]: { ...current[activeLessonId], activeFilePath: path },
+    }));
   }
 
   function handleFileChange(path: string, content: string) {
     setFiles((current) =>
       current.map((file) => (file.path === path ? { ...file, content, dirty: true } : file)),
     );
-    invalidateLessonProof(engineStatus === "ready" || engineStatus === "running");
+    invalidateAllLessonProofs(engineStatus === "ready" || engineStatus === "running");
+    setRelations([]);
   }
 
   async function handleRelationSelect(name: string) {
     if (engineStatus !== "ready") return;
-    setSelectedRelation(name);
+    const lessonId = activeLessonId;
+    setLessonSessions((current) => ({
+      ...current,
+      [lessonId]: { ...current[lessonId], selectedRelation: name },
+    }));
     const engine = engineRef.current;
     const relation = relations.find((candidate) => candidate.name === name);
     if (!engine || !relation) return;
@@ -381,9 +465,15 @@ export default function App() {
       const startedAt = performance.now();
       const raw = await engine.query(`select * from ${quotedSchema}.${quotedName} limit 50`);
       if (!isCurrentEngine(engine)) return;
-      setResult(
-        toQueryResult(raw, `${relation.schema}.${relation.name}`, Math.round(performance.now() - startedAt)),
+      const queryResult = toQueryResult(
+        raw,
+        `${relation.schema}.${relation.name}`,
+        Math.round(performance.now() - startedAt),
       );
+      setLessonSessions((current) => ({
+        ...current,
+        [lessonId]: { ...current[lessonId], result: queryResult },
+      }));
     } catch (error) {
       if (!isCurrentEngine(engine)) return;
       appendTerminal("error", error instanceof Error ? error.message : String(error));
@@ -406,25 +496,28 @@ export default function App() {
       handleReset();
       return;
     }
-    void runDbtCommand(command);
+    void runDbtCommand(command, activeLessonId);
   }
 
   return (
     <TutorialWorkspace
       lesson={lesson}
-      files={files}
-      activeFilePath={activeFilePath}
-      relations={relations}
-      selectedRelation={selectedRelation}
-      result={result}
+      lessons={LESSON_OPTIONS}
+      activeLessonId={activeLessonId}
+      files={visibleFiles}
+      activeFilePath={activeSession.activeFilePath}
+      relations={visibleRelations}
+      selectedRelation={activeSession.selectedRelation}
+      result={activeSession.result}
       terminal={terminal}
       engineStatus={engineStatus}
       engineMessage={engineMessage}
-      command={defaultCommand}
+      command={activeLessonSpec.command}
       onBoot={handleBoot}
       onRun={handleRun}
       onReset={handleReset}
-      onFileSelect={setActiveFilePath}
+      onLessonSelect={handleLessonSelect}
+      onFileSelect={handleFileSelect}
       onFileChange={handleFileChange}
       onRelationSelect={(name) => void handleRelationSelect(name)}
       onTerminalSubmit={handleTerminalSubmit}

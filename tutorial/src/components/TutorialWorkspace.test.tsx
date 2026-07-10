@@ -8,8 +8,9 @@ function createProps(
 ): TutorialWorkspaceProps {
   return {
     lesson: {
+      id: "invoice-quarantine",
       number: 1,
-      total: 5,
+      total: 2,
       title: "Trace an invoice into quarantine",
       summary: "Follow the invalid invoice.",
       objective: "Prove the accepted or quarantine partition.",
@@ -23,6 +24,19 @@ function createProps(
         },
       ],
     },
+    lessons: [
+      {
+        id: "invoice-quarantine",
+        number: 1,
+        title: "Trace an invoice into quarantine",
+      },
+      {
+        id: "customer-flow",
+        number: 2,
+        title: "Follow a customer through protected layers",
+      },
+    ],
+    activeLessonId: "invoice-quarantine",
     files: [
       {
         path: "models/quarantine_invoices.sql",
@@ -58,6 +72,7 @@ function createProps(
     onBoot: vi.fn(),
     onRun: vi.fn(),
     onReset: vi.fn(),
+    onLessonSelect: vi.fn(),
     onFileSelect: vi.fn(),
     onFileChange: vi.fn(),
     onRelationSelect: vi.fn(),
@@ -74,8 +89,13 @@ describe("TutorialWorkspace", () => {
     expect(screen.getByRole("heading", { name: "Trace an invoice into quarantine" })).toBeVisible();
     expect(screen.getByText("DuckDB teaching edition")).toBeVisible();
     expect(screen.getByText(/Synthetic data only/)).toBeVisible();
+    expect(screen.getByText(/demo-v1 uses a public constant/)).toBeVisible();
+    expect(screen.getByText(/not pseudonymization or a security control/)).toBeVisible();
     expect(screen.getByRole("status")).toHaveTextContent("Engine offline");
     expect(screen.getByRole("button", { name: "Run lesson" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Choose lesson" })).toHaveValue(
+      "invoice-quarantine",
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Boot engine" }));
     expect(props.onBoot).toHaveBeenCalledOnce();
@@ -84,6 +104,11 @@ describe("TutorialWorkspace", () => {
   it("forwards editor, run, database, and terminal interactions", () => {
     const props = createProps({ engineStatus: "ready" });
     render(<TutorialWorkspace {...props} />);
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Choose lesson" }), {
+      target: { value: "customer-flow" },
+    });
+    expect(props.onLessonSelect).toHaveBeenCalledWith("customer-flow");
 
     fireEvent.click(screen.getByRole("tab", { name: /assert_partition\.sql/ }));
     expect(props.onFileSelect).toHaveBeenCalledWith("tests/assert_partition.sql");
@@ -98,6 +123,7 @@ describe("TutorialWorkspace", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Run lesson" }));
     expect(props.onRun).toHaveBeenCalledWith({
+      lessonId: "invoice-quarantine",
       command: "dbt build --select +quarantine_invoices",
       sql: "select * from {{ ref('stg_invoices') }}",
       activeFilePath: "models/quarantine_invoices.sql",
@@ -118,8 +144,9 @@ describe("TutorialWorkspace", () => {
     const props = createProps({ engineStatus: "running" });
     render(<TutorialWorkspace {...props} />);
 
-    expect(screen.getByRole("button", { name: "Reset lesson" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Reset lab" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Running…" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Choose lesson" })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("tab", { name: /Database/ }));
     const relation = screen.getByRole("button", { name: /quarantine_invoices/ });

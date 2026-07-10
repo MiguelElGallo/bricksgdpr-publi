@@ -8,6 +8,8 @@ import { TerminalPanel } from "./TerminalPanel";
 
 export function TutorialWorkspace({
   lesson,
+  lessons,
+  activeLessonId,
   files,
   activeFilePath,
   relations,
@@ -20,6 +22,7 @@ export function TutorialWorkspace({
   onBoot,
   onRun,
   onReset,
+  onLessonSelect,
   onFileSelect,
   onFileChange,
   onRelationSelect,
@@ -30,6 +33,7 @@ export function TutorialWorkspace({
   function runActiveLesson() {
     if (!activeFile) return;
     const request: RunRequest = {
+      lessonId: activeLessonId,
       command,
       sql: activeFile.content,
       activeFilePath: activeFile.path,
@@ -53,7 +57,13 @@ export function TutorialWorkspace({
       />
       <BoundaryNotice />
       <main className="studio-grid" id="tutorial-workspace">
-        <LessonPanel lesson={lesson} />
+        <LessonPanel
+          lesson={lesson}
+          lessons={lessons}
+          activeLessonId={activeLessonId}
+          selectionDisabled={engineStatus === "booting" || engineStatus === "running"}
+          onLessonSelect={onLessonSelect}
+        />
         <div className="workbench-column">
           <SqlEditor
             files={files}
@@ -70,6 +80,7 @@ export function TutorialWorkspace({
           />
         </div>
         <DataPanel
+          key={activeLessonId}
           relations={relations}
           selectedRelation={selectedRelation}
           result={result}

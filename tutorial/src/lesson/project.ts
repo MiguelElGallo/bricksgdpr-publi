@@ -1,4 +1,5 @@
-import type { TutorialFile } from "../types";
+import type { LessonId, TutorialFile } from "../types";
+import { LESSONS, getLessonSpec } from "./lessons";
 
 const rawProjectModules = import.meta.glob<string>(
   ["../../lesson/project/**/*.{sql,yml,yaml,csv}", "!../../lesson/project/target/**"],
@@ -19,21 +20,27 @@ export const initialProjectFiles = Object.fromEntries(
   }),
 );
 
-const visibleProjectFiles = [
-  "models/stg_invoices.sql",
-  "models/int_invoice_resolution.sql",
-  "models/quarantine_invoices.sql",
-  "tests/assert_invoice_partition.sql",
-] as const;
+const visibleProjectFiles = [...new Set(LESSONS.flatMap((lesson) => lesson.filePaths))];
 
 export function createTutorialFiles(): TutorialFile[] {
-  return visibleProjectFiles.map((path) => ({
-    path,
-    label: path.split("/").at(-1) ?? path,
-    language: "sql",
-    content: initialProjectFiles[path],
-    editable: true,
-  }));
+  return visibleProjectFiles.map((path) => {
+    const content = initialProjectFiles[path];
+    if (typeof content !== "string") {
+      throw new Error(`Tutorial lesson references a missing project file: ${path}`);
+    }
+    return {
+      path,
+      label: path.split("/").at(-1) ?? path,
+      language: "sql",
+      content,
+      editable: true,
+    };
+  });
+}
+
+export function filesForLesson(files: TutorialFile[], lessonId: LessonId): TutorialFile[] {
+  const visible = new Set(getLessonSpec(lessonId).filePaths);
+  return files.filter((file) => visible.has(file.path));
 }
 
 export function mergeProjectFiles(files: TutorialFile[]): Record<string, string> {

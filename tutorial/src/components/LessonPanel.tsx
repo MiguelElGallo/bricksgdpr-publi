@@ -1,8 +1,12 @@
-import type { LessonDefinition, TaskStatus } from "../types";
+import type { LessonDefinition, LessonId, LessonOption, TaskStatus } from "../types";
 import { Icon } from "./Icon";
 
 interface LessonPanelProps {
   lesson: LessonDefinition;
+  lessons: LessonOption[];
+  activeLessonId: LessonId;
+  selectionDisabled?: boolean;
+  onLessonSelect: (lessonId: LessonId) => void;
 }
 
 const statusText: Record<TaskStatus, string> = {
@@ -11,13 +15,40 @@ const statusText: Record<TaskStatus, string> = {
   complete: "Complete",
 };
 
-export function LessonPanel({ lesson }: LessonPanelProps) {
+export function LessonPanel({
+  lesson,
+  lessons,
+  activeLessonId,
+  selectionDisabled = false,
+  onLessonSelect,
+}: LessonPanelProps) {
   const completed = lesson.tasks.filter((task) => task.status === "complete").length;
   const progress = Math.round((completed / lesson.tasks.length) * 100);
 
   return (
     <aside className="lesson-panel" aria-labelledby="lesson-title">
       <div className="lesson-scroll">
+        <nav className="lesson-selector" aria-label="Tutorial lesson navigation">
+          <label htmlFor="tutorial-lesson-select">Choose lesson</label>
+          <div className="lesson-select-control">
+            <select
+              id="tutorial-lesson-select"
+              value={activeLessonId}
+              disabled={selectionDisabled}
+              onChange={(event) => onLessonSelect(event.target.value as LessonId)}
+            >
+              {lessons.map((option) => (
+                <option value={option.id} key={option.id}>
+                  {option.number}. {option.title}
+                </option>
+              ))}
+            </select>
+            <Icon name="chevron" size={14} />
+          </div>
+          <span className="sr-only" aria-live="polite" aria-atomic="true">
+            Lesson {lesson.number} selected: {lesson.title}
+          </span>
+        </nav>
         <div className="lesson-kicker">
           <span>Lesson {lesson.number}</span>
           <span className="lesson-duration">{lesson.duration}</span>

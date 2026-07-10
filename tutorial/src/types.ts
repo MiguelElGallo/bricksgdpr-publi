@@ -1,5 +1,7 @@
 export type EngineStatus = "idle" | "booting" | "ready" | "running" | "error";
 
+export type LessonId = "invoice-quarantine" | "customer-flow";
+
 export type TaskStatus = "pending" | "active" | "complete";
 
 export interface LessonTask {
@@ -10,6 +12,7 @@ export interface LessonTask {
 }
 
 export interface LessonDefinition {
+  id: LessonId;
   number: number;
   total: number;
   title: string;
@@ -17,6 +20,12 @@ export interface LessonDefinition {
   objective: string;
   duration: string;
   tasks: LessonTask[];
+}
+
+export interface LessonOption {
+  id: LessonId;
+  number: number;
+  title: string;
 }
 
 export type TutorialFileLanguage = "sql" | "yaml" | "csv";
@@ -73,6 +82,7 @@ export interface TerminalEntry {
 }
 
 export interface RunRequest {
+  lessonId: LessonId;
   command: string;
   sql: string;
   activeFilePath: string;
@@ -80,6 +90,8 @@ export interface RunRequest {
 
 export interface TutorialWorkspaceProps {
   lesson: LessonDefinition;
+  lessons: LessonOption[];
+  activeLessonId: LessonId;
   files: TutorialFile[];
   activeFilePath: string;
   relations: RelationSummary[];
@@ -92,6 +104,7 @@ export interface TutorialWorkspaceProps {
   onBoot: () => void;
   onRun: (request: RunRequest) => void;
   onReset: () => void;
+  onLessonSelect: (lessonId: LessonId) => void;
   onFileSelect: (path: string) => void;
   onFileChange: (path: string, content: string) => void;
   onRelationSelect: (name: string) => void;

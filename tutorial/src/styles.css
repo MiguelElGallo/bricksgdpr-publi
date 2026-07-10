@@ -428,6 +428,64 @@ a {
   scrollbar-width: thin;
 }
 
+.lesson-selector {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.lesson-selector > label {
+  color: #617472;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lesson-select-control {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.lesson-select-control select {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  appearance: none;
+  padding: 0 34px 0 11px;
+  overflow: hidden;
+  color: #294340;
+  background: #f4f6f2;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lesson-select-control select:hover:not(:disabled) {
+  background: #eef3ee;
+  border-color: #aebdb4;
+}
+
+.lesson-select-control select:disabled {
+  color: #84918e;
+  background: #eef0ed;
+  opacity: 0.8;
+}
+
+.lesson-select-control > svg {
+  position: absolute;
+  right: 11px;
+  color: var(--teal-dark);
+  pointer-events: none;
+  transform: rotate(90deg);
+}
+
 .lesson-kicker {
   display: flex;
   align-items: center;

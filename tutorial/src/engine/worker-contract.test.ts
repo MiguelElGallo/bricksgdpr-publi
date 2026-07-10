@@ -67,6 +67,21 @@ describe("dbt worker contract", () => {
       "--select",
       "+quarantine_invoices",
     ]);
+    expect(
+      contract.validateDbtArgs([
+        "build",
+        "--select",
+        "+assert_customer_flow_fixture",
+        "--indirect-selection",
+        "cautious",
+      ]),
+    ).toEqual([
+      "build",
+      "--select",
+      "+assert_customer_flow_fixture",
+      "--indirect-selection",
+      "cautious",
+    ]);
     expect(() => contract.validateDbtArgs(["run-operation", "unsafe_macro"])).toThrow(
       "Unsupported browser tutorial dbt command",
     );
@@ -76,6 +91,9 @@ describe("dbt worker contract", () => {
     expect(() => contract.validateDbtArgs(["build", "--select", "model\nseed"])).toThrow(
       "requires a safe value",
     );
+    expect(() =>
+      contract.validateDbtArgs(["build", "--indirect-selection", "eager"]),
+    ).toThrow("must be cautious");
   });
 
   it("serializes requests even when the first handler is still pending", async () => {

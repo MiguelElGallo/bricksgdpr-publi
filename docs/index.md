@@ -21,10 +21,13 @@ column masks, Databricks SQL functions and secrets, and a Databricks Asset Bundl
     caches, exports, backups, and incident response.
 
 !!! tip "New here? Start in the browser."
-    [Launch the phase-one browser lab](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/)
-    to run a focused dbt and DuckDB lesson without credentials or a Databricks workspace. Continue
-    with [Build and explore the demo](tutorials/build-and-explore-the-demo.md) when you are ready to
-    exercise the canonical Databricks implementation.
+    [Open the browser lab](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/) and choose
+    [the customer flow](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/?lesson=customer-flow)
+    or [invoice quarantine](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/?lesson=invoice-quarantine).
+    These are credential-free DuckDB teaching editions; their deterministic `demo-v1:` keys do not
+    reproduce the canonical Databricks pseudonymization or security controls. Continue with
+    [Build and explore the demo](tutorials/build-and-explore-the-demo.md) when you are ready to
+    exercise the Databricks implementation.
 
 ## The governed path
 

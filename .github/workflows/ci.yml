@@ -63,7 +63,7 @@ jobs:
         working-directory: tutorial
         run: npm ci --no-audit --no-fund
 
-      - name: Test tutorial UI
+      - name: Test browser tutorial lessons
         working-directory: tutorial
         run: npm test
 
@@ -75,7 +75,7 @@ jobs:
         working-directory: tutorial
         run: npm run build
 
-      - name: Validate tutorial dbt project
+      - name: Validate all browser tutorial dbt lessons
         working-directory: tutorial
         run: npm run test:dbt
 

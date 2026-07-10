@@ -7,11 +7,16 @@ icon: lucide/graduation-cap
 These tutorials are lessons. They use the repository's deterministic synthetic data so you can
 perform an action, see the result, and connect that result to the next layer of the project.
 
-## Browser lab — phase one
+## Browser lessons
 
-[Launch the browser lab](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/) to build and
+[Open the browser lab](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/) to build and
 inspect a focused dbt project with DuckDB. It runs locally in the browser, uses only synthetic
-fixtures, and needs no Databricks workspace, credentials, or backend service.
+fixtures, and needs no Databricks workspace, credentials, or backend service. Choose:
+
+- [Follow a customer through the teaching flow](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/?lesson=customer-flow)
+  to compare readable staging with a local keyed customer output;
+- [Trace an invoice into quarantine](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/?lesson=invoice-quarantine)
+  to inspect one deterministic rejection and its accepted-versus-quarantine partition.
 
 To run the same lab from a local checkout:
 
@@ -21,9 +26,11 @@ npm ci
 npm run dev
 ```
 
-The browser lab teaches portable transformation, testing, and quarantine concepts. It does not
-implement or prove Unity Catalog grants, tags, masks, secrets, identities, or case-view access.
-Those remain part of the canonical Databricks tutorials below. See the
+The DuckDB lessons validate portable model behavior and deterministic fixture outcomes only. The
+customer lesson uses deterministic `demo-v1:` teaching keys, not the canonical secret-backed
+Databricks `v1:` implementation. The lessons do not implement or prove Unity Catalog grants, tags,
+masks, secrets, identities, or case-view access. Those controls remain part of the canonical
+Databricks tutorials below. See the
 [`tutorial/README.md`](https://github.com/MiguelElGallo/bricksgdpr-publi/blob/main/tutorial/README.md)
 for the complete local validation workflow and runtime boundary.
 

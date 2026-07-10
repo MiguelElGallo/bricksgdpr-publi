@@ -7,7 +7,13 @@ let invocationActive = false;
 let requestQueue = Promise.resolve();
 
 const allowedCommands = new Set(["build", "compile", "ls", "run", "seed", "show", "test"]);
-const valueFlags = new Set(["--exclude", "--limit", "--select", "-s"]);
+const valueFlags = new Set([
+  "--exclude",
+  "--indirect-selection",
+  "--limit",
+  "--select",
+  "-s",
+]);
 const booleanFlags = new Set(["--fail-fast", "--full-refresh", "--quiet", "--warn-error"]);
 
 function sendLog(line, stream = "out") {
@@ -63,6 +69,9 @@ function validateDbtArgs(args) {
       }
       if (token === "--limit" && !/^\d+$/.test(value)) {
         throw new Error("--limit must be a positive integer");
+      }
+      if (token === "--indirect-selection" && value !== "cautious") {
+        throw new Error("--indirect-selection must be cautious in this browser tutorial");
       }
       validated.push(token, value);
       index += 1;

@@ -10,6 +10,13 @@ to a protected Layer3 dimension.
 Along the way, notice that the business facts remain useful while direct identifiers become
 stable, versioned keys.
 
+!!! tip "Run the customer-flow teaching edition in your browser"
+    [Launch the customer lesson](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/?lesson=customer-flow)
+    to inspect `CUST-0001` in readable staging and a deterministic `demo-v1:` keyed customer output
+    with dbt Core and DuckDB. That local key scheme demonstrates model shape and key propagation;
+    it does not reproduce the canonical secret-backed `v1:` pseudonymization, Unity Catalog masks,
+    or governed access. Continue below for the Databricks version of the lesson.
+
 ## Before you begin
 
 Complete [Build and explore the demo](build-and-explore-the-demo.md). Run this lesson
