@@ -318,6 +318,19 @@ function customerStepButton(stepId: CustomerStepId) {
   });
 }
 
+function customerStepSpec(stepId: CustomerStepId) {
+  const step = getLessonSpec("customer-flow").steps?.find((candidate) => candidate.id === stepId);
+  if (!step) throw new Error(`Missing customer tutorial step: ${stepId}`);
+  return step;
+}
+
+function submitTerminalCommand(command: string) {
+  fireEvent.change(screen.getByLabelText("Enter a dbt command"), {
+    target: { value: command },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /^Run$/ }));
+}
+
 function queueCustomerStep(stepId: CustomerStepId) {
   engineMock.invoke.mockResolvedValueOnce(customerInvocations[stepId]);
   engineMock.query.mockResolvedValueOnce(customerProofResults[stepId]);
@@ -548,6 +561,97 @@ describe("App engine integration", () => {
     expect(customerStepButton("staging")).toHaveAccessibleName(/Current task$/);
     expect(customerStepButton("current")).toHaveAccessibleName(/Not started$/);
     expect(screen.getByText(customerProofLabels.layer3)).toBeVisible();
+  });
+
+  it("grades the exact selected Step 1 command from the terminal and preserves the invoice proof", async () => {
+    render(<App />);
+    await runInvoiceLesson();
+
+    selectLesson("customer-flow");
+    queueCustomerStep("staging");
+    submitTerminalCommand(customerStepSpec("staging").command);
+
+    await waitFor(() => expect(progressBar()).toHaveAttribute("aria-valuenow", "20"));
+    expect(customerStepButton("staging")).toHaveAccessibleName(/Complete$/);
+    expect(screen.getByText(customerProofLabels.staging)).toBeVisible();
+    expect(engineMock.invoke).toHaveBeenLastCalledWith(
+      customerStepCommands.staging,
+      expect.any(Object),
+    );
+    expect(engineMock.query).toHaveBeenLastCalledWith(customerStepSpec("staging").proof.sql);
+
+    selectLesson("invoice-quarantine");
+    expect(progressBar()).toHaveAttribute("aria-valuenow", "100");
+    expect(screen.getByText("SERVICE_NOT_FOUND", { selector: "td" })).toBeVisible();
+  });
+
+  it("grades the invoice lesson only when its exact command runs from the terminal", async () => {
+    render(<App />);
+    await bootEngine();
+
+    submitTerminalCommand(getLessonSpec("invoice-quarantine").command);
+
+    await waitFor(() => expect(progressBar()).toHaveAttribute("aria-valuenow", "100"));
+    expect(screen.getByText("INV-0105 quarantine proof")).toBeVisible();
+    expect(screen.getByText("SERVICE_NOT_FOUND", { selector: "td" })).toBeVisible();
+    expect(engineMock.query).toHaveBeenCalledOnce();
+  });
+
+  it("does not grade a mismatched invoice terminal build even when resources succeed", async () => {
+    render(<App />);
+    await bootEngine();
+
+    submitTerminalCommand("dbt build --select quarantine_invoices");
+
+    await waitFor(() =>
+      expect(screen.getByText(/did not match the guided command currently shown/)).toBeVisible(),
+    );
+    expect(progressBar()).toHaveAttribute("aria-valuenow", "20");
+    expect(engineMock.query).not.toHaveBeenCalled();
+  });
+
+  it("grades only the selected later step when its exact command runs from the terminal", async () => {
+    window.history.replaceState(null, "", "/?lesson=customer-flow&step=current");
+    queueCustomerStep("current");
+    render(<App />);
+    await bootEngine();
+
+    submitTerminalCommand(customerStepSpec("current").command);
+
+    await waitFor(() => expect(progressBar()).toHaveAttribute("aria-valuenow", "20"));
+    expect(customerStepButton("current")).toHaveAttribute("aria-current", "step");
+    expect(customerStepButton("current")).toHaveAccessibleName(/Complete$/);
+    expect(customerStepButton("staging")).toHaveAccessibleName(/Current task$/);
+    expect(customerStepButton("mapping")).toHaveAccessibleName(/Not started$/);
+    expect(screen.getByText(customerProofLabels.current)).toBeVisible();
+    expect(engineMock.invoke).toHaveBeenLastCalledWith(
+      customerStepCommands.current,
+      expect.any(Object),
+    );
+    expect(engineMock.query).toHaveBeenCalledOnce();
+    expect(engineMock.query).toHaveBeenCalledWith(customerStepSpec("current").proof.sql);
+  });
+
+  it("does not grade a mismatched terminal build and conservatively invalidates both lessons", async () => {
+    render(<App />);
+    await runInvoiceLesson();
+    selectLesson("customer-flow");
+    queueCustomerStep("staging");
+    await runSelectedCustomerStep(20);
+
+    engineMock.invoke.mockResolvedValueOnce(customerInvocations.staging);
+    submitTerminalCommand("dbt build --select stg_customer");
+
+    await waitFor(() =>
+      expect(screen.getByText(/did not match the guided command currently shown/)).toBeVisible(),
+    );
+    expect(progressBar()).toHaveAttribute("aria-valuenow", "0");
+    expect(screen.getByText("No query result yet")).toBeVisible();
+    expect(engineMock.query).toHaveBeenCalledTimes(2);
+
+    selectLesson("invoice-quarantine");
+    expect(progressBar()).toHaveAttribute("aria-valuenow", "20");
+    expect(screen.getByText("No query result yet")).toBeVisible();
   });
 
   it("locks guided steps and file tabs while a proof is pending and never shows it under another step", async () => {

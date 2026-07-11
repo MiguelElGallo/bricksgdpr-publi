@@ -93,6 +93,14 @@ function completedTaskIds(tasks: LessonTask[]) {
   return tasks.filter((task) => task.status === "complete").map((task) => task.id);
 }
 
+function commandMatchesArguments(command: string, args: string[]) {
+  const expectedArgs = parseDbtCommand(command);
+  return (
+    expectedArgs.length === args.length &&
+    expectedArgs.every((expected, index) => expected === args[index])
+  );
+}
+
 function toLessonDefinition(
   lessonId: LessonId,
   session: LessonSessionState,
@@ -458,17 +466,42 @@ export default function App() {
     }
 
     const lessonSpec = getLessonSpec(lessonId);
-    const selectedStep = stepId
+    const requestedStep = stepId
       ? (lessonSpec.steps?.find((step) => step.id === stepId) ?? null)
       : null;
+    const activeTerminalStep =
+      origin === "terminal" && lessonSpec.steps
+        ? (lessonSpec.steps.find(
+            (step) => step.id === lessonSessions[lessonId].selectedStepId,
+          ) ?? null)
+        : null;
+    const terminalMatchesSelectedStep = Boolean(
+      activeTerminalStep && commandMatchesArguments(activeTerminalStep.command, args),
+    );
+    const terminalMatchesLesson =
+      origin === "terminal" &&
+      !lessonSpec.steps &&
+      commandMatchesArguments(lessonSpec.command, args);
+    const selectedStep =
+      requestedStep ?? (terminalMatchesSelectedStep ? activeTerminalStep : null);
+    const terminalMatchesGuidedCommand =
+      terminalMatchesSelectedStep || terminalMatchesLesson;
     const runSpec: LessonRunSpec = selectedStep ?? lessonSpec;
     const mutatesRelations = ["build", "run", "seed"].includes(args[0]);
-    const gradesCheckpoint = args[0] === "build" && (!lessonSpec.steps || selectedStep !== null);
+    const gradesCheckpoint =
+      args[0] === "build" &&
+      (origin === "terminal"
+        ? terminalMatchesGuidedCommand
+        : !lessonSpec.steps || selectedStep !== null);
     if (mutatesRelations) {
       invalidatePendingRelationQueries();
-      if (origin === "terminal") invalidateAllLessonProofs(true);
-      else if (selectedStep) invalidateGuidedFrom(lessonId, selectedStep.id);
-      else invalidateLessonProof(lessonId, true);
+      if (origin === "terminal" && !terminalMatchesGuidedCommand) {
+        invalidateAllLessonProofs(true);
+      } else if (selectedStep) {
+        invalidateGuidedFrom(lessonId, selectedStep.id);
+      } else {
+        invalidateLessonProof(lessonId, true);
+      }
     }
 
     setEngineStatus("running");
@@ -509,10 +542,10 @@ export default function App() {
             `dbt succeeded, but it did not rebuild every required resource for “${selectedStep?.title ?? lessonSpec.title}”. Run the guided command to grade it.`,
           );
         }
-      } else if (args[0] === "build" && lessonSpec.steps) {
+      } else if (args[0] === "build" && origin === "terminal") {
         appendTerminal(
           "info",
-          "The terminal build ran, but guided progress advances only from the selected step’s Run step button.",
+          "The terminal build ran, but it did not match the guided command currently shown. Run that exact command to grade progress.",
         );
       } else if (args[0] === "run") {
         appendTerminal(
