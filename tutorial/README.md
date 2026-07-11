@@ -6,9 +6,21 @@ They run a focused dbt project against DuckDB in the browser so a learner can ed
 the build, and inspect deterministic results:
 
 - [Customer flow](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/?lesson=customer-flow)
-  traces `CUST-0001` from readable staging into a local keyed analytical output;
+  builds `CUST-0001` through staging, the current-customer view, the teaching map, protected Layer2,
+  and the Layer3 dimension;
 - [Invoice quarantine](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/?lesson=invoice-quarantine)
   proves the accepted-versus-quarantined partition for `INV-0105`.
+
+The customer flow is cumulative. Each checkpoint explains why the next model is needed, identifies
+what it builds on, highlights the main change and any supporting code in executable SQL comments,
+runs a focused dbt command, and shows the exact result to inspect. A completed checkpoint remains in
+view until the learner chooses **Next**:
+
+1. inspect the readable `stg_customer` change for `CUST-0001`;
+2. reduce 19 changes to 14 current customers, including one current row for `CUST-0001`;
+3. create distinct, domain-separated keys in `demo_customer_map`;
+4. leave readable mapping values behind in protected `int_customer_protected`;
+5. preserve the protected key and customer grain in `dim_customer` and run the final fixture proof.
 
 ## Runtime boundary
 

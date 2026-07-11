@@ -14,9 +14,15 @@ inspect a focused dbt project with DuckDB. It runs locally in the browser, uses 
 fixtures, and needs no Databricks workspace, credentials, or backend service. Choose:
 
 - [Follow a customer through the teaching flow](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/?lesson=customer-flow)
-  to compare readable staging with a local keyed customer output;
+  to build one customer through five cumulative checkpoints: staging, current state, mapping,
+  protected Layer2, and Layer3;
 - [Trace an invoice into quarantine](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/?lesson=invoice-quarantine)
   to inspect one deterministic rejection and its accepted-versus-quarantine partition.
+
+The customer lesson introduces one focused modeling checkpoint at a time. Commented executable SQL
+identifies the main change and any supporting code, while the guide explains what it builds on,
+runs a focused dbt command, and keeps the exact result visible until the learner chooses the next
+step.
 
 To run the same lab from a local checkout:
 

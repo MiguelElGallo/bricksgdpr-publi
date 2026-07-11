@@ -7,6 +7,7 @@ interface SqlEditorProps {
   files: TutorialFile[];
   activeFilePath: string;
   disabled?: boolean;
+  runLabel?: string;
   onFileSelect: (path: string) => void;
   onFileChange: (path: string, content: string) => void;
   onRun: () => void;
@@ -16,6 +17,7 @@ export function SqlEditor({
   files,
   activeFilePath,
   disabled = false,
+  runLabel = "Run lesson",
   onFileSelect,
   onFileChange,
   onRun,
@@ -74,6 +76,7 @@ export function SqlEditor({
             aria-controls="code-editor-panel"
             className="file-tab"
             data-active={file.path === activeFile.path}
+            disabled={disabled}
             key={file.path}
             onClick={() => onFileSelect(file.path)}
           >
@@ -128,7 +131,7 @@ export function SqlEditor({
         <span>
           <span className="keyboard-key">⌘</span>
           <span className="keyboard-key">↵</span>
-          Run lesson
+          {runLabel}
         </span>
         <span>{activeFile.content.split("\n").length} lines</span>
       </footer>

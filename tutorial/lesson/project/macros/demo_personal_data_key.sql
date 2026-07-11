@@ -1,6 +1,7 @@
 {#
-  Browser lesson only: this deterministic key uses a public teaching constant. It does not
-  reproduce the secret-backed Databricks pseudonymization function or provide a security control.
+  STEP 3 support: canonicalize each value, frame it with its domain and lengths, then hash it.
+  This deterministic browser key uses a public teaching constant. It does not reproduce the
+  secret-backed Databricks pseudonymization function or provide a security control.
 #}
 
 {% macro demo_canonicalize_personal_data(value_expression, kind='text') -%}
@@ -29,6 +30,7 @@
 {% macro demo_personal_data_key(value_expression, domain, kind='text') -%}
   {%- set canonical_value = demo_canonicalize_personal_data(value_expression, kind) -%}
   {%- set escaped_domain = domain | replace("'", "''") -%}
+  {# Preserve nulls; otherwise include purpose, version, domain, value, and public demo constant. #}
   case
     when {{ canonical_value }} is null then null
     else concat(

@@ -1,14 +1,4 @@
-with source_fixture as (
-    select *
-    from {{ ref('stg_customer') }}
-    where
-        customer_id = 'CUST-0001'
-        and customer_ssn = '900-00-0001'
-        and email = 'customer01@example.invalid'
-        and source_operation = 'UPSERT'
-),
-
-current_fixture as (
+with current_fixture as (
     select *
     from {{ ref('int_current_customers') }}
     where
@@ -20,16 +10,19 @@ current_fixture as (
 ),
 
 mapped_fixture as (
-    select *
-    from {{ ref('demo_customer_map') }}
+    select mapped.*
+    from {{ ref('demo_customer_map') }} as mapped
+    inner join current_fixture as current
+        on mapped.customer_id_value = current.customer_id
+        and mapped.customer_ssn_value = current.customer_ssn
+        and mapped.email_value = current.email
     where
-        customer_id_value = 'CUST-0001'
-        and customer_key =
+        mapped.customer_key =
             'demo-v1:825c0ec1125ce7f0b50d3ad4013f02ac42d0565d8cc4a202b3a0ab5f1ee0f3c8'
-        and email_key =
+        and mapped.email_key =
             'demo-v1:a84a4bc9c4f38a8e1a06248ed3499d7ce505d09dbc745275d3226d021ef03853'
-        and customer_segment = 'small_business'
-        and is_active
+        and mapped.customer_segment = 'small_business'
+        and mapped.is_active
 ),
 
 protected_fixture as (
@@ -58,10 +51,10 @@ dimension_fixture as (
 
 domain_separation_probe as (
     select
-        {{ demo_personal_data_key('source.email', 'customer.email') }} as email_domain_key,
-        {{ demo_personal_data_key('source.email', 'customer.contact_email') }}
+        {{ demo_personal_data_key('current.email', 'customer.email') }} as email_domain_key,
+        {{ demo_personal_data_key('current.email', 'customer.contact_email') }}
             as contact_email_domain_key
-    from source_fixture as source
+    from current_fixture as current
 ),
 
 expected_protected_columns as (
@@ -133,7 +126,6 @@ protected_schema_differences as (
 
 fixture_metrics as (
     select
-        (select count(*) from source_fixture) as source_fixture_count,
         (select count(*) from {{ ref('int_current_customers') }}) as current_customer_count,
         (select count(*) from current_fixture) as current_fixture_count,
         (select count(*) from {{ ref('demo_customer_map') }}) as mapped_customer_count,
@@ -168,8 +160,7 @@ fixture_metrics as (
 select *
 from fixture_metrics
 where
-    source_fixture_count != 1
-    or current_customer_count != 14
+    current_customer_count != 14
     or current_fixture_count != 1
     or mapped_customer_count != 14
     or mapped_fixture_count != 1

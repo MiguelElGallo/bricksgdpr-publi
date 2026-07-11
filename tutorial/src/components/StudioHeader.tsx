@@ -6,6 +6,7 @@ interface StudioHeaderProps {
   engineMessage?: string;
   lessonNumber: number;
   lessonTotal: number;
+  runLabel?: string;
   onBoot: () => void;
   onRun: () => void;
   onReset: () => void;
@@ -24,6 +25,7 @@ export function StudioHeader({
   engineMessage,
   lessonNumber,
   lessonTotal,
+  runLabel = "Run lesson",
   onBoot,
   onRun,
   onReset,
@@ -94,7 +96,7 @@ export function StudioHeader({
             disabled={engineStatus !== "ready"}
           >
             <Icon name="play" size={16} />
-            {engineStatus === "running" ? "Running…" : "Run lesson"}
+            {engineStatus === "running" ? "Running…" : runLabel}
           </button>
         </div>
       </div>

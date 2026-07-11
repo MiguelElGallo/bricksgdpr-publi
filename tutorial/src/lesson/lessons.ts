@@ -3,7 +3,7 @@ import type { LessonId, LessonOption, LessonTask } from "../types";
 
 type LessonTaskSpec = Omit<LessonTask, "status">;
 
-interface LessonProofSpec {
+export interface LessonProofSpec {
   sql: string;
   label: string;
   selectedRelation: string;
@@ -12,22 +12,49 @@ interface LessonProofSpec {
   validate: (result: RawQueryResult) => boolean;
 }
 
-export interface LessonSpec {
+export interface LessonRunSpec {
+  command: string;
+  requiredSuccessfulResources: readonly string[];
+  proof: LessonProofSpec;
+}
+
+export interface LessonStepSpec extends LessonRunSpec {
+  id: string;
+  title: string;
+  buildsOn: string;
+  why: string;
+  change: string;
+  observe: string;
+  focusFilePath: string;
+  revealFilePaths: readonly string[];
+  visibleRelationNames: readonly string[];
+}
+
+export interface LessonSpec extends LessonRunSpec {
   id: LessonId;
   number: number;
   title: string;
   summary: string;
   objective: string;
   duration: string;
-  command: string;
   filePaths: readonly string[];
   visibleRelationNames: readonly string[];
-  requiredSuccessfulResources: readonly string[];
   tasks: readonly LessonTaskSpec[];
-  proof: LessonProofSpec;
+  steps?: readonly LessonStepSpec[];
+}
+
+export interface TutorialLocation {
+  lessonId: LessonId;
+  stepId: string | null;
 }
 
 export const DEFAULT_LESSON_ID: LessonId = "invoice-quarantine";
+export const DEFAULT_CUSTOMER_STEP_ID = "staging";
+
+const CUSTOMER_KEY =
+  "demo-v1:825c0ec1125ce7f0b50d3ad4013f02ac42d0565d8cc4a202b3a0ab5f1ee0f3c8";
+const CUSTOMER_EMAIL_KEY =
+  "demo-v1:a84a4bc9c4f38a8e1a06248ed3499d7ce505d09dbc745275d3226d021ef03853";
 
 const invoiceValidationSql = `
 select
@@ -43,89 +70,110 @@ from main.quarantine_invoices as quarantine
 where quarantine.invoice_id = 'INV-0105'
 `;
 
-const customerValidationSql = `
-with expected_protected_columns (table_name, column_name) as (
+const stagingValidationSql = `
+select
+    customer_change_id,
+    customer_id,
+    customer_ssn,
+    email,
+    customer_segment,
+    is_active,
+    source_operation,
+    (select count(*) from main.stg_customer) as staged_change_count
+from main.stg_customer
+where customer_id = 'CUST-0001'
+`;
+
+const currentValidationSql = `
+select
+    customer_change_id,
+    customer_id,
+    customer_ssn,
+    email,
+    customer_segment,
+    is_active,
+    (select count(*) from main.int_current_customers) as current_customer_count,
+    (
+        select count(*)
+        from main.int_current_customers as current_customers
+        where current_customers.customer_id in ('CUST-0015', 'CUST-0097', 'CUST-0099')
+    ) as terminal_deleted_rows
+from main.int_current_customers
+where customer_id = 'CUST-0001'
+`;
+
+const mappingValidationSql = `
+select
+    customer_id_value,
+    customer_key,
+    email_key,
+    customer_segment,
+    customer_key != email_key as keys_differ,
+    (select count(*) from main.demo_customer_map) as mapped_customer_count
+from main.demo_customer_map
+where customer_id_value = 'CUST-0001'
+`;
+
+const layer2ValidationSql = `
+with expected_columns (column_name) as (
     values
-        ('int_customer_protected', 'customer_key'),
-        ('int_customer_protected', 'customer_pk_key'),
-        ('int_customer_protected', 'customer_id_key'),
-        ('int_customer_protected', 'first_name_key'),
-        ('int_customer_protected', 'last_name_key'),
-        ('int_customer_protected', 'full_name_key'),
-        ('int_customer_protected', 'email_key'),
-        ('int_customer_protected', 'phone_key'),
-        ('int_customer_protected', 'birth_date_key'),
-        ('int_customer_protected', 'address_key'),
-        ('int_customer_protected', 'customer_segment'),
-        ('int_customer_protected', 'is_active'),
-        ('int_customer_protected', 'source_updated_at'),
-        ('dim_customer', 'customer_key'),
-        ('dim_customer', 'customer_pk_key'),
-        ('dim_customer', 'customer_id_key'),
-        ('dim_customer', 'first_name_key'),
-        ('dim_customer', 'last_name_key'),
-        ('dim_customer', 'full_name_key'),
-        ('dim_customer', 'email_key'),
-        ('dim_customer', 'phone_key'),
-        ('dim_customer', 'birth_date_key'),
-        ('dim_customer', 'address_key'),
-        ('dim_customer', 'customer_segment'),
-        ('dim_customer', 'is_active'),
-        ('dim_customer', 'source_updated_at')
+        ('customer_key'),
+        ('customer_pk_key'),
+        ('customer_id_key'),
+        ('first_name_key'),
+        ('last_name_key'),
+        ('full_name_key'),
+        ('email_key'),
+        ('phone_key'),
+        ('birth_date_key'),
+        ('address_key'),
+        ('customer_segment'),
+        ('is_active'),
+        ('source_updated_at')
 ),
 
-actual_protected_columns as (
-    select table_name, column_name
+actual_columns as (
+    select column_name
     from information_schema.columns
-    where
-        table_schema = 'main'
-        and table_name in ('int_customer_protected', 'dim_customer')
+    where table_schema = 'main' and table_name = 'int_customer_protected'
 ),
 
-protected_schema_differences as (
-    (
-        select table_name, column_name from actual_protected_columns
-        except
-        select table_name, column_name from expected_protected_columns
-    )
+schema_differences as (
+    (select column_name from actual_columns except select column_name from expected_columns)
     union all
-    (
-        select table_name, column_name from expected_protected_columns
-        except
-        select table_name, column_name from actual_protected_columns
-    )
-),
-
-protected_schema_audit as (
-    select count(*) as protected_schema_violations
-    from protected_schema_differences
+    (select column_name from expected_columns except select column_name from actual_columns)
 )
 
 select
-    source.customer_id,
-    source.customer_ssn as source_ssn,
-    source.email as source_email,
-    mapped.customer_key,
-    mapped.email_key,
-    protected.customer_segment,
-    protected.is_active,
+    customer_key,
+    email_key,
+    customer_segment,
+    is_active,
+    (select count(*) from main.int_customer_protected) as protected_customer_count,
+    (select count(*) from actual_columns) as protected_column_count,
+    (select count(*) from schema_differences) as protected_schema_violations
+from main.int_customer_protected
+where customer_key = '${CUSTOMER_KEY}'
+`;
+
+const layer3ValidationSql = `
+select
+    dimension.customer_key,
+    dimension.email_key,
+    dimension.customer_segment,
+    dimension.is_active,
     (
-        mapped.customer_key = protected.customer_key
-        and protected.customer_key = dimension.customer_key
-    ) as key_preserved,
-    mapped.customer_key != mapped.email_key as keys_differ,
-    audit.protected_schema_violations
-from main.stg_customer as source
-inner join main.demo_customer_map as mapped
-    on source.customer_id = mapped.customer_id_value
+        dimension.customer_key = protected.customer_key
+        and dimension.email_key = protected.email_key
+        and dimension.customer_segment = protected.customer_segment
+        and dimension.is_active = protected.is_active
+        and dimension.source_updated_at = protected.source_updated_at
+    ) as layer2_row_preserved,
+    (select count(*) from main.dim_customer) as dimension_customer_count
+from main.dim_customer as dimension
 inner join main.int_customer_protected as protected
-    on mapped.customer_key = protected.customer_key
-inner join main.dim_customer as dimension
-    on protected.customer_key = dimension.customer_key
-cross join protected_schema_audit as audit
-where
-    source.customer_id = 'CUST-0001'
-    and source.source_operation = 'UPSERT'
+    on dimension.customer_key = protected.customer_key
+where dimension.customer_key = '${CUSTOMER_KEY}'
 `;
 
 function firstRowByColumn(result: RawQueryResult): Record<string, unknown> | null {
@@ -133,6 +181,221 @@ function firstRowByColumn(result: RawQueryResult): Record<string, unknown> | nul
   if (!values || result.rows.length !== 1) return null;
   return Object.fromEntries(result.columns.map((column, index) => [column.name, values[index]]));
 }
+
+const customerSteps: readonly LessonStepSpec[] = [
+  {
+    id: "staging",
+    title: "Start with the staged change",
+    buildsOn: "The synthetic customer seed",
+    why: "Layer1 needs typed, normalized source events before downstream models can rely on them.",
+    change:
+      "Trim and cast the source fields while keeping the readable synthetic identifiers at the Layer1 boundary.",
+    observe:
+      "CUST-0001 is one readable UPSERT, and the staged change feed contains 19 rows.",
+    focusFilePath: "models/stg_customer.sql",
+    revealFilePaths: ["models/stg_customer.sql"],
+    visibleRelationNames: ["customer", "stg_customer"],
+    command: "dbt build --select +stg_customer --indirect-selection cautious",
+    requiredSuccessfulResources: ["stg_customer"],
+    proof: {
+      sql: stagingValidationSql,
+      label: "Step 1 · staged CUST-0001",
+      selectedRelation: "stg_customer",
+      successMessage:
+        "Step 1 complete: CUST-0001 is a typed, readable UPSERT in the 19-row staging change feed.",
+      failureMessage: "The staging build passed, but the CUST-0001 checkpoint did not match.",
+      validate(result) {
+        const row = firstRowByColumn(result);
+        return (
+          row?.customer_change_id === "CCHG-0001-U" &&
+          row.customer_id === "CUST-0001" &&
+          row.customer_ssn === "900-00-0001" &&
+          row.email === "customer01@example.invalid" &&
+          row.customer_segment === "small_business" &&
+          row.is_active === true &&
+          row.source_operation === "UPSERT" &&
+          Number(row.staged_change_count) === 19
+        );
+      },
+    },
+  },
+  {
+    id: "current",
+    title: "Reduce the feed to current customers",
+    buildsOn: "Step 1 · the typed staging change feed",
+    why: "Staging contains source events, but analytical models need one current active row per customer.",
+    change:
+      "Rank UPSERTs newest first, keep the latest active row, and exclude identities with terminal deletion history.",
+    observe:
+      "CUST-0001 appears exactly once; 19 staged changes reduce to 14 current customers and no deleted fixture survives.",
+    focusFilePath: "models/int_current_customers.sql",
+    revealFilePaths: [
+      "models/int_terminal_deleted_customer_ssns.sql",
+      "models/int_current_customers.sql",
+    ],
+    visibleRelationNames: ["customer", "stg_customer", "int_current_customers"],
+    command: "dbt build --select +int_current_customers --indirect-selection cautious",
+    requiredSuccessfulResources: [
+      "int_current_customers",
+      "assert_current_customers_terminal_deletion",
+    ],
+    proof: {
+      sql: currentValidationSql,
+      label: "Step 2 · current CUST-0001",
+      selectedRelation: "int_current_customers",
+      successMessage:
+        "Step 2 complete: CUST-0001 survives once in the 14-row current-customer view; deleted fixtures stay absent.",
+      failureMessage: "The current-state build passed, but the current-customer checkpoint did not match.",
+      validate(result) {
+        const row = firstRowByColumn(result);
+        return (
+          row?.customer_change_id === "CCHG-0001-U" &&
+          row.customer_id === "CUST-0001" &&
+          row.customer_ssn === "900-00-0001" &&
+          row.email === "customer01@example.invalid" &&
+          row.customer_segment === "small_business" &&
+          row.is_active === true &&
+          Number(row.current_customer_count) === 14 &&
+          Number(row.terminal_deleted_rows) === 0
+        );
+      },
+    },
+  },
+  {
+    id: "mapping",
+    title: "Create domain-separated demo keys",
+    buildsOn: "Step 2 · one current active row per customer",
+    why: "Analytics needs stable join keys without carrying readable identifiers into protected layers.",
+    change:
+      "Create public demo-v1 keys beside readable synthetic values inside the browser-only mapping boundary.",
+    observe:
+      "CUST-0001 receives exact customer and email keys that are stable and different; the map contains 14 rows.",
+    focusFilePath: "models/demo_customer_map.sql",
+    revealFilePaths: ["macros/demo_personal_data_key.sql", "models/demo_customer_map.sql"],
+    visibleRelationNames: [
+      "customer",
+      "stg_customer",
+      "int_current_customers",
+      "demo_customer_map",
+    ],
+    command: "dbt build --select +demo_customer_map --indirect-selection cautious",
+    requiredSuccessfulResources: ["demo_customer_map", "assert_demo_customer_key_contract"],
+    proof: {
+      sql: mappingValidationSql,
+      label: "Step 3 · mapped CUST-0001",
+      selectedRelation: "demo_customer_map",
+      successMessage:
+        "Step 3 complete: CUST-0001 has stable, distinct public demo keys in the 14-row teaching map.",
+      failureMessage: "The mapping build passed, but the demo-key checkpoint did not match.",
+      validate(result) {
+        const row = firstRowByColumn(result);
+        return (
+          row?.customer_id_value === "CUST-0001" &&
+          row.customer_key === CUSTOMER_KEY &&
+          row.email_key === CUSTOMER_EMAIL_KEY &&
+          row.customer_segment === "small_business" &&
+          row.keys_differ === true &&
+          Number(row.mapped_customer_count) === 14
+        );
+      },
+    },
+  },
+  {
+    id: "layer2",
+    title: "Cross into protected Layer2",
+    buildsOn: "Step 3 · readable values beside public demo keys in the mapping",
+    why: "The protected analytical boundary must keep keys and useful business facts without readable identity values.",
+    change:
+      "Project the ten key columns plus segment, lifecycle state, and update time; leave every *_value column behind.",
+    observe:
+      "The same keys remain in 14 rows, and Layer2 has exactly 13 allowed columns with zero schema violations.",
+    focusFilePath: "models/int_customer_protected.sql",
+    revealFilePaths: ["models/int_customer_protected.sql"],
+    visibleRelationNames: [
+      "customer",
+      "stg_customer",
+      "int_current_customers",
+      "demo_customer_map",
+      "int_customer_protected",
+    ],
+    command: "dbt build --select +int_customer_protected --indirect-selection cautious",
+    requiredSuccessfulResources: [
+      "int_customer_protected",
+      "assert_customer_map_projection",
+      "assert_customer_protected_schema",
+    ],
+    proof: {
+      sql: layer2ValidationSql,
+      label: "Step 4 · protected CUST-0001",
+      selectedRelation: "int_customer_protected",
+      successMessage:
+        "Step 4 complete: Layer2 keeps CUST-0001's keys and business facts in the exact 13-column protected schema.",
+      failureMessage: "The Layer2 build passed, but the protected-schema checkpoint did not match.",
+      validate(result) {
+        const row = firstRowByColumn(result);
+        return (
+          row?.customer_key === CUSTOMER_KEY &&
+          row.email_key === CUSTOMER_EMAIL_KEY &&
+          row.customer_segment === "small_business" &&
+          row.is_active === true &&
+          Number(row.protected_customer_count) === 14 &&
+          Number(row.protected_column_count) === 13 &&
+          Number(row.protected_schema_violations) === 0
+        );
+      },
+    },
+  },
+  {
+    id: "layer3",
+    title: "Publish the protected Layer3 dimension",
+    buildsOn: "Step 4 · the protected Layer2 customer contract",
+    why: "An analytics-facing dimension should preserve the protected grain without reaching back to readable data.",
+    change:
+      "Build dim_customer only from Layer2 and preserve one row per active customer key for downstream consumers.",
+    observe:
+      "CUST-0001's keys and business facts are unchanged in the 14-row dimension, and the final flow assertion passes.",
+    focusFilePath: "models/dim_customer.sql",
+    revealFilePaths: ["models/dim_customer.sql"],
+    visibleRelationNames: [
+      "customer",
+      "stg_customer",
+      "int_current_customers",
+      "demo_customer_map",
+      "int_customer_protected",
+      "dim_customer",
+    ],
+    command: "dbt build --select +dim_customer --indirect-selection cautious",
+    requiredSuccessfulResources: [
+      "dim_customer",
+      "assert_customer_dimension_integrity",
+      "assert_customer_flow_fixture",
+    ],
+    proof: {
+      sql: layer3ValidationSql,
+      label: "Step 5 · Layer3 CUST-0001",
+      selectedRelation: "dim_customer",
+      successMessage:
+        "Tutorial complete: Layer3 preserves CUST-0001's protected Layer2 contract across all five checkpoints.",
+      failureMessage: "The Layer3 build passed, but the final customer-flow checkpoint did not match.",
+      validate(result) {
+        const row = firstRowByColumn(result);
+        return (
+          row?.customer_key === CUSTOMER_KEY &&
+          row.email_key === CUSTOMER_EMAIL_KEY &&
+          row.customer_segment === "small_business" &&
+          row.is_active === true &&
+          row.layer2_row_preserved === true &&
+          Number(row.dimension_customer_count) === 14
+        );
+      },
+    },
+  },
+];
+
+const customerFilePaths = customerSteps.flatMap((step) => [...step.revealFilePaths]);
+const customerVisibleRelations = customerSteps.at(-1)?.visibleRelationNames ?? [];
+const customerFinalStep = customerSteps.at(-1);
+if (!customerFinalStep) throw new Error("Customer tutorial requires at least one step");
 
 const lessonSpecs: readonly LessonSpec[] = [
   {
@@ -214,88 +477,23 @@ const lessonSpecs: readonly LessonSpec[] = [
   {
     id: "customer-flow",
     number: 2,
-    title: "Follow a customer through protected layers",
+    title: "Build a customer flow from staging to Layer3",
     summary:
-      "Trace one synthetic customer from readable Layer1 fields through a local mapping into protected analytical keys.",
+      "Start with one readable staged change, then add one dbt model at a time until it becomes a protected Layer3 customer dimension.",
     objective:
-      "CUST-0001 keeps useful business attributes while direct identifiers become distinct demo keys that remain stable into Layer3.",
-    duration: "15 min",
-    command:
-      "dbt build --select +assert_customer_flow_fixture --indirect-selection cautious",
-    filePaths: [
-      "models/stg_customer.sql",
-      "macros/demo_personal_data_key.sql",
-      "models/int_current_customers.sql",
-      "models/demo_customer_map.sql",
-      "models/int_customer_protected.sql",
-      "models/dim_customer.sql",
-      "tests/assert_customer_flow_fixture.sql",
-    ],
-    visibleRelationNames: [
-      "customer",
-      "stg_customer",
-      "demo_customer_map",
-      "int_customer_protected",
-      "dim_customer",
-    ],
-    requiredSuccessfulResources: [
-      "demo_customer_map",
-      "int_customer_protected",
-      "dim_customer",
-      "assert_customer_flow_fixture",
-    ],
-    tasks: [
-      {
-        id: "boot",
-        title: "Start the local lab",
-        detail: "Reuse the same private dbt and DuckDB runtime for both lessons.",
-      },
-      {
-        id: "build",
-        title: "Build the customer path",
-        detail: "Build the focused mapping, protected Layer2 and Layer3 dimension path.",
-      },
-      {
-        id: "inspect",
-        title: "Inspect CUST-0001",
-        detail: "Find the readable synthetic SSN and email at the Layer1 boundary.",
-      },
-      {
-        id: "protect",
-        title: "Compare protected keys",
-        detail: "Confirm customer and email use distinct demo keys.",
-      },
-      {
-        id: "dimension",
-        title: "Verify the Layer3 row",
-        detail: "Prove the key is preserved and both protected outputs match the exact allowed schema.",
-      },
-    ],
-    proof: {
-      sql: customerValidationSql,
-      label: "CUST-0001 protected customer proof",
-      selectedRelation: "dim_customer",
-      successMessage:
-        "Lesson complete: CUST-0001 reaches Layer3 with preserved, distinct demo keys and the exact protected schema.",
-      failureMessage: "The build passed, but the customer-flow semantic proof did not match.",
-      validate(result) {
-        const row = firstRowByColumn(result);
-        return (
-          row?.customer_id === "CUST-0001" &&
-          row.source_ssn === "900-00-0001" &&
-          row.source_email === "customer01@example.invalid" &&
-          row.customer_key ===
-            "demo-v1:825c0ec1125ce7f0b50d3ad4013f02ac42d0565d8cc4a202b3a0ab5f1ee0f3c8" &&
-          row.email_key ===
-            "demo-v1:a84a4bc9c4f38a8e1a06248ed3499d7ce505d09dbc745275d3226d021ef03853" &&
-          row.customer_segment === "small_business" &&
-          row.is_active === true &&
-          row.key_preserved === true &&
-          row.keys_differ === true &&
-          Number(row.protected_schema_violations) === 0
-        );
-      },
-    },
+      "Across five focused checkpoints, CUST-0001 keeps useful business facts while readable identifiers stop at the mapping boundary.",
+    duration: "22 min",
+    command: customerFinalStep.command,
+    filePaths: customerFilePaths,
+    visibleRelationNames: customerVisibleRelations,
+    requiredSuccessfulResources: customerFinalStep.requiredSuccessfulResources,
+    tasks: customerSteps.map((step) => ({
+      id: step.id,
+      title: step.title,
+      detail: step.why,
+    })),
+    steps: customerSteps,
+    proof: customerFinalStep.proof,
   },
 ];
 
@@ -311,25 +509,49 @@ export function isLessonId(value: string | null): value is LessonId {
   return lessonSpecs.some((lesson) => lesson.id === value);
 }
 
-export function lessonIdFromSearch(search: string): LessonId {
-  const requested = new URLSearchParams(search).get("lesson");
-  return isLessonId(requested) ? requested : DEFAULT_LESSON_ID;
-}
-
 export function getLessonSpec(lessonId: LessonId): LessonSpec {
   const lesson = lessonSpecs.find((candidate) => candidate.id === lessonId);
   if (!lesson) throw new Error(`Unknown tutorial lesson: ${lessonId}`);
   return lesson;
 }
 
-export function invocationIncludesLessonResources(
-  lesson: LessonSpec,
+export function getLessonStep(lesson: LessonSpec, stepId: string | null): LessonStepSpec | null {
+  if (!lesson.steps) return null;
+  return lesson.steps.find((step) => step.id === stepId) ?? lesson.steps[0] ?? null;
+}
+
+export function tutorialLocationFromSearch(search: string): TutorialLocation {
+  const parameters = new URLSearchParams(search);
+  const requestedLesson = parameters.get("lesson");
+  const lessonId = isLessonId(requestedLesson) ? requestedLesson : DEFAULT_LESSON_ID;
+  const lesson = getLessonSpec(lessonId);
+  if (!lesson.steps) return { lessonId, stepId: null };
+  const requestedStep = parameters.get("step");
+  const stepId = lesson.steps.some((step) => step.id === requestedStep)
+    ? requestedStep
+    : (lesson.steps[0]?.id ?? DEFAULT_CUSTOMER_STEP_ID);
+  return { lessonId, stepId };
+}
+
+export function lessonIdFromSearch(search: string): LessonId {
+  return tutorialLocationFromSearch(search).lessonId;
+}
+
+export function invocationIncludesRequiredResources(
+  requiredSuccessfulResources: readonly string[],
   results: Array<{ uniqueId: string; status: string }>,
 ) {
   const successfulIds = results
     .filter((result) => ["pass", "success"].includes(result.status.toLowerCase()))
     .map((result) => result.uniqueId);
-  return lesson.requiredSuccessfulResources.every((resource) =>
+  return requiredSuccessfulResources.every((resource) =>
     successfulIds.some((uniqueId) => uniqueId.endsWith(`.${resource}`)),
   );
+}
+
+export function invocationIncludesLessonResources(
+  lesson: LessonSpec,
+  results: Array<{ uniqueId: string; status: string }>,
+) {
+  return invocationIncludesRequiredResources(lesson.requiredSuccessfulResources, results);
 }

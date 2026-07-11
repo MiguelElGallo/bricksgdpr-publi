@@ -10,6 +10,7 @@ export function TutorialWorkspace({
   lesson,
   lessons,
   activeLessonId,
+  selectedStepId,
   files,
   activeFilePath,
   relations,
@@ -23,17 +24,21 @@ export function TutorialWorkspace({
   onRun,
   onReset,
   onLessonSelect,
+  onStepSelect,
   onFileSelect,
   onFileChange,
   onRelationSelect,
   onTerminalSubmit,
 }: TutorialWorkspaceProps) {
   const activeFile = files.find((file) => file.path === activeFilePath) ?? files[0];
+  const hasGuide = Boolean(lesson.guideSteps?.length);
+  const runLabel = hasGuide ? "Run step" : "Run lesson";
 
   function runActiveLesson() {
     if (!activeFile) return;
     const request: RunRequest = {
       lessonId: activeLessonId,
+      ...(selectedStepId ? { stepId: selectedStepId } : {}),
       command,
       sql: activeFile.content,
       activeFilePath: activeFile.path,
@@ -51,6 +56,7 @@ export function TutorialWorkspace({
         engineMessage={engineMessage}
         lessonNumber={lesson.number}
         lessonTotal={lesson.total}
+        runLabel={runLabel}
         onBoot={onBoot}
         onRun={runActiveLesson}
         onReset={onReset}
@@ -61,14 +67,17 @@ export function TutorialWorkspace({
           lesson={lesson}
           lessons={lessons}
           activeLessonId={activeLessonId}
+          selectedStepId={selectedStepId}
           selectionDisabled={engineStatus === "booting" || engineStatus === "running"}
           onLessonSelect={onLessonSelect}
+          onStepSelect={onStepSelect}
         />
         <div className="workbench-column">
           <SqlEditor
             files={files}
             activeFilePath={activeFilePath}
-            disabled={engineStatus === "running"}
+            disabled={engineStatus === "booting" || engineStatus === "running"}
+            runLabel={runLabel}
             onFileSelect={onFileSelect}
             onFileChange={onFileChange}
             onRun={runActiveLesson}
@@ -80,7 +89,7 @@ export function TutorialWorkspace({
           />
         </div>
         <DataPanel
-          key={activeLessonId}
+          key={`${activeLessonId}:${selectedStepId ?? "lesson"}`}
           relations={relations}
           selectedRelation={selectedRelation}
           result={result}

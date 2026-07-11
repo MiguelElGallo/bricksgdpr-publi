@@ -1,5 +1,8 @@
 {{ config(materialized='ephemeral') }}
 
+-- STEP 2 support — turn every identifier ever used by a deleted customer into a tombstone.
+-- A later UPSERT does not revive one of these historical identifiers in this teaching contract.
+
 with deleted_customer_ids as (
     select distinct customer_id
     from {{ ref('stg_customer') }}

@@ -11,6 +11,19 @@ export interface LessonTask {
   status: TaskStatus;
 }
 
+export interface LessonGuideStep {
+  id: string;
+  number: number;
+  total: number;
+  title: string;
+  buildsOn: string;
+  why: string;
+  change: string;
+  observe: string;
+  command: string;
+  status: TaskStatus;
+}
+
 export interface LessonDefinition {
   id: LessonId;
   number: number;
@@ -20,6 +33,7 @@ export interface LessonDefinition {
   objective: string;
   duration: string;
   tasks: LessonTask[];
+  guideSteps?: LessonGuideStep[];
 }
 
 export interface LessonOption {
@@ -83,6 +97,7 @@ export interface TerminalEntry {
 
 export interface RunRequest {
   lessonId: LessonId;
+  stepId?: string;
   command: string;
   sql: string;
   activeFilePath: string;
@@ -92,6 +107,7 @@ export interface TutorialWorkspaceProps {
   lesson: LessonDefinition;
   lessons: LessonOption[];
   activeLessonId: LessonId;
+  selectedStepId: string | null;
   files: TutorialFile[];
   activeFilePath: string;
   relations: RelationSummary[];
@@ -105,6 +121,7 @@ export interface TutorialWorkspaceProps {
   onRun: (request: RunRequest) => void;
   onReset: () => void;
   onLessonSelect: (lessonId: LessonId) => void;
+  onStepSelect: (stepId: string) => void;
   onFileSelect: (path: string) => void;
   onFileChange: (path: string, content: string) => void;
   onRelationSelect: (name: string) => void;

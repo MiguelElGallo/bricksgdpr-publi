@@ -702,6 +702,210 @@ a {
   text-decoration-color: #bcc7c1;
 }
 
+.guide-step-section {
+  padding-top: 17px;
+}
+
+.guide-step-list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guide-step-item button {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  color: #526462;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  text-align: left;
+}
+
+.guide-step-item button:hover:not(:disabled) {
+  background: #f3f6f2;
+  border-color: #dfe5df;
+}
+
+.guide-step-item[data-selected="true"] button {
+  color: #294744;
+  background: #eef5f0;
+  border-color: #bfd6ca;
+  box-shadow: inset 3px 0 0 var(--teal);
+}
+
+.guide-step-item button:disabled {
+  opacity: 0.58;
+}
+
+.guide-step-marker {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: #687976;
+  background: #f0f3ef;
+  border: 1px solid #d4ddd6;
+  border-radius: 50%;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.guide-step-item[data-selected="true"] .guide-step-marker {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.guide-step-item[data-status="complete"] .guide-step-marker {
+  color: #fff;
+  background: var(--teal);
+  border-color: var(--teal);
+}
+
+.guide-step-button-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.guide-step-button-kicker {
+  color: #7f8e8b;
+  font-size: 8px;
+  font-weight: 720;
+  letter-spacing: 0.065em;
+  text-transform: uppercase;
+}
+
+.guide-step-button-title {
+  overflow: hidden;
+  font-size: 10.5px;
+  font-weight: 710;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guide-card {
+  margin-top: 15px;
+  padding: 14px;
+  background: #f7f8f4;
+  border: 1px solid #dce5dc;
+  border-radius: 7px;
+}
+
+.guide-card-header {
+  padding-bottom: 11px;
+  border-bottom: 1px solid #dfe6df;
+}
+
+.guide-card-header > span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--accent-deep);
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.guide-card-header h2 {
+  margin: 0;
+  color: #29413f;
+  font-size: 14px;
+  font-weight: 740;
+  line-height: 1.3;
+}
+
+.guide-card-fields {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.guide-card-fields > div {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e2e8e1;
+}
+
+.guide-card-fields dt {
+  color: #6b7b78;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.guide-card-fields dd {
+  min-width: 0;
+  margin: 0;
+  color: #4d605d;
+  font-size: 10px;
+  line-height: 1.48;
+  overflow-wrap: anywhere;
+}
+
+.guide-card-fields code {
+  display: block;
+  padding: 8px;
+  overflow: auto;
+  color: #31504c;
+  background: #edf2ed;
+  border: 1px solid #dae3da;
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 8px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.guide-step-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  padding-top: 12px;
+}
+
+.guide-step-controls button {
+  display: inline-flex;
+  min-width: 0;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #31524e;
+  background: #fffdfa;
+  border: 1px solid #cbd8cf;
+  border-radius: 5px;
+  font-size: 9.5px;
+  font-weight: 720;
+}
+
+.guide-step-controls button:hover:not(:disabled) {
+  background: #eef5f0;
+  border-color: #aebfb4;
+}
+
+.guide-step-controls button:disabled {
+  color: #9aa6a3;
+  background: #f1f3f0;
+  opacity: 0.72;
+}
+
+.guide-back-icon {
+  transform: rotate(180deg);
+}
+
 .lesson-footer {
   display: flex;
   min-height: 55px;

@@ -12,10 +12,27 @@ stable, versioned keys.
 
 !!! tip "Run the customer-flow teaching edition in your browser"
     [Launch the customer lesson](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/?lesson=customer-flow)
-    to inspect `CUST-0001` in readable staging and a deterministic `demo-v1:` keyed customer output
-    with dbt Core and DuckDB. That local key scheme demonstrates model shape and key propagation;
-    it does not reproduce the canonical secret-backed `v1:` pseudonymization, Unity Catalog masks,
-    or governed access. Continue below for the Databricks version of the lesson.
+    to build `CUST-0001` cumulatively with dbt Core and DuckDB. The browser flow introduces one
+    focused modeling checkpoint at a time, labels supporting SQL in comments, and shows the exact
+    result before moving forward.
+    Its deterministic `demo-v1:` keys demonstrate model shape and key propagation; they do not
+    reproduce the canonical secret-backed `v1:` pseudonymization, Unity Catalog masks, or governed
+    access. Continue below for the Databricks version of the lesson.
+
+## Browser teaching flow
+
+The browser lesson follows five checkpoints that build on one another:
+
+1. inspect the readable, typed `CUST-0001` change in `stg_customer`;
+2. reduce the change feed to the one current active row in `int_current_customers`;
+3. compare readable teaching values with distinct `demo-v1:` keys in `demo_customer_map`;
+4. confirm that protected Layer2 retains keys and business facts, not readable mapping values;
+5. verify that Layer3 preserves the protected identity and one-row customer grain.
+
+Each checkpoint follows the same rhythm: **Why**, **Builds on**, **Change**, **Run**, and
+**You should see**. The SQL remains executable while concise comments explain each boundary. The
+lesson waits on the completed checkpoint until you choose **Next**, so the result is visible before
+the following change is introduced.
 
 ## Before you begin
 
@@ -135,8 +152,8 @@ inner join tutorial_customer as source
 " --limit 10
 ```
 
-You should see the same protected identity and business attributes as Layer2. Layer3 changes the
-analytical shape of the project, not the Personal Data state of this customer.
+You should see the same protected identity and business attributes as Layer2. Layer3 publishes the
+analytics-facing dimension without changing the Personal Data state of this customer.
 
 ## What you have observed
 

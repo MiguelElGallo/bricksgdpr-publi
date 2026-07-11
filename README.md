@@ -41,7 +41,8 @@ uv run --locked --only-group docs zensical serve
 Core against DuckDB entirely in your browser. Choose:
 
 - [Follow a customer through the teaching flow](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/?lesson=customer-flow)
-  to trace synthetic `CUST-0001` from readable staging into a local keyed analytical output;
+  to build synthetic `CUST-0001` cumulatively through staging, current state, mapping, protected
+  Layer2, and Layer3, with commented SQL and an exact result at each checkpoint;
 - [Trace an invoice into quarantine](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/?lesson=invoice-quarantine)
   to prove that `INV-0105` is classified as `SERVICE_NOT_FOUND` and excluded from accepted output.
 

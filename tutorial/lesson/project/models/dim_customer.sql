@@ -1,5 +1,10 @@
 {{ config(materialized='table') }}
 
+-- STEP 5 — Publish the protected customer grain as a Layer3 dimension.
+-- Build: dbt build --select +dim_customer --indirect-selection cautious
+-- Intent: preserve one row per active customer_key without resolving readable identifiers.
+-- Check: CUST-0001 matches Layer2 exactly and dim_customer contains 14 rows.
+
 select
     customer_key,
     customer_pk_key,

@@ -1,4 +1,9 @@
-{{ config(materialized='ephemeral') }}
+{{ config(materialized='view') }}
+
+-- STEP 2 — Resolve one current active row per customer.
+-- Build: dbt build --select +int_current_customers --indirect-selection cautious
+-- Intent: rank UPSERTs newest-first, then exclude inactive and terminally deleted identities.
+-- Check: CUST-0001 survives with CCHG-0001-U; the current-state view has 14 customers.
 
 with ranked_upserts as (
     select

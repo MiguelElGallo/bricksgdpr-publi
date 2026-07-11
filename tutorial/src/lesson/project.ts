@@ -38,8 +38,20 @@ export function createTutorialFiles(): TutorialFile[] {
   });
 }
 
-export function filesForLesson(files: TutorialFile[], lessonId: LessonId): TutorialFile[] {
-  const visible = new Set(getLessonSpec(lessonId).filePaths);
+export function filesForLesson(
+  files: TutorialFile[],
+  lessonId: LessonId,
+  stepId: string | null = null,
+): TutorialFile[] {
+  const lesson = getLessonSpec(lessonId);
+  const stepIndex = lesson.steps?.findIndex((step) => step.id === stepId) ?? -1;
+  const visiblePaths =
+    lesson.steps && stepIndex >= 0
+      ? lesson.steps
+          .slice(0, stepIndex + 1)
+          .flatMap((step) => [...step.revealFilePaths])
+      : lesson.filePaths;
+  const visible = new Set(visiblePaths);
   return files.filter((file) => visible.has(file.path));
 }
 

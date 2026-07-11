@@ -5,10 +5,12 @@ import type { CatalogRelation, RawQueryResult, RuntimeInfo } from "./engine";
 import {
   LESSON_OPTIONS,
   LESSONS,
+  getLessonStep,
   getLessonSpec,
-  invocationIncludesLessonResources,
-  lessonIdFromSearch,
+  invocationIncludesRequiredResources,
+  tutorialLocationFromSearch,
 } from "./lesson/lessons";
+import type { LessonRunSpec, LessonStepSpec, TutorialLocation } from "./lesson/lessons";
 import { createTutorialFiles, filesForLesson, mergeProjectFiles } from "./lesson/project";
 import type {
   EngineStatus,
@@ -28,6 +30,8 @@ import type {
 interface LessonSessionState {
   tasks: LessonTask[];
   activeFilePath: string;
+  selectedStepId: string | null;
+  stepProofResults: Record<string, QueryResult>;
   selectedRelation: string | null;
   result: QueryResult | null;
 }
@@ -49,11 +53,15 @@ function createInitialTasks(lessonId: LessonId): LessonTask[] {
   }));
 }
 
-function createInitialLessonSessions(): LessonSessions {
+function createInitialLessonSessions(initialLocation?: TutorialLocation): LessonSessions {
   return LESSONS.reduce((sessions, lesson) => {
+    const requestedStepId = initialLocation?.lessonId === lesson.id ? initialLocation.stepId : null;
+    const selectedStep = getLessonStep(lesson, requestedStepId);
     sessions[lesson.id] = {
       tasks: createInitialTasks(lesson.id),
-      activeFilePath: lesson.filePaths[0],
+      activeFilePath: selectedStep?.focusFilePath ?? lesson.filePaths[0],
+      selectedStepId: selectedStep?.id ?? null,
+      stepProofResults: {},
       selectedRelation: null,
       result: null,
     };
@@ -76,11 +84,21 @@ function withTaskProgress(
   }));
 }
 
+function withGuidedProgress(tasks: LessonTask[], completedIds: readonly string[]): LessonTask[] {
+  const nextActive = tasks.find((task) => !completedIds.includes(task.id))?.id;
+  return withTaskProgress(tasks, completedIds, nextActive);
+}
+
+function completedTaskIds(tasks: LessonTask[]) {
+  return tasks.filter((task) => task.status === "complete").map((task) => task.id);
+}
+
 function toLessonDefinition(
   lessonId: LessonId,
   session: LessonSessionState,
 ): LessonDefinition {
   const lesson = getLessonSpec(lessonId);
+  const taskById = new Map(session.tasks.map((task) => [task.id, task]));
   return {
     id: lesson.id,
     number: lesson.number,
@@ -90,6 +108,18 @@ function toLessonDefinition(
     objective: lesson.objective,
     duration: lesson.duration,
     tasks: session.tasks,
+    guideSteps: lesson.steps?.map((step, index) => ({
+      id: step.id,
+      number: index + 1,
+      total: lesson.steps?.length ?? 0,
+      title: step.title,
+      buildsOn: step.buildsOn,
+      why: step.why,
+      change: step.change,
+      observe: step.observe,
+      command: step.command,
+      status: taskById.get(step.id)?.status ?? "pending",
+    })),
   };
 }
 
@@ -119,6 +149,7 @@ function toQueryResult(raw: RawQueryResult, label: string, elapsedMs?: number): 
 
 function relationLayer(name: string) {
   if (name === "demo_customer_map") return "Mapping";
+  if (name === "int_current_customers") return "Current state";
   if (["customer", "customer_services", "invoices"].includes(name)) return "Sources";
   if (name.startsWith("stg_") || name.startsWith("quarantine_")) return "Layer1";
   if (name.startsWith("dim_") || name.startsWith("fct_")) return "Layer3";
@@ -142,11 +173,14 @@ function toRelationSummary(relation: CatalogRelation): RelationSummary {
 }
 
 export default function App() {
-  const [activeLessonId, setActiveLessonId] = useState<LessonId>(() =>
-    lessonIdFromSearch(window.location.search),
+  const initialLocation = useRef<TutorialLocation>(
+    tutorialLocationFromSearch(window.location.search),
+  );
+  const [activeLessonId, setActiveLessonId] = useState<LessonId>(
+    initialLocation.current.lessonId,
   );
   const [lessonSessions, setLessonSessions] = useState<LessonSessions>(() =>
-    createInitialLessonSessions(),
+    createInitialLessonSessions(initialLocation.current),
   );
   const [engineStatus, setEngineStatus] = useState<EngineStatus>("idle");
   const [engineMessage, setEngineMessage] = useState("Runtime not started");
@@ -154,21 +188,27 @@ export default function App() {
   const [relations, setRelations] = useState<RelationSummary[]>([]);
   const [terminal, setTerminal] = useState<TerminalEntry[]>(initialTerminal);
   const engineRef = useRef<BrowserDbtEngine | null>(null);
+  const relationRequestGeneration = useRef(0);
   const entrySequence = useRef(0);
 
   const activeLessonSpec = getLessonSpec(activeLessonId);
   const activeSession = lessonSessions[activeLessonId];
+  const activeStep = getLessonStep(activeLessonSpec, activeSession.selectedStepId);
+  const activeRunSpec: LessonRunSpec = activeStep ?? activeLessonSpec;
   const lesson = toLessonDefinition(activeLessonId, activeSession);
-  const visibleFiles = filesForLesson(files, activeLessonId);
-  const visibleRelationNames = new Set(activeLessonSpec.visibleRelationNames);
+  const visibleFiles = filesForLesson(files, activeLessonId, activeSession.selectedStepId);
+  const visibleRelationNames = new Set(
+    activeStep?.visibleRelationNames ?? activeLessonSpec.visibleRelationNames,
+  );
   const visibleRelations = relations.filter((relation) => visibleRelationNames.has(relation.name));
 
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (url.searchParams.get("lesson") === activeLessonId) return;
     url.searchParams.set("lesson", activeLessonId);
+    if (activeStep) url.searchParams.set("step", activeStep.id);
+    else url.searchParams.delete("step");
     window.history.replaceState(window.history.state, "", url);
-  }, [activeLessonId]);
+  }, [activeLessonId, activeStep]);
 
   useEffect(
     () => () => {
@@ -191,23 +231,17 @@ export default function App() {
     setTerminal((current) => [...current.slice(-399), entry]);
   }
 
-  function markTaskProgress(
-    lessonId: LessonId,
-    completedIds: readonly string[],
-    activeId?: string,
-  ) {
-    setLessonSessions((current) => ({
-      ...current,
-      [lessonId]: {
-        ...current[lessonId],
-        tasks: withTaskProgress(current[lessonId].tasks, completedIds, activeId),
-      },
-    }));
+  function invalidatePendingRelationQueries() {
+    relationRequestGeneration.current += 1;
   }
 
   function markEngineReadyForAllLessons() {
     setLessonSessions((current) =>
       LESSONS.reduce((next, candidate) => {
+        if (candidate.steps) {
+          next[candidate.id] = current[candidate.id];
+          return next;
+        }
         next[candidate.id] = {
           ...current[candidate.id],
           tasks: withTaskProgress(current[candidate.id].tasks, ["boot"], "build"),
@@ -218,19 +252,53 @@ export default function App() {
   }
 
   function invalidateLessonProof(lessonId: LessonId, bootComplete: boolean) {
+    const lessonSpec = getLessonSpec(lessonId);
     setLessonSessions((current) => ({
       ...current,
       [lessonId]: {
         ...current[lessonId],
         result: null,
+        stepProofResults: lessonSpec.steps ? {} : current[lessonId].stepProofResults,
         selectedRelation: null,
-        tasks: withTaskProgress(
-          current[lessonId].tasks,
-          bootComplete ? ["boot"] : [],
-          bootComplete ? "build" : "boot",
-        ),
+        tasks: lessonSpec.steps
+          ? withGuidedProgress(current[lessonId].tasks, [])
+          : withTaskProgress(
+              current[lessonId].tasks,
+              bootComplete ? ["boot"] : [],
+              bootComplete ? "build" : "boot",
+            ),
       },
     }));
+  }
+
+  function invalidateGuidedFrom(lessonId: LessonId, stepId: string) {
+    const lessonSpec = getLessonSpec(lessonId);
+    const stepIndex = lessonSpec.steps?.findIndex((step) => step.id === stepId) ?? -1;
+    if (!lessonSpec.steps || stepIndex < 0) return;
+    const invalidatedIds = new Set(lessonSpec.steps.slice(stepIndex).map((step) => step.id));
+    setLessonSessions((current) => {
+      const session = current[lessonId];
+      const retainedCompletedIds = completedTaskIds(session.tasks).filter(
+        (taskId) => !invalidatedIds.has(taskId),
+      );
+      const retainedProofs = Object.fromEntries(
+        Object.entries(session.stepProofResults).filter(([proofStepId]) =>
+          !invalidatedIds.has(proofStepId),
+        ),
+      );
+      const selectedWasInvalidated =
+        session.selectedStepId !== null && invalidatedIds.has(session.selectedStepId);
+      return {
+        ...current,
+        [lessonId]: {
+          ...session,
+          tasks: withGuidedProgress(session.tasks, retainedCompletedIds),
+          stepProofResults: retainedProofs,
+          result: selectedWasInvalidated ? null : session.result,
+          selectedRelation: selectedWasInvalidated ? null : session.selectedRelation,
+        },
+      };
+    });
   }
 
   function invalidateAllLessonProofs(bootComplete: boolean) {
@@ -239,12 +307,15 @@ export default function App() {
         next[candidate.id] = {
           ...current[candidate.id],
           result: null,
+          stepProofResults: candidate.steps ? {} : current[candidate.id].stepProofResults,
           selectedRelation: null,
-          tasks: withTaskProgress(
-            current[candidate.id].tasks,
-            bootComplete ? ["boot"] : [],
-            bootComplete ? "build" : "boot",
-          ),
+          tasks: candidate.steps
+            ? withGuidedProgress(current[candidate.id].tasks, [])
+            : withTaskProgress(
+                current[candidate.id].tasks,
+                bootComplete ? ["boot"] : [],
+                bootComplete ? "build" : "boot",
+              ),
         };
         return next;
       }, { ...current }),
@@ -310,38 +381,68 @@ export default function App() {
     return summaries;
   }
 
-  async function validateLesson(engine: BrowserDbtEngine, lessonId: LessonId) {
+  async function validateCheckpoint(
+    engine: BrowserDbtEngine,
+    lessonId: LessonId,
+    runSpec: LessonRunSpec,
+    stepId: string | null,
+  ) {
     const lessonSpec = getLessonSpec(lessonId);
     const startedAt = performance.now();
-    const raw = await engine.query(lessonSpec.proof.sql);
+    const raw = await engine.query(runSpec.proof.sql);
     if (!isCurrentEngine(engine)) return;
     const queryResult = toQueryResult(
       raw,
-      lessonSpec.proof.label,
+      runSpec.proof.label,
       Math.round(performance.now() - startedAt),
     );
-    setLessonSessions((current) => ({
-      ...current,
-      [lessonId]: {
-        ...current[lessonId],
-        result: queryResult,
-        selectedRelation: lessonSpec.proof.selectedRelation,
-      },
-    }));
+    const passed = runSpec.proof.validate(raw);
+    setLessonSessions((current) => {
+      const session = current[lessonId];
+      if (stepId && lessonSpec.steps) {
+        const completedIds = new Set(completedTaskIds(session.tasks));
+        if (passed) completedIds.add(stepId);
+        const isStillSelected = session.selectedStepId === stepId;
+        return {
+          ...current,
+          [lessonId]: {
+            ...session,
+            result: isStillSelected ? queryResult : session.result,
+            selectedRelation: isStillSelected
+              ? runSpec.proof.selectedRelation
+              : session.selectedRelation,
+            tasks: withGuidedProgress(session.tasks, [...completedIds]),
+            stepProofResults: passed
+              ? { ...session.stepProofResults, [stepId]: queryResult }
+              : session.stepProofResults,
+          },
+        };
+      }
+      return {
+        ...current,
+        [lessonId]: {
+          ...session,
+          result: queryResult,
+          selectedRelation: runSpec.proof.selectedRelation,
+          tasks: passed
+            ? withTaskProgress(
+                session.tasks,
+                lessonSpec.tasks.map((task) => task.id),
+              )
+            : withTaskProgress(session.tasks, ["boot", "build"], lessonSpec.tasks[2]?.id),
+        },
+      };
+    });
 
-    if (lessonSpec.proof.validate(raw)) {
-      markTaskProgress(
-        lessonId,
-        lessonSpec.tasks.map((task) => task.id),
-      );
-      appendTerminal("success", lessonSpec.proof.successMessage);
-    } else {
-      markTaskProgress(lessonId, ["boot", "build"], lessonSpec.tasks[2]?.id);
-      appendTerminal("error", lessonSpec.proof.failureMessage);
-    }
+    appendTerminal(passed ? "success" : "error", passed ? runSpec.proof.successMessage : runSpec.proof.failureMessage);
   }
 
-  async function runDbtCommand(command: string, lessonId: LessonId) {
+  async function runDbtCommand(
+    command: string,
+    lessonId: LessonId,
+    stepId: string | null = null,
+    origin: "guided" | "terminal" = "guided",
+  ) {
     const engine = engineRef.current;
     if (!engine || engineStatus !== "ready") {
       appendTerminal("error", "Boot the local engine before running dbt.");
@@ -357,9 +458,18 @@ export default function App() {
     }
 
     const lessonSpec = getLessonSpec(lessonId);
-    const invalidatesLessonProof = args[0] === "build" || args[0] === "run";
-    const gradesLesson = args[0] === "build";
-    if (invalidatesLessonProof) invalidateLessonProof(lessonId, true);
+    const selectedStep = stepId
+      ? (lessonSpec.steps?.find((step) => step.id === stepId) ?? null)
+      : null;
+    const runSpec: LessonRunSpec = selectedStep ?? lessonSpec;
+    const mutatesRelations = ["build", "run", "seed"].includes(args[0]);
+    const gradesCheckpoint = args[0] === "build" && (!lessonSpec.steps || selectedStep !== null);
+    if (mutatesRelations) {
+      invalidatePendingRelationQueries();
+      if (origin === "terminal") invalidateAllLessonProofs(true);
+      else if (selectedStep) invalidateGuidedFrom(lessonId, selectedStep.id);
+      else invalidateLessonProof(lessonId, true);
+    }
 
     setEngineStatus("running");
     setEngineMessage(`Running ${command}`);
@@ -384,18 +494,26 @@ export default function App() {
       await refreshCatalog(engine);
       if (!isCurrentEngine(engine)) return;
 
-      if (gradesLesson) {
-        if (invocationIncludesLessonResources(lessonSpec, invocation.results)) {
-          markTaskProgress(lessonId, ["boot", "build"], lessonSpec.tasks[2]?.id);
-          await validateLesson(engine, lessonId);
+      if (gradesCheckpoint) {
+        if (
+          invocationIncludesRequiredResources(
+            runSpec.requiredSuccessfulResources,
+            invocation.results,
+          )
+        ) {
+          await validateCheckpoint(engine, lessonId, runSpec, selectedStep?.id ?? null);
           if (!isCurrentEngine(engine)) return;
         } else {
-          markTaskProgress(lessonId, ["boot"], "build");
           appendTerminal(
             "info",
-            `dbt succeeded, but it did not rebuild every required resource for “${lessonSpec.title}”. Run the lesson command to grade it.`,
+            `dbt succeeded, but it did not rebuild every required resource for “${selectedStep?.title ?? lessonSpec.title}”. Run the guided command to grade it.`,
           );
         }
+      } else if (args[0] === "build" && lessonSpec.steps) {
+        appendTerminal(
+          "info",
+          "The terminal build ran, but guided progress advances only from the selected step’s Run step button.",
+        );
       } else if (args[0] === "run") {
         appendTerminal(
           "info",
@@ -413,10 +531,11 @@ export default function App() {
   }
 
   function handleRun(request: RunRequest) {
-    void runDbtCommand(request.command, request.lessonId);
+    void runDbtCommand(request.command, request.lessonId, request.stepId ?? null);
   }
 
   function handleReset() {
+    invalidatePendingRelationQueries();
     const engine = engineRef.current;
     engineRef.current = null;
     engine?.terminate();
@@ -434,7 +553,53 @@ export default function App() {
     setActiveLessonId(lessonId);
   }
 
+  function selectGuidedStep(lessonId: LessonId, step: LessonStepSpec) {
+    setLessonSessions((current) => {
+      const session = current[lessonId];
+      const cachedProof = session.stepProofResults[step.id] ?? null;
+      return {
+        ...current,
+        [lessonId]: {
+          ...session,
+          selectedStepId: step.id,
+          activeFilePath: step.focusFilePath,
+          result: cachedProof,
+          selectedRelation: cachedProof ? step.proof.selectedRelation : null,
+        },
+      };
+    });
+  }
+
+  function handleStepSelect(stepId: string) {
+    if (engineStatus === "booting" || engineStatus === "running") return;
+    const step = activeLessonSpec.steps?.find((candidate) => candidate.id === stepId);
+    if (step) {
+      invalidatePendingRelationQueries();
+      selectGuidedStep(activeLessonId, step);
+    }
+  }
+
   function handleFileSelect(path: string) {
+    if (engineStatus === "booting" || engineStatus === "running") return;
+    invalidatePendingRelationQueries();
+    const owningStep = activeLessonSpec.steps?.find((step) => step.revealFilePaths.includes(path));
+    if (owningStep) {
+      setLessonSessions((current) => {
+        const session = current[activeLessonId];
+        const cachedProof = session.stepProofResults[owningStep.id] ?? null;
+        return {
+          ...current,
+          [activeLessonId]: {
+            ...session,
+            selectedStepId: owningStep.id,
+            activeFilePath: path,
+            result: cachedProof,
+            selectedRelation: cachedProof ? owningStep.proof.selectedRelation : null,
+          },
+        };
+      });
+      return;
+    }
     setLessonSessions((current) => ({
       ...current,
       [activeLessonId]: { ...current[activeLessonId], activeFilePath: path },
@@ -442,16 +607,35 @@ export default function App() {
   }
 
   function handleFileChange(path: string, content: string) {
+    if (engineStatus === "booting" || engineStatus === "running") return;
+    invalidatePendingRelationQueries();
     setFiles((current) =>
       current.map((file) => (file.path === path ? { ...file, content, dirty: true } : file)),
     );
-    invalidateAllLessonProofs(engineStatus === "ready" || engineStatus === "running");
+    const customerLesson = getLessonSpec("customer-flow");
+    const owningCustomerStep = customerLesson.steps?.find((step) =>
+      step.revealFilePaths.includes(path),
+    );
+    const bootComplete = engineStatus === "ready";
+    if (owningCustomerStep) {
+      invalidateGuidedFrom("customer-flow", owningCustomerStep.id);
+      if (["staging", "current"].includes(owningCustomerStep.id)) {
+        invalidateLessonProof("invoice-quarantine", bootComplete);
+      }
+    } else if (getLessonSpec("invoice-quarantine").filePaths.includes(path)) {
+      invalidateLessonProof("invoice-quarantine", bootComplete);
+    } else {
+      invalidateAllLessonProofs(bootComplete);
+    }
     setRelations([]);
   }
 
   async function handleRelationSelect(name: string) {
     if (engineStatus !== "ready") return;
+    relationRequestGeneration.current += 1;
+    const requestGeneration = relationRequestGeneration.current;
     const lessonId = activeLessonId;
+    const stepId = lessonSessions[lessonId].selectedStepId;
     setLessonSessions((current) => ({
       ...current,
       [lessonId]: { ...current[lessonId], selectedRelation: name },
@@ -464,7 +648,12 @@ export default function App() {
     try {
       const startedAt = performance.now();
       const raw = await engine.query(`select * from ${quotedSchema}.${quotedName} limit 50`);
-      if (!isCurrentEngine(engine)) return;
+      if (
+        !isCurrentEngine(engine) ||
+        relationRequestGeneration.current !== requestGeneration
+      ) {
+        return;
+      }
       const queryResult = toQueryResult(
         raw,
         `${relation.schema}.${relation.name}`,
@@ -472,10 +661,18 @@ export default function App() {
       );
       setLessonSessions((current) => ({
         ...current,
-        [lessonId]: { ...current[lessonId], result: queryResult },
+        [lessonId]:
+          current[lessonId].selectedStepId === stepId
+            ? { ...current[lessonId], result: queryResult }
+            : current[lessonId],
       }));
     } catch (error) {
-      if (!isCurrentEngine(engine)) return;
+      if (
+        !isCurrentEngine(engine) ||
+        relationRequestGeneration.current !== requestGeneration
+      ) {
+        return;
+      }
       appendTerminal("error", error instanceof Error ? error.message : String(error));
     }
   }
@@ -496,7 +693,7 @@ export default function App() {
       handleReset();
       return;
     }
-    void runDbtCommand(command, activeLessonId);
+    void runDbtCommand(command, activeLessonId, null, "terminal");
   }
 
   return (
@@ -504,6 +701,7 @@ export default function App() {
       lesson={lesson}
       lessons={LESSON_OPTIONS}
       activeLessonId={activeLessonId}
+      selectedStepId={activeSession.selectedStepId}
       files={visibleFiles}
       activeFilePath={activeSession.activeFilePath}
       relations={visibleRelations}
@@ -512,11 +710,12 @@ export default function App() {
       terminal={terminal}
       engineStatus={engineStatus}
       engineMessage={engineMessage}
-      command={activeLessonSpec.command}
+      command={activeRunSpec.command}
       onBoot={handleBoot}
       onRun={handleRun}
       onReset={handleReset}
       onLessonSelect={handleLessonSelect}
+      onStepSelect={handleStepSelect}
       onFileSelect={handleFileSelect}
       onFileChange={handleFileChange}
       onRelationSelect={(name) => void handleRelationSelect(name)}

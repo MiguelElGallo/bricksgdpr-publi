@@ -40,11 +40,51 @@ const invocations = [
     ],
   },
   {
-    name: "customer-flow",
+    name: "customer-staging",
     args: [
       "build",
       "--select",
-      "+assert_customer_flow_fixture",
+      "+stg_customer",
+      "--indirect-selection",
+      "cautious",
+    ],
+  },
+  {
+    name: "customer-current",
+    args: [
+      "build",
+      "--select",
+      "+int_current_customers",
+      "--indirect-selection",
+      "cautious",
+    ],
+  },
+  {
+    name: "customer-mapping",
+    args: [
+      "build",
+      "--select",
+      "+demo_customer_map",
+      "--indirect-selection",
+      "cautious",
+    ],
+  },
+  {
+    name: "customer-layer2",
+    args: [
+      "build",
+      "--select",
+      "+int_customer_protected",
+      "--indirect-selection",
+      "cautious",
+    ],
+  },
+  {
+    name: "customer-layer3",
+    args: [
+      "build",
+      "--select",
+      "+dim_customer",
       "--indirect-selection",
       "cautious",
     ],

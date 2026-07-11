@@ -16,8 +16,8 @@ models:
 
   - name: int_current_customers
     description: >
-      Latest active synthetic customer upsert at one row per customer. Historical identifiers for
-      any customer with a deletion tombstone are excluded before this current-state relation is
+      Browser-visible current-state view at one active synthetic upsert per customer. Historical
+      identifiers for any customer with a deletion tombstone are excluded before this relation is
       used by the invoice and customer lessons.
     columns:
       - name: customer_id

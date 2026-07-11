@@ -5,8 +5,10 @@ interface LessonPanelProps {
   lesson: LessonDefinition;
   lessons: LessonOption[];
   activeLessonId: LessonId;
+  selectedStepId: string | null;
   selectionDisabled?: boolean;
   onLessonSelect: (lessonId: LessonId) => void;
+  onStepSelect: (stepId: string) => void;
 }
 
 const statusText: Record<TaskStatus, string> = {
@@ -19,11 +21,30 @@ export function LessonPanel({
   lesson,
   lessons,
   activeLessonId,
+  selectedStepId,
   selectionDisabled = false,
   onLessonSelect,
+  onStepSelect,
 }: LessonPanelProps) {
-  const completed = lesson.tasks.filter((task) => task.status === "complete").length;
-  const progress = Math.round((completed / lesson.tasks.length) * 100);
+  const guideSteps = lesson.guideSteps ?? [];
+  const hasGuide = guideSteps.length > 0;
+  const selectedStepIndex = hasGuide
+    ? Math.max(
+        0,
+        guideSteps.findIndex((step) => step.id === selectedStepId),
+      )
+    : -1;
+  const selectedStep = selectedStepIndex >= 0 ? guideSteps[selectedStepIndex] : null;
+  const completed = hasGuide
+    ? guideSteps.filter((step) => step.status === "complete").length
+    : lesson.tasks.filter((task) => task.status === "complete").length;
+  const progressTotal = hasGuide ? guideSteps.length : lesson.tasks.length;
+  const progress = progressTotal === 0 ? 0 : Math.round((completed / progressTotal) * 100);
+  const previousStep = selectedStepIndex > 0 ? guideSteps[selectedStepIndex - 1] : null;
+  const nextStep =
+    selectedStepIndex >= 0 && selectedStepIndex < guideSteps.length - 1
+      ? guideSteps[selectedStepIndex + 1]
+      : null;
 
   return (
     <aside className="lesson-panel" aria-labelledby="lesson-title">
@@ -83,30 +104,129 @@ export function LessonPanel({
           </div>
         </div>
 
-        <section className="task-section" aria-labelledby="task-title">
-          <div className="section-heading">
-            <h2 id="task-title">Your tasks</h2>
-            <span>
-              {completed}/{lesson.tasks.length}
-            </span>
-          </div>
-          <ol className="task-list">
-            {lesson.tasks.map((task, index) => (
-              <li className="task-item" data-status={task.status} key={task.id}>
-                <span className="task-marker" aria-hidden="true">
-                  {task.status === "complete" ? <Icon name="check" size={15} /> : index + 1}
+        {hasGuide && selectedStep ? (
+          <>
+            <section className="guide-card" aria-labelledby="selected-guide-step-title">
+              <header className="guide-card-header">
+                <span>
+                  Step {selectedStep.number} of {selectedStep.total}
                 </span>
+                <h2 id="selected-guide-step-title">{selectedStep.title}</h2>
+              </header>
+              <dl className="guide-card-fields">
                 <div>
-                  <div className="task-title-row">
-                    <h3>{task.title}</h3>
-                    <span className="sr-only">{statusText[task.status]}</span>
-                  </div>
-                  <p>{task.detail}</p>
+                  <dt>Why</dt>
+                  <dd>{selectedStep.why}</dd>
                 </div>
-              </li>
-            ))}
-          </ol>
-        </section>
+                <div>
+                  <dt>Builds on</dt>
+                  <dd>{selectedStep.buildsOn}</dd>
+                </div>
+                <div>
+                  <dt>Change</dt>
+                  <dd>{selectedStep.change}</dd>
+                </div>
+                <div>
+                  <dt>Run</dt>
+                  <dd>
+                    <code>{selectedStep.command}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>You should see</dt>
+                  <dd>{selectedStep.observe}</dd>
+                </div>
+              </dl>
+              <div className="guide-step-controls" aria-label="Customer tutorial step navigation">
+                <button
+                  type="button"
+                  disabled={selectionDisabled || !previousStep}
+                  onClick={() => previousStep && onStepSelect(previousStep.id)}
+                >
+                  <Icon className="guide-back-icon" name="chevron" size={14} />
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  disabled={selectionDisabled || !nextStep}
+                  onClick={() => nextStep && onStepSelect(nextStep.id)}
+                >
+                  Next
+                  <Icon name="chevron" size={14} />
+                </button>
+              </div>
+              <span className="sr-only" aria-live="polite" aria-atomic="true">
+                Step {selectedStep.number} of {selectedStep.total}: {selectedStep.title}
+              </span>
+            </section>
+
+            <section className="task-section guide-step-section" aria-labelledby="guide-step-title">
+              <div className="section-heading">
+                <h2 id="guide-step-title">Tutorial steps</h2>
+                <span>
+                  {completed}/{guideSteps.length}
+                </span>
+              </div>
+              <ol className="guide-step-list">
+                {guideSteps.map((step) => {
+                  const isSelected = step.id === selectedStep.id;
+                  return (
+                    <li
+                      className="guide-step-item"
+                      data-selected={isSelected}
+                      data-status={step.status}
+                      key={step.id}
+                    >
+                      <button
+                        type="button"
+                        aria-label={`Step ${step.number} of ${step.total}: ${step.title}. ${statusText[step.status]}`}
+                        aria-current={isSelected ? "step" : undefined}
+                        disabled={selectionDisabled}
+                        onClick={() => onStepSelect(step.id)}
+                      >
+                        <span className="guide-step-marker" aria-hidden="true">
+                          {step.status === "complete" ? <Icon name="check" size={14} /> : step.number}
+                        </span>
+                        <span className="guide-step-button-copy">
+                          <span className="guide-step-button-kicker">
+                            Step {step.number} of {step.total}
+                          </span>
+                          <span className="guide-step-button-title">{step.title}</span>
+                        </span>
+                        <span className="sr-only">{statusText[step.status]}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          </>
+        ) : (
+          <section className="task-section" aria-labelledby="task-title">
+            <div className="section-heading">
+              <h2 id="task-title">Your tasks</h2>
+              <span>
+                {completed}/{lesson.tasks.length}
+              </span>
+            </div>
+            <ol className="task-list">
+              {lesson.tasks.map((task, index) => (
+                <li className="task-item" data-status={task.status} key={task.id}>
+                  <span className="task-marker" aria-hidden="true">
+                    {task.status === "complete" ? <Icon name="check" size={15} /> : index + 1}
+                  </span>
+                  <div>
+                    <div className="task-title-row">
+                      <h3>{task.title}</h3>
+                      <span className="sr-only">{statusText[task.status]}</span>
+                    </div>
+                    <p>{task.detail}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
       </div>
 
       <footer className="lesson-footer">
