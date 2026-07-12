@@ -1,7 +1,7 @@
 {{ config(tags=['deletion_control', 'control_fixture']) }}
 
 with expected_targets as (
-    select target_layer, target_relation
+    select target_layer, target_relation, target_kind, planned_action
     from ({{ customer_deletion_target_relations() }})
 ),
 
@@ -17,13 +17,21 @@ expected_plan as (
         'CCHG-0099-D' as deletion_request_id,
         keys.customer_key,
         targets.target_layer,
-        targets.target_relation
+        targets.target_relation,
+        targets.target_kind,
+        targets.planned_action
     from expected_keys as keys
     cross join expected_targets as targets
 ),
 
 actual_plan as (
-    select distinct deletion_request_id, customer_key, target_layer, target_relation
+    select distinct
+        deletion_request_id,
+        customer_key,
+        target_layer,
+        target_relation,
+        target_kind,
+        planned_action
     from {{ ref('int_customer_deletion_plan') }}
 ),
 
@@ -72,6 +80,21 @@ metrics as (
             from {{ ref('int_customer_deletion_plan') }}
             where target_kind = 'VIEW'
         ) as view_target_count,
+        (
+            select count(distinct concat(target_layer, '.', target_relation))
+            from {{ ref('int_customer_deletion_plan') }}
+            where planned_action = 'DELETE_CURRENT_ROWS'
+        ) as delete_target_count,
+        (
+            select count(distinct concat(target_layer, '.', target_relation))
+            from {{ ref('int_customer_deletion_plan') }}
+            where planned_action = 'REASSIGN_TO_ERASED_MEMBER'
+        ) as reassign_target_count,
+        (
+            select count(distinct concat(target_layer, '.', target_relation))
+            from {{ ref('int_customer_deletion_plan') }}
+            where planned_action = 'EXCLUDE_ERASED_ROWS'
+        ) as exclude_target_count,
         (select count(*) from missing_plan) as missing_plan_count,
         (select count(*) from unexpected_plan) as unexpected_plan_count,
         (
@@ -110,6 +133,9 @@ where
     or plan_row_count != 34
     or table_target_count != 13
     or view_target_count != 4
+    or delete_target_count != 9
+    or reassign_target_count != 4
+    or exclude_target_count != 4
     or missing_plan_count != 0
     or unexpected_plan_count != 0
     or pending_plan_count != 0

@@ -19,4 +19,4 @@ inner join {{ ref('fa_pd_customer') }} as mapped
     on customers.customer_key = mapped.customer_key
     and customers.full_name_key = mapped.full_name_key
     and customers.email_key = mapped.email_key
-where {{ case_access_predicate() }}
+where {{ case_access_predicate() }} and not events.is_erased_customer

@@ -4,7 +4,7 @@ models:
   - name: fct_customer_event
     description: >
       Customer-event fact at one row per accepted event. It links to customer and date dimensions
-      using a pseudonymous customer key and an integer calendar key.
+      using a pseudonymous or erased-member customer key and an integer calendar key.
     config:
       contract:
         enforced: true
@@ -62,11 +62,16 @@ models:
         data_type: timestamp
         description: Last source update timestamp.
         data_tests: [not_null]
+      - name: is_erased_customer
+        data_type: boolean
+        description: True when the original customer relationship was replaced by the erased member.
+        data_tests: [not_null]
 
   - name: fct_invoice
     description: >
       Invoice fact at one row per accepted invoice. It links to customer, service-period, and
-      conformed date dimensions while retaining monetary and validated payment measures.
+      conformed date dimensions while retaining monetary and validated payment measures. Erased
+      subjects use special customer and service members instead of their original relationships.
     config:
       contract:
         enforced: true
@@ -157,4 +162,8 @@ models:
       - name: source_updated_at
         data_type: timestamp
         description: Last source update timestamp.
+        data_tests: [not_null]
+      - name: is_erased_customer
+        data_type: boolean
+        description: True when original customer and service relationships were replaced.
         data_tests: [not_null]

@@ -9,8 +9,8 @@
 
 with rejected_invoices as (
     select invoice_id, resolution_status
-    from {{ ref('int_invoice_resolution') }}
-    where resolution_status != 'ACCEPTED'
+from {{ ref('int_invoice_resolution') }}
+where resolution_status != 'ACCEPTED' and not is_erased_customer
 )
 
 select

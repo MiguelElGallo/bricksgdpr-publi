@@ -12,7 +12,7 @@ clear, but several conveniences are unsuitable as production claims.
 - A readable-to-pseudonymous mapping can be isolated from ordinary analytics.
 - Stable, domain-separated keys can preserve joins across layers.
 - Late and invalid records can be quarantined instead of disappearing.
-- Current governed outputs can enforce deletion from a replayable, independently confirmed fixture.
+- Current governed outputs can remove identifying links and retain fact grain under an erased member.
 - Unity Catalog masks, grants, tags, and UDF privileges can be tested as metadata.
 - Positive and negative persona behavior can be exercised without retaining credentials.
 
@@ -20,7 +20,7 @@ clear, but several conveniences are unsuitable as production claims.
 
 The four source CSV seeds contain deterministic edge cases and between 19 and 37 rows; a fifth
 two-row seed represents independent deletion decisions. Exact counts such as 15 protected
-customers or 25 accepted invoices make regression tests easy to understand. They are not
+customers or 26 accepted invoices make regression tests easy to understand. They are not
 production capacities, error budgets, or expected distributions.
 
 The source simulator keeps raw values and deletion fixtures in Git. Real Personal Data must not be
@@ -29,7 +29,7 @@ committed as a seed.
 ## Full replacement simplifies current state
 
 Tables are replaced on rebuild, so a corrected late arrival can leave quarantine and a deleted
-subject can disappear from current governed outputs. Production ingestion usually needs
+subject's facts can move to erased members. Production ingestion usually needs
 incremental replay controls, idempotent event handling, stateful tombstone propagation, retention,
 and recovery procedures.
 
@@ -54,6 +54,7 @@ bounds. Production logic needs an explicit policy for business time and calendar
 
 - A nondeleted customer is assumed not to change SSN without an identity-history strategy.
 - Event and invoice IDs are assumed not to be independently identifying.
+- The erased-member key is not itself evidence that retained fact attributes are anonymous.
 - `dim_service` is Type-2-style by service ID and `valid_from`; it is not a complete SCD Type 2
   engine with overlap, gap, and current-row management.
 - Case access is group-wide, not restricted to an approved subject or case.

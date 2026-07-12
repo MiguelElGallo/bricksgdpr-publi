@@ -3,8 +3,9 @@ version: 2
 models:
   - name: dim_customer
     description: >
-      Type-1 current customer dimension at one row per active pseudonymous customer. All customer
-      attributes that are Personal Data remain represented only by versioned keys.
+      Type-1 current customer dimension at one row per active pseudonymous customer plus one
+      non-natural-person ERASED_SUBJECT member. Facts use that special member after customer links
+      are destroyed.
     config:
       contract:
         enforced: true
@@ -15,7 +16,7 @@ models:
     columns:
       - name: customer_key
         data_type: string
-        description: Pseudonymous customer dimension key.
+        description: Pseudonymous customer dimension key or the configured erased-member sentinel.
         databricks_tags: &national_identifier_tag
           personal_data_category: "NATIONAL_IDENTIFIER"
           personal_data_state: "PSEUDONYMIZED"
@@ -94,7 +95,8 @@ models:
   - name: dim_service
     description: >
       Type-2-style service dimension at one row per accepted service validity period. Customer,
-      service, and installation address identifiers are pseudonymous keys.
+      service, and installation address identifiers are pseudonymous keys. One ERASED_SUBJECT
+      member preserves invoice referential integrity after identifying service links are destroyed.
     config:
       contract:
         enforced: true

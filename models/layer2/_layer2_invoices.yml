@@ -13,16 +13,19 @@ models:
 
   - name: int_invoice_resolution
     description: >
-      Ephemeral invoice classifier at one row per nondeleted source invoice. Customer, service,
-      validity-period, invoice-date, and payment controls are evaluated in deterministic priority.
+      Ephemeral invoice classifier at one row per source invoice. Every invoice evaluates source
+      service, validity-period, invoice-date, and payment controls. Valid suppression-admitted rows
+      are retained under erased members; invalid ones enter the authorized-suppression outcome
+      instead of a raw Personal Data quarantine.
     columns:
       - name: resolution_status
-        description: Deterministic invoice acceptance or quarantine status.
+        description: Deterministic invoice acceptance, quarantine, or authorized-suppression reason.
 
   - name: int_invoices_resolved
     description: >
       Protected Layer2 invoices at one row per accepted invoice. It contains pseudonymous customer
-      and service keys, monetary measures, dates, and an as-of-date due-state calculation.
+      and service keys or erased-member sentinels, monetary measures, dates, and an as-of-date
+      due-state calculation.
     config:
       contract:
         enforced: true
@@ -47,6 +50,8 @@ models:
               arguments:
                 to: ref('fa_pd_customer')
                 field: customer_key
+              config:
+                where: "not is_erased_customer"
       - name: service_key
         data_type: string
         description: Versioned pseudonymous service identifier.
@@ -66,6 +71,8 @@ models:
               arguments:
                 to: ref('int_customer_services_resolved')
                 field: service_version_key
+              config:
+                where: "not is_erased_customer"
       - name: amount
         data_type: decimal(18,2)
         description: Gross invoice amount.
@@ -101,3 +108,100 @@ models:
         data_type: timestamp
         description: Last source update timestamp.
         data_tests: [not_null]
+      - name: is_erased_customer
+        data_type: boolean
+        description: True when customer and service links were replaced by erased-member sentinels.
+        data_tests: [not_null]
+
+unit_tests:
+  - name: erased_invoice_uses_special_customer_and_service_members
+    description: An accepted erased invoice must retain its grain while losing customer and service links.
+    model: int_invoices_resolved
+    given:
+      - input: ref('int_invoice_resolution')
+        format: sql
+        rows: |
+          select
+            'INV-ERASED' as invoice_id,
+            'original-customer-key' as customer_key,
+            'original-service-key' as service_key,
+            cast(null as string) as resolved_service_version_key,
+            cast(99.00 as decimal(18, 2)) as amount,
+            'EUR' as currency_code,
+            cast('2026-02-01' as date) as issued_date,
+            cast('2026-03-03' as date) as due_date,
+            false as is_paid,
+            cast(null as date) as paid_at,
+            false as source_is_due,
+            cast('2026-02-28 18:00:00' as timestamp) as source_updated_at,
+            true as is_erased_customer,
+            'ACCEPTED' as resolution_status
+    expect:
+      rows:
+        - invoice_id: INV-ERASED
+          customer_key: "{{ var('erased_member_key') }}"
+          service_key: "{{ var('erased_member_key') }}"
+          service_version_key: "{{ var('erased_member_key') }}"
+          is_erased_customer: true
+
+  - name: erased_invoice_still_checks_quality_rules
+    description: Erasure must not promote invalid source invoices into retained facts.
+    model: int_invoice_resolution
+    given:
+      - input: ref('int_invoices_keyed')
+        format: sql
+        rows: |
+          select
+            'INV-INVALID-DATES' as invoice_id,
+            'deleted-customer-key' as customer_key,
+            'valid-service-key' as service_key,
+            cast(10.00 as decimal(18, 2)) as amount,
+            'EUR' as currency_code,
+            cast('2026-03-03' as date) as issued_date,
+            cast('2026-02-01' as date) as due_date,
+            false as is_paid,
+            cast(null as date) as paid_at,
+            false as source_is_due,
+            cast('2026-03-03 09:00:00' as timestamp) as source_updated_at
+          union all
+          select
+            'INV-INVALID-SERVICE', 'deleted-customer-key', 'invalid-service-key',
+            cast(10.00 as decimal(18, 2)), 'EUR', cast('2026-02-01' as date),
+            cast('2026-03-03' as date), false, cast(null as date), false,
+            cast('2026-02-01 09:00:00' as timestamp)
+      - input: ref('int_terminal_deleted_customer_keys')
+        format: sql
+        rows: |
+          select 'deleted-customer-key' as customer_key
+      - input: ref('int_customer_services_keyed')
+        format: sql
+        rows: |
+          select
+            'deleted-customer-key' as customer_key,
+            'valid-service-key' as service_key,
+            'valid-service-version-key' as service_version_key,
+            true as is_valid,
+            cast('2026-01-01' as date) as valid_from,
+            cast('2026-12-31' as date) as valid_to
+          union all
+          select
+            'deleted-customer-key', 'invalid-service-key', 'invalid-service-version-key',
+            false, cast('2026-01-01' as date), cast('2026-12-31' as date)
+      - input: ref('int_customer_services_resolved')
+        format: sql
+        rows: |
+          select
+            cast(null as string) as customer_key,
+            cast(null as string) as service_key,
+            cast(null as string) as service_version_key,
+            cast(null as date) as valid_from,
+            cast(null as date) as valid_to
+          where false
+      - input: ref('fa_pd_customer')
+        format: sql
+        rows: |
+          select cast(null as string) as customer_key where false
+    expect:
+      rows:
+        - {invoice_id: INV-INVALID-DATES, is_erased_customer: true, resolution_status: INVALID_INVOICE_DATE_RANGE}
+        - {invoice_id: INV-INVALID-SERVICE, is_erased_customer: true, resolution_status: SERVICE_INVALID}

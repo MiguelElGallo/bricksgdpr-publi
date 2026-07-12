@@ -7,15 +7,18 @@ icon: lucide/triangle-alert
 A source row that cannot enter protected analytics still carries operational meaning. Silently
 dropping it would hide both a data-quality problem and a possible gap in governed processing.
 
-bricksgdpr therefore divides each nondeleted event, service period, and invoice into exactly one
-of two outcomes:
+bricksgdpr divides events into accepted or quarantined outcomes. Invoices have a third explicit
+outcome: an invalid row for a suppression-admitted customer is authorized-suppressed from current
+accepted and raw-quarantine outputs. Service periods for deleted subjects are removed because they
+are identifying dimension records.
 
 ```mermaid
 flowchart LR
-    source["nondeleted source row"] --> keyed["replace raw identifiers with keys"]
+    source["source event or invoice"] --> keyed["replace raw identifiers with keys"]
     keyed --> classify{"deterministic classifier"}
     classify -->|ACCEPTED| protected["durable Layer2 table"]
     classify -->|reason code| quarantine["raw Layer1 quarantine"]
+    classify -->|"invalid + authorized deletion"| suppressed["authorized suppression<br/>reconstructable from restricted source and plan evidence"]
 ```
 
 ## Why quarantine stays in Layer1
@@ -45,14 +48,17 @@ The quarantine models are rebuilt as tables rather than appended as an error log
 arrives before its customer receives `CUSTOMER_NOT_FOUND`. When the customer later appears, the
 same deterministic keys resolve and the next rebuild moves the service into Layer2.
 
-This behavior is different from terminal deletion. Rows associated with a terminally deleted
-customer are excluded from both accepted and quarantine outputs; deletion is not presented as a
-fixable late-arrival error.
+This behavior is different from authorized deletion. Valid event and invoice facts are accepted
+under the erased member; an invalid erased invoice is authorized-suppressed rather than promoted
+or copied into a raw quarantine. Customer and service dimension rows are removed. Deletion is not
+presented as a fixable late-arrival error.
 
 ## What the partition tests prove
 
-The singular tests compare the keyed nondeleted inputs with accepted and quarantined outputs. They
-assert that no row appears in both and no eligible row disappears from both.
+The singular tests compare classifier inputs with accepted, quarantined, and authorized-suppressed
+outcomes. They assert that every row has exactly one outcome, including erased-member facts. The
+suppressed outcome remains reconstructable only from restricted source history plus deletion-plan
+evidence; it is not an analytical or raw-quarantine row.
 
 Fixture-specific tests also check exact example counts and reasons. Those counts describe the
 synthetic demo; they are not production thresholds.

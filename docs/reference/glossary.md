@@ -9,7 +9,7 @@ icon: lucide/book-a
 
 | Term | Meaning in this project |
 | --- | --- |
-| Accepted record | A nondeleted event, service period, or invoice whose classifier returns `ACCEPTED` |
+| Accepted record | An ordinary valid record or an erased fact whose classifier returns `ACCEPTED` |
 | Canonical value | Input normalized before pseudonymization: digits-only SSN/phone, ISO date, or lowercase trimmed whitespace-collapsed text |
 | Case view | Standard `layer3_case` view that preserves protected keys and resolves a fixed readable subset for `case_users` or `privacy_admins` |
 | Control catalog/schema | The connection-default `workspace.default` context, distinct from governed output placement |
@@ -23,7 +23,7 @@ icon: lucide/book-a
 | Layer1 source | Four dbt seed tables that simulate upstream extracts |
 | Layer2 | Pseudonymous key boundary, classifier, and accepted protected tables |
 | Layer3 | Protected dimensions and facts for analytical access |
-| Logical current-state deletion | Absence of deleted subjects from current map, protected, quarantine, and case outputs after replacement |
+| Current-state identity unlinking | Absence of original subject keys and readable mappings; retained facts use erased members |
 | Mapping tuple | Complete set of stored pseudonymous keys used to validate a customer or service join |
 | Personal Data | GDPR term for information relating to an identified or identifiable natural person; pseudonymized values remain Personal Data |
 | Pepper | Secret input included in deterministic key generation; `pepper_v1` is an operator-managed value |

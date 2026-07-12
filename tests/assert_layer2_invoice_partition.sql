@@ -1,10 +1,8 @@
 {{ config(tags=['layer2_invoices', 'deletion_control']) }}
 
-with expected_invoices as (
-    select invoices.invoice_id
-    from {{ ref('int_invoices_keyed') }} as invoices
-    left anti join {{ ref('int_terminal_deleted_customer_keys') }} as deletions
-        on invoices.customer_key = deletions.customer_key
+with classified_invoices as (
+    select invoice_id, resolution_status, is_erased_customer
+    from {{ ref('int_invoice_resolution') }}
 ),
 
 actual_invoice_counts as (
@@ -13,6 +11,10 @@ actual_invoice_counts as (
         select invoice_id from {{ ref('int_invoices_resolved') }}
         union all
         select invoice_id from {{ ref('quarantine_invoices') }}
+        union all
+        select invoice_id
+        from classified_invoices
+        where is_erased_customer and resolution_status != 'ACCEPTED'
     ) as outputs
     group by invoice_id
 ),
@@ -22,7 +24,7 @@ partition_differences as (
         coalesce(expected.invoice_id, actual.invoice_id) as invoice_id,
         expected.invoice_id is not null as expected_to_exist,
         coalesce(actual.occurrence_count, 0) as occurrence_count
-    from expected_invoices as expected
+    from classified_invoices as expected
     full outer join actual_invoice_counts as actual
         on expected.invoice_id = actual.invoice_id
     where expected.invoice_id is null or coalesce(actual.occurrence_count, 0) != 1

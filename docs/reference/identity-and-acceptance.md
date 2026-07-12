@@ -14,7 +14,7 @@ temporary service principals to test group-driven data-plane behavior.
 | --- | --- |
 | `privacy_admins` | Raw-area and controlled-case reader |
 | `restricted_users` | Masked-map and protected-layer reader |
-| `case_users` | Protected Layer3 and controlled-case reader |
+| `case_users` | Controlled case-view reader without direct Layer3 access |
 
 Each group is an account group assigned to the workspace at `USER`. Each receives direct warehouse
 `CAN_USE`, never `CAN_MANAGE`.

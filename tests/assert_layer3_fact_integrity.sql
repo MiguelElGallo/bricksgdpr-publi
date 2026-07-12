@@ -9,7 +9,8 @@ with expected_events as (
         event_type,
         measure_value,
         measure_unit,
-        source_updated_at
+        source_updated_at,
+        is_erased_customer
     from {{ ref('int_customer_events_resolved') }}
 ),
 
@@ -33,7 +34,8 @@ expected_invoices as (
         is_paid,
         source_is_due,
         is_due,
-        source_updated_at
+        source_updated_at,
+        is_erased_customer
     from {{ ref('int_invoices_resolved') }}
 ),
 

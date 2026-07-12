@@ -2,7 +2,7 @@
 
 with customer_differences as (
     (
-        select * from {{ ref('dim_customer') }}
+        select * from {{ ref('dim_customer') }} where customer_key != {{ erased_member_key() }}
         except
         select * from {{ ref('int_customer_protected') }}
     )
@@ -16,7 +16,7 @@ with customer_differences as (
 
 service_differences as (
     (
-        select * from {{ ref('dim_service') }}
+        select * from {{ ref('dim_service') }} where service_version_key != {{ erased_member_key() }}
         except
         select * from {{ ref('int_customer_services_resolved') }}
     )

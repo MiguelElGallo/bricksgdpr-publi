@@ -8,7 +8,7 @@ with subject_keys as (
 ),
 
 expected_layer3_targets as (
-    select target_layer, target_relation, target_kind
+    select target_layer, target_relation, target_kind, planned_action
     from ({{ customer_deletion_target_relations() }})
     where target_layer = 'layer3'
 ),
@@ -50,12 +50,14 @@ plan_metrics as (
         count(*) as plan_rows,
         count(distinct plan.customer_key) as historical_keys,
         count(distinct plan.target_relation) as target_relations,
+        count_if(plan.planned_action = 'REASSIGN_TO_ERASED_MEMBER') as reassignment_plan_rows,
         count_if(targets.target_relation is null) as unexpected_targets
     from {{ ref('int_customer_deletion_plan') }} as plan
     left join expected_layer3_targets as targets
         on plan.target_layer = targets.target_layer
         and plan.target_relation = targets.target_relation
         and plan.target_kind = targets.target_kind
+        and plan.planned_action = targets.planned_action
     where plan.deletion_request_id = 'CCHG-0099-D' and plan.target_layer = 'layer3'
 ),
 
@@ -76,16 +78,36 @@ layer3_metrics as (
         ) as subject_service_rows,
         (
             select count(*) from {{ ref('fct_customer_event') }}
-            where
-                customer_key in (select customer_key from subject_keys)
-                or event_key = 'EVT-0099'
+            where customer_key in (select customer_key from subject_keys)
         ) as subject_event_rows,
         (
             select count(*) from {{ ref('fct_invoice') }}
+            where customer_key in (select customer_key from subject_keys)
+        ) as subject_invoice_rows,
+        (
+            select count(*) from {{ ref('fct_customer_event') }}
+            where event_key = 'EVT-0099'
+        ) as fixture_event_rows,
+        (
+            select count(*) from {{ ref('fct_invoice') }}
+            where invoice_key = 'INV-0099'
+        ) as fixture_invoice_rows,
+        (
+            select count(*) from {{ ref('fct_customer_event') }}
             where
-                customer_key in (select customer_key from subject_keys)
-                or invoice_key = 'INV-0099'
-        ) as subject_invoice_rows
+                event_key = 'EVT-0099'
+                and customer_key = {{ erased_member_key() }}
+                and is_erased_customer
+        ) as erased_event_rows,
+        (
+            select count(*) from {{ ref('fct_invoice') }}
+            where
+                invoice_key = 'INV-0099'
+                and customer_key = {{ erased_member_key() }}
+                and service_key = {{ erased_member_key() }}
+                and service_version_key = {{ erased_member_key() }}
+                and is_erased_customer
+        ) as erased_invoice_rows
 ),
 
 control_state as (
@@ -119,14 +141,19 @@ where
             plan.plan_rows != 0
             or plan.historical_keys != 0
             or plan.target_relations != 0
-            or layer3.dim_customer_rows != 16
-            or layer3.dim_service_rows != 17
+            or plan.reassignment_plan_rows != 0
+            or layer3.dim_customer_rows != 17
+            or layer3.dim_service_rows != 18
             or layer3.event_rows != 29
             or layer3.invoice_rows != 26
             or layer3.subject_customer_rows != 1
             or layer3.subject_service_rows != 1
             or layer3.subject_event_rows != 1
             or layer3.subject_invoice_rows != 1
+            or layer3.fixture_event_rows != 1
+            or layer3.fixture_invoice_rows != 1
+            or layer3.erased_event_rows != 0
+            or layer3.erased_invoice_rows != 0
         )
     )
     or (
@@ -135,13 +162,18 @@ where
             plan.plan_rows != 8
             or plan.historical_keys != 2
             or plan.target_relations != 4
-            or layer3.dim_customer_rows != 15
-            or layer3.dim_service_rows != 16
-            or layer3.event_rows != 28
-            or layer3.invoice_rows != 25
+            or plan.reassignment_plan_rows != 4
+            or layer3.dim_customer_rows != 16
+            or layer3.dim_service_rows != 17
+            or layer3.event_rows != 29
+            or layer3.invoice_rows != 26
             or layer3.subject_customer_rows != 0
             or layer3.subject_service_rows != 0
             or layer3.subject_event_rows != 0
             or layer3.subject_invoice_rows != 0
+            or layer3.fixture_event_rows != 1
+            or layer3.fixture_invoice_rows != 1
+            or layer3.erased_event_rows != 1
+            or layer3.erased_invoice_rows != 1
         )
     )

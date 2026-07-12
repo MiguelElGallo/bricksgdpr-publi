@@ -19,7 +19,7 @@ flowchart LR
     F --> G["Expand every historical customer identity"]
     G --> H["Create one plan row per key and target relation"]
     H --> I["Execution gate"]
-    I --> J["Current governed outputs exclude the customer"]
+    I --> J["Remove identity links<br/>reassign retained facts"]
 ```
 
 The ordering is mandatory:
@@ -32,9 +32,9 @@ The ordering is mandatory:
 4. `int_customer_deletion_plan` exists only for `AUTHORIZED` requests. It expands the stable
    `customer_id` to every historical SSN, derives every customer key, and creates a row for every
    governed target.
-5. `int_terminal_deleted_customer_keys` reads only authorized `DELETE_CURRENT_ROWS` plan rows.
-   It admits a key only when all 17 required targets are present. Existing mapping, Layer2,
-   quarantine, Layer3, and case models consume that execution gate.
+5. `int_terminal_deleted_customer_keys` reads only complete authorized plans. It admits a key only
+   when all 17 targets and their exact actions are present. Existing mapping, Layer2, quarantine,
+   Layer3, and case models consume that suppression gate.
 
 There is no direct path from source tombstone to downstream anti-join.
 
@@ -46,7 +46,7 @@ There is no direct path from source tombstone to downstream anti-join.
 | `customer_deletion_requests` | Incremental table | One row per source `DELETE` change | Persists detection evidence |
 | `customer_deletion_authorizations` | Table | One row per detected request | Applies confirmation and legal-hold gates |
 | `int_customer_deletion_plan` | Incremental table | One row per authorized historical customer key and target | Retains exact planned coverage across ordinary runs |
-| `int_terminal_deleted_customer_keys` | Incremental table | One row per admitted historical customer key | Durably records suppression admission and feeds every downstream anti-join |
+| `int_terminal_deleted_customer_keys` | Incremental table | One row per admitted historical customer key | Durably records suppression admission and feeds deletion/reassignment logic |
 
 The checked-in confirmation seed is a deterministic demo input. A production system should use a
 separately authorized case-management or privacy-control source and an append-only audit trail.
@@ -81,13 +81,14 @@ or adjudicate a legal exception; those are controller responsibilities outside d
 
 For every historical customer key, the plan contains these 17 current-state targets:
 
-| Area | Relations |
+| Action | Targets |
 | --- | --- |
-| Layer1 quarantine | `quarantine_customer_events`, `quarantine_customer_services`, `quarantine_invoices` |
-| `priva_map` | `fa_pd_customer`, `fa_pd_service_address` |
-| Layer2 | `int_customer_protected`, `int_customer_events_resolved`, `int_customer_services_resolved`, `int_invoices_resolved` |
-| Layer3 | `dim_customer`, `dim_service`, `fct_customer_event`, `fct_invoice` |
-| Controlled case views | `case_dim_customer`, `case_dim_service`, `case_fct_customer_event`, `case_fct_invoice` |
+| `DELETE_CURRENT_ROWS` (9 targets) | Three Layer1 quarantine tables, two `priva_map` tables, Layer2 customer/service tables, and Layer3 customer/service dimensions |
+| `REASSIGN_TO_ERASED_MEMBER` (4 targets) | Layer2 and Layer3 event/invoice fact tables |
+| `EXCLUDE_ERASED_ROWS` (4 targets) | Four controlled case views |
+
+`-99999` is the dedicated erased-subject member for both customer and service relationships. It is
+not the generic unknown/missing member and has no readable mapping row.
 
 `assert_customer_deletion_control` fails if any target is missing or unexpected. The fixture
 `CUST-0099` has two historical SSNs, so its confirmed request produces 34 plan rows: two keys times
@@ -99,18 +100,20 @@ real pre-confirmation and post-confirmation states and inspect every Layer3 tabl
 ## Deliberately retained evidence
 
 The source simulator and ordinary staging views retain source changes, including the deletion
-tombstone and earlier upserts. The three deletion-control tables retain the minimum identifiers and
-decision metadata needed to demonstrate detection, authorization, and planned coverage. These are
-restricted Layer1 control records, not analytical outputs.
+tombstone and earlier upserts. Four persisted deletion-control tables retain the minimum request,
+decision, plan, and suppression-admission evidence needed to demonstrate the workflow. These are
+restricted control records across Layer1 and Layer2, not analytical outputs.
 
-All other persisted Personal Data-bearing demo relations are in the plan. Staging/source retention
-must have a documented purpose and retention period in production; the demo's reproducible CSV
-fixtures are not a justification for indefinite production retention.
+All other persisted Personal Data-bearing demo relations are in the plan. Event and invoice facts
+retain their grain under `-99999`, with the original customer and service keys removed. Staging,
+source, and fact retention must have a documented purpose and retention period in production; the
+demo fixtures are not a justification for indefinite retention.
 
 ## Executed behavior versus physical erasure
 
-The dbt build enforces logical current-state deletion: authorized keys disappear from current
-tables and derived views. It does not prove removal from Delta history, deletion-vector files,
+The dbt build enforces logical current-state unlinking: authorized identity keys disappear from
+current outputs and retained facts point to erased members. It does not prove that those facts are
+anonymous, nor removal from Delta history, deletion-vector files,
 caches, exports, source systems, replicas, object versions, backups, or recipient systems.
 
 For Delta tables with deletion vectors, Databricks documents a separate physical sequence:
@@ -125,6 +128,7 @@ files. Upstream sources and downstream recipients must be handled separately.[^d
 | Article 5 storage limitation and accountability | Durable request state, explicit statuses, target inventory, executable tests | Define retention schedules and retain proportionate evidence |
 | Article 12 response timing | Detection and decision timestamps make elapsed time measurable | Enforce the one-month response workflow and extension notices |
 | Article 17 erasure and exceptions | Confirmation plus legal-hold gate prevents an unreviewed tombstone from self-authorizing | Verify identity, grounds, scope, and Article 17(3) exceptions |
+| Recital 26 and Article 4 identifiability | Original keys and readable mappings are removed; facts use one shared erased member | Prove remaining facts are not reasonably linkable, or continue treating them as Personal Data[^gdpr-recital-26] |
 | Article 19 recipient notification | Target list demonstrates internal propagation scope | Maintain recipient/disclosure inventory and notify recipients where required |
 | Article 25 protection by design/default | No plan exists before confirmation; one gate controls all downstream models | Periodically test effectiveness and cover systems outside this repo |
 | Article 30 processing records | Exact model, state, timestamp, and target fields support traceability | Maintain the controller's full record of processing activities |
@@ -135,6 +139,14 @@ recipients under Article 19, accountability under Article 5, and safeguards by d
 default under Article 25.[^gdpr-5][^gdpr-12][^gdpr-17][^gdpr-19][^gdpr-25][^gdpr-30]
 
 This mapping is engineering guidance, not legal advice or a compliance certification.
+
+Kimball's dimensional guidance recommends special dimension records instead of null fact foreign
+keys. That preserves referential integrity, but it does not decide GDPR status: the EDPB states
+that pseudonymised data remains Personal Data when it can be attributed using additional
+information.[^kimball-nulls][^edpb-pseudonymisation][^gdpr-4] The EDPB's July 2026 version-one
+anonymisation guidance uses three practical checks: no record isolation, no linkage, and no
+inference. Retaining exact transaction IDs means this demo does not claim to pass that
+framework.[^edpb-anonymisation-news][^edpb-anonymisation]
 
 ## Implementation paths
 
@@ -150,8 +162,14 @@ This mapping is engineering guidance, not legal advice or a compliance certifica
 [^gdpr-5]: [GDPR Article 5 — principles and accountability](https://eur-lex.europa.eu/eli/reg/2016/679/art_5/oj/eng)
 [^gdpr-12]: [GDPR Article 12 — action without undue delay and within one month](https://eur-lex.europa.eu/eli/reg/2016/679/art_12/oj/eng)
 [^gdpr-17]: [GDPR Article 17 — right to erasure and exceptions](https://eur-lex.europa.eu/eli/reg/2016/679/art_17/oj/eng)
+[^gdpr-4]: [GDPR Article 4 — Personal Data and pseudonymisation definitions](https://eur-lex.europa.eu/eli/reg/2016/679/art_4/oj/eng)
 [^gdpr-19]: [GDPR Article 19 — notification to recipients](https://eur-lex.europa.eu/eli/reg/2016/679/art_19/oj/eng)
 [^gdpr-25]: [GDPR Article 25 — data protection by design and by default](https://eur-lex.europa.eu/eli/reg/2016/679/art_25/oj/eng)
 [^gdpr-30]: [GDPR Article 30 — records of processing activities](https://eur-lex.europa.eu/eli/reg/2016/679/art_30/oj/eng)
+[^gdpr-recital-26]: [GDPR Recital 26 — identifiability and anonymous information](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng)
 [^databricks-gdpr]: [Databricks — Prepare your data for GDPR compliance](https://docs.databricks.com/aws/en/ldp/gdpr)
 [^databricks-vacuum]: [Databricks — Remove unused data files with VACUUM](https://docs.databricks.com/aws/en/delta/vacuum)
+[^kimball-nulls]: [Kimball Group — Dealing with null fact foreign keys](https://www.kimballgroup.com/2003/02/design-tip-43-dealing-with-nulls-in-the-dimensional-model/)
+[^edpb-pseudonymisation]: [EDPB Guidelines 01/2025 on Pseudonymisation](https://www.edpb.europa.eu/public-consultations/guidelines-012025-on-pseudonymisation_en)
+[^edpb-anonymisation-news]: [EDPB announcement — record isolation, linkage, and inference criteria, 8 July 2026](https://www.edpb.europa.eu/news/edpb-sheds-light-on-anonymisation-and-web-scraping-for-generative-ai-and-adopts-final-version_en)
+[^edpb-anonymisation]: [EDPB Guidelines 02/2026 on Anonymisation, version 1 under public consultation](https://www.edpb.europa.eu/public-consultations/guidelines-022026-on-anonymisation_en)

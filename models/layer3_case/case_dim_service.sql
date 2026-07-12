@@ -17,4 +17,4 @@ inner join {{ ref('fa_pd_service_address') }} as mapped
     and services.service_key = mapped.service_key
     and services.service_version_key = mapped.service_version_key
     and services.installation_address_key = mapped.installation_address_key
-where {{ case_access_predicate() }}
+where {{ case_access_predicate() }} and services.customer_key != {{ erased_member_key() }}

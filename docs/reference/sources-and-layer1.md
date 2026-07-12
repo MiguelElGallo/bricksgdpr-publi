@@ -31,7 +31,7 @@ warehouse types.
 | Active customers | `CUST-0001` through `CUST-0014` | Fourteen ordinary current customer-map rows |
 | Inactive customer | `CUST-0015` | Excluded from the customer map |
 | Pending delete followed by later upsert | `CUST-0097` | Request is detected; no plan is created; current upsert remains |
-| Confirmed delete after an SSN change | `CUST-0099` | Both current and historical SSN keys are planned and deleted |
+| Confirmed delete after an SSN change | `CUST-0099` | Both SSN keys are planned and unlinked; dependent facts are reassigned |
 | Late customer references | SSN ending `0098` | Event, service, and invoice quarantine as `CUSTOMER_NOT_FOUND` |
 | Invalid service flag | `SVC-0013-B` | Quarantines as `INVALID_VALIDITY_FLAG` |
 | Invalid service period | `SVC-0014-A` | Quarantines as `INVALID_VALIDITY_PERIOD` |
@@ -66,9 +66,9 @@ Staging preserves source grain and does not resolve customer or service relation
 
 | Model | Materialization | Grain | Raw identifier | Reason source |
 | --- | --- | --- | --- | --- |
-| `quarantine_customer_events` | Table | One rejected nondeleted event | `event_id` | `int_customer_event_resolution` |
+| `quarantine_customer_events` | Table | One rejected non-erased event | `event_id` | `int_customer_event_resolution` |
 | `quarantine_customer_services` | Table | One rejected or invalid nondeleted service period | `service_id`, `valid_from` | `int_customer_service_resolution` |
-| `quarantine_invoices` | Table | One rejected or invalid nondeleted invoice | `invoice_id` | `int_invoice_resolution` |
+| `quarantine_invoices` | Table | One rejected or invalid non-erased invoice | `invoice_id` | `int_invoice_resolution` |
 
 Each quarantine table contains source-shaped raw values, `quarantine_reason`, and a build-time
 `quarantined_at` timestamp. The tables are fully replaced on rebuild. A record leaves quarantine
@@ -86,19 +86,19 @@ when the same keyed source row becomes resolvable.
 
 ## Default output counts
 
-| Stream | Accepted | Quarantine | Terminal-deletion exclusion | Seed total |
-| --- | ---: | ---: | ---: | ---: |
-| Events | 28 | 1 | 1 | 30 |
-| Service periods | 16 | 3 | 1 | 20 |
-| Invoices | 25 | 11 | 1 | 37 |
+| Stream | Accepted | Quarantine | Deleted | Reassigned subset | Seed total |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Events | 29 | 1 | 0 | 1 | 30 |
+| Service periods | 16 | 3 | 1 | 0 | 20 |
+| Invoices | 26 | 11 | 0 | 1 | 37 |
 
 ## Deletion scope
 
 A source tombstone is stored in `customer_deletion_requests`, but downstream deletion begins only
-after an independent confirmation without a legal hold. The authorized plan removes current rows
-from `priva_map`, Layer2, Layer3, quarantine, and case outputs. The source simulator, ordinary
-source-history staging views, and restricted control evidence remain outside that current-output
-absence claim.
+after an independent confirmation without a legal hold. The authorized plan removes identity and
+dimension rows, reassigns retained event/invoice facts to `-99999`, and excludes them from case
+views. The source simulator, ordinary source-history staging views, and restricted control evidence
+remain outside that current-output absence claim.
 
 See [Customer deletion control](deletion-control.md) for the complete state machine, exact target
 inventory, and fixture behavior.

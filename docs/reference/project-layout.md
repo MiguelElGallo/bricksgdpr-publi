@@ -24,7 +24,7 @@ The repository is a dbt project with Databricks deployment and identity helpers.
 | `models/` | Layer1, `priva_map`, Layer2, Layer3, and case models |
 | `seeds/` | Four deterministic CSV source simulators, one deletion-confirmation control, and metadata |
 | `functions/` | Three dbt-managed Databricks SQL functions |
-| `macros/` | Seven local Jinja macros |
+| `macros/` | Nine local Jinja macros |
 | `tests/` | Thirty-nine singular dbt data tests |
 | `acceptance/personas/` | Three positive and six denial SQL file tasks |
 | `scripts/generate_seeds.py` | Deterministic CSV generator |

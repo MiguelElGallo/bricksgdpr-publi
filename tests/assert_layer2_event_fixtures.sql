@@ -15,12 +15,15 @@ with fixture_metrics as (
         (
             select count(*)
             from {{ ref('int_customer_events_resolved') }}
+            where
+                event_id = 'EVT-0099'
+                and customer_key = {{ erased_member_key() }}
+                and is_erased_customer
+        ) as erased_fact_count,
+        (
+            select count(*) from {{ ref('quarantine_customer_events') }}
             where event_id = 'EVT-0099'
-        ) + (
-            select count(*)
-            from {{ ref('quarantine_customer_events') }}
-            where event_id = 'EVT-0099'
-        ) as deleted_output_count
+        ) as erased_quarantine_count
 )
 
 select *
@@ -28,4 +31,5 @@ from fixture_metrics
 where
     late_quarantine_count != 1
     or late_accepted_count != 0
-    or deleted_output_count != 0
+    or erased_fact_count != 1
+    or erased_quarantine_count != 0

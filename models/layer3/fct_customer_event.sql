@@ -8,5 +8,6 @@ select
     event_type,
     measure_value,
     measure_unit,
-    source_updated_at
+    source_updated_at,
+    is_erased_customer
 from {{ ref('int_customer_events_resolved') }}

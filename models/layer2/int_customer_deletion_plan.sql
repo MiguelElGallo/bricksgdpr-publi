@@ -36,7 +36,7 @@ select
     targets.target_layer,
     targets.target_relation,
     targets.target_kind,
-    'DELETE_CURRENT_ROWS' as planned_action,
+    targets.planned_action,
     'AUTHORIZED' as plan_status,
     keys.authorized_at
 from historical_customer_keys as keys

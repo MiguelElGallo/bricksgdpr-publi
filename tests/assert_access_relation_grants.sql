@@ -39,7 +39,7 @@
    ['int_customer_deletion_plan', 'int_terminal_deleted_customer_keys'], [privacy]),
   ((prefix ~ '_layer3') if prefix else 'layer3',
    ['dim_customer', 'dim_service', 'dim_date', 'fct_customer_event', 'fct_invoice'],
-   [privacy, restricted, case_users]),
+   [privacy, restricted]),
   ((prefix ~ '_layer3_case') if prefix else 'layer3_case',
    ['case_dim_customer', 'case_dim_service', 'case_fct_customer_event', 'case_fct_invoice'],
    [privacy, case_users])

@@ -54,17 +54,23 @@ with fixture_metrics as (
         ) as overdue_accepted_count,
         (
             select count(*) from {{ ref('int_invoices_resolved') }}
-            where invoice_id = 'INV-0099'
-        ) + (
+            where
+                invoice_id = 'INV-0099'
+                and customer_key = {{ erased_member_key() }}
+                and service_key = {{ erased_member_key() }}
+                and service_version_key = {{ erased_member_key() }}
+                and is_erased_customer
+        ) as erased_fact_count,
+        (
             select count(*) from {{ ref('quarantine_invoices') }}
             where invoice_id = 'INV-0099'
-        ) as deleted_output_count
+        ) as erased_quarantine_count
 )
 
 select *
 from fixture_metrics
 where
-    accepted_count != 25
+    accepted_count != 26
     or quarantine_count != 11
     or late_count != 1
     or invalid_service_count != 2
@@ -77,4 +83,5 @@ where
     or deleted_service_reference_count != 1
     or out_of_period_count != 1
     or overdue_accepted_count != 1
-    or deleted_output_count != 0
+    or erased_fact_count != 1
+    or erased_quarantine_count != 0

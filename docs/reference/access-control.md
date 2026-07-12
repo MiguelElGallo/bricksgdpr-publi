@@ -14,7 +14,7 @@ column masks, case-view predicates, and function revocations.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `privacy_admins` | Read | Read | Raw values | Read | Read | Read | None as a consumer grant |
 | `restricted_users` | None | None | Read with raw columns masked to stored keys | Read | Read | None | None |
-| `case_users` | None | None | None | None | Read | Selected readable values | None |
+| `case_users` | None | None | None | None | None | Selected readable values | None |
 
 The deployment identity remains the privileged producer/owner and is not a consumer persona.
 
@@ -27,7 +27,7 @@ The deployment identity remains the privileged producer/owner and is not a consu
 | `priva_map` | Two mapping tables | `privacy_admins`, `restricted_users` |
 | `layer2` | Four protected tables | `privacy_admins`, `restricted_users` |
 | `layer2` | Deletion plan and suppression-admission ledger | `privacy_admins` |
-| `layer3` | Three dimensions, two facts | All three groups |
+| `layer3` | Three dimensions, two facts | `privacy_admins`, `restricted_users` |
 | `layer3_case` | Four case views | `privacy_admins`, `case_users` |
 
 dbt relation `grants` configure `SELECT`. The singular access test compares the direct metadata to
@@ -42,7 +42,7 @@ The expected direct parent privileges are:
 
 - `privacy_admins`: all six data schemas;
 - `restricted_users`: `priva_map`, `layer2`, and `layer3`;
-- `case_users`: `layer3` and `layer3_case`.
+- `case_users`: `layer3_case` only.
 
 No consumer group receives access to `priva_internal`.
 
@@ -55,8 +55,8 @@ No consumer group receives access to `priva_internal`.
 | Other caller, including `restricted_users` | Matching stored pseudonymous key |
 
 `case_users` are raw-authorized inside the mask function but lack direct mapping-table grants. The
-combination supports standard case views and makes the direct map grant a required security
-boundary.
+combination supports standard case views. They also lack direct Layer3 grants, so retained erased
+facts cannot be queried around the case-view exclusion rule.
 
 ## Case-view predicate
 

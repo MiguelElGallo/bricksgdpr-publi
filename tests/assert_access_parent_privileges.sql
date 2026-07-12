@@ -14,7 +14,6 @@
   (restricted, (prefix ~ '_priva_map') if prefix else 'priva_map'),
   (restricted, (prefix ~ '_layer2') if prefix else 'layer2'),
   (restricted, (prefix ~ '_layer3') if prefix else 'layer3'),
-  (case_users, (prefix ~ '_layer3') if prefix else 'layer3'),
   (case_users, (prefix ~ '_layer3_case') if prefix else 'layer3_case')
 ] %}
 {% set expected_rows = [] %}

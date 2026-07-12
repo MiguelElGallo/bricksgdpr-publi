@@ -21,6 +21,7 @@ vars:
   schema_prefix: "{{ env_var('DBT_SCHEMA_PREFIX', '') }}"
   as_of_date: "2026-03-01"
   deletion_decision_as_of: "9999-12-31 23:59:59"
+  erased_member_key: "-99999"
   date_dimension_start: "2025-01-01"
   date_dimension_end: "2028-12-31"
   personal_data_hash_version: "v1"
@@ -56,7 +57,7 @@ models:
       +materialized: table
       +tags: [gdpr, layer3]
       +grants:
-        select: [privacy_admins, restricted_users, case_users]
+        select: [privacy_admins, restricted_users]
     layer3_case:
       +schema: layer3_case
       +materialized: view

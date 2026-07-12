@@ -5,7 +5,7 @@ icon: lucide/braces
 
 # Functions and macros
 
-The project defines three dbt-managed Databricks SQL functions and seven local Jinja macros.
+The project defines three dbt-managed Databricks SQL functions and nine local Jinja macros.
 
 ## SQL functions
 
@@ -111,6 +111,18 @@ Canonicalizes the input and calls the dbt function reference for
 `pseudonymize_personal_data_v1(canonical_value, domain)`.
 
 **Source for all three:** `macros/personal_data.sql`.
+
+### `customer_deletion_target_relations`
+
+Returns the canonical 17-row deletion target inventory with layer, relation, object kind, and exact
+action. Plan creation, suppression admission, and coverage tests consume the same inventory.
+
+### `erased_member_key`
+
+Returns the SQL string literal configured by `erased_member_key` (`-99999` by default). Layer2
+facts and Layer3 special members use it consistently.
+
+**Source for both:** `macros/deletion_control.sql`.
 
 ### `case_access_predicate`
 

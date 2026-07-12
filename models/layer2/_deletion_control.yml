@@ -5,10 +5,10 @@ models:
     description: >
       Authorized deletion worklist at one row per historical customer key and governed target
       relation. It is created only for confirmed requests without a legal hold and enumerates all
-      current-state tables and case views that must exclude the subject. Incremental merge retains
-      authorized plan rows across ordinary runs so a later missing decision cannot silently
-      resurrect retained source history; full-refresh remains a demo rebuild, not a production
-      records-management workflow.
+      current-state delete, erased-member reassignment, and case-view exclusion actions.
+      Incremental merge retains authorized plan rows across ordinary runs so a later missing
+      decision cannot silently resurrect retained identity links; full-refresh remains a demo
+      rebuild, not a production records-management workflow.
     config:
       contract:
         enforced: true
@@ -41,12 +41,12 @@ models:
                 values: ["TABLE", "VIEW"]
       - name: planned_action
         data_type: string
-        description: Constant DELETE_CURRENT_ROWS action consumed by the execution gate.
+        description: Target-specific deletion, erased-member reassignment, or case-view exclusion action.
         data_tests:
           - not_null
           - accepted_values:
               arguments:
-                values: ["DELETE_CURRENT_ROWS"]
+                values: ["DELETE_CURRENT_ROWS", "REASSIGN_TO_ERASED_MEMBER", "EXCLUDE_ERASED_ROWS"]
       - name: plan_status
         data_type: string
         description: Constant AUTHORIZED state; unconfirmed requests produce no plan rows.

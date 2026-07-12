@@ -4,8 +4,8 @@ icon: lucide/trash-2
 
 # Terminal deletion versus physical erasure
 
-The demo implements **logical current-state deletion** across the governed dbt outputs. It does
-not, by itself, physically erase every copy of a person's data.
+The demo implements **logical current-state identity unlinking** across governed dbt outputs. It
+does not, by itself, anonymise retained facts or physically erase every copy of a person's data.
 
 ## What “terminal” means here
 
@@ -14,17 +14,18 @@ does not delete anything by itself. A separate privacy decision must be `CONFIRM
 hold may apply, before the request becomes `AUTHORIZED`.
 
 Only then does the deletion plan expand the stable customer ID to every historical SSN, derive all
-corresponding customer keys, and authorize those keys for removal from:
+corresponding customer keys, and authorize target-specific action:
 
 - both `priva_map` tables;
-- durable Layer2 relations;
+- customer/service Layer2 relations;
 - Layer1 quarantine tables;
-- Layer3 dimensions and facts;
+- Layer3 customer/service dimensions;
+- event and invoice fact reassignment to `-99999` in Layer2 and Layer3;
 - controlled case views.
 
-Dependent extracts that still carry an older SSN are removed because the plan expands through the
-stable customer ID first. A later upsert cannot resurrect an authorized key. A pending, rejected,
-or held request creates no plan and cannot enter the execution gate.
+Dependent extracts that still carry an older SSN lose their identifying link because the plan
+expands through the stable customer ID first. A later upsert cannot resurrect an authorized key. A
+pending, rejected, or held request creates no plan and cannot enter the suppression gate.
 
 The exact models, states, and 17 planned targets are listed in
 [Customer deletion control](../reference/deletion-control.md).
@@ -33,14 +34,33 @@ The exact models, states, and 17 planned targets are listed in
 
 The synthetic CSV seeds retain the upsert, tombstone, and confirmation fixtures so the demo is
 reproducible. Ordinary Layer1 staging views retain source-shaped rows, and restricted deletion
-control tables retain minimum case evidence. The absence claim covers every current-state target
-enumerated in the deletion plan—not the source simulator, ordinary source-history staging views,
-or the evidence records themselves.
+control tables retain minimum case evidence. Event and invoice facts also retain measures and dates
+under the shared erased member, while original customer/service keys are absent. The absence claim
+does not cover the source simulator, ordinary history views, or evidence records.
+
+## Why the erased member is not automatically anonymous
+
+Kimball's special-member pattern solves dimensional referential integrity: a fact foreign key
+joins to a descriptive row instead of becoming null. It does not answer the legal identifiability
+question. Exact timestamps, amounts, measures, and transaction identifiers can still allow
+singling out or linkage. If that risk remains, the facts remain Personal Data even though the
+modeled customer key is `-99999`.
+
+The EDPB's July 2026 version-one anonymisation guidance proposes checking for record isolation,
+linkage, and inference. Exact event and invoice identifiers deliberately remain in this demo, so it
+does not claim that the retained facts satisfy that framework. The guidance is currently under
+[public consultation](https://www.edpb.europa.eu/public-consultations/guidelines-022026-on-anonymisation_en).
+
+Production must either retain those facts under an applicable purpose, legal basis, and Article 17
+exception, or transform them further until the controller can substantiate anonymisation. Possible
+controls include coarser time buckets, suppressed rare categories, aggregated measures, and
+replacement of identifying transaction IDs.
 
 ## Why a successful query is not physical erasure
 
-The models use replacement materializations. After a successful rebuild, current tables and views
-no longer return the deleted subject. Storage systems can still retain other copies:
+The models use replacement materializations. After a successful rebuild, current mappings and
+dimensions no longer return the original customer/service keys, facts use erased members, and case
+views exclude those facts. Storage systems can still retain other copies:
 
 - Delta table history and deletion vectors;
 - cloud-object versions;

@@ -60,16 +60,37 @@
       ) %}
     {% endfor %}
 
-    {% for schema_name in [schemas['layer3'], schemas['layer3_case']] %}
-      {% do run_query(
-        'grant use schema on schema ' ~ catalog ~ '.' ~ adapter.quote(schema_name)
-        ~ ' to ' ~ case_users
-      ) %}
-    {% endfor %}
+    {% do run_query(
+      'grant use schema on schema ' ~ catalog ~ '.' ~ adapter.quote(schemas['layer3_case'])
+      ~ ' to ' ~ case_users
+    ) %}
 
-    {% for schema_name in [schemas['layer1_source'], schemas['layer1'], schemas['priva_map'], schemas['layer2']] %}
+    {% for schema_name in [
+      schemas['layer1_source'],
+      schemas['layer1'],
+      schemas['priva_map'],
+      schemas['layer2'],
+      schemas['layer3']
+    ] %}
       {% do run_query(
         'revoke select on schema ' ~ catalog ~ '.' ~ adapter.quote(schema_name)
+        ~ ' from ' ~ case_users
+      ) %}
+    {% endfor %}
+    {% do run_query(
+      'revoke use schema on schema ' ~ catalog ~ '.' ~ adapter.quote(schemas['layer3'])
+      ~ ' from ' ~ case_users
+    ) %}
+    {% for table_name in [
+      'dim_customer',
+      'dim_service',
+      'dim_date',
+      'fct_customer_event',
+      'fct_invoice'
+    ] %}
+      {% do run_query(
+        'revoke select on table '
+        ~ catalog ~ '.' ~ adapter.quote(schemas['layer3']) ~ '.' ~ adapter.quote(table_name)
         ~ ' from ' ~ case_users
       ) %}
     {% endfor %}

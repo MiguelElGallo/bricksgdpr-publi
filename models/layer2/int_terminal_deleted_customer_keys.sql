@@ -6,7 +6,7 @@
     tags=['deletion_control', 'personal_data_control']
 ) }}
 
--- This durable suppression-admission ledger is also the downstream anti-join gate. A source
+-- This durable suppression-admission ledger is also the downstream delete/reassignment gate. A source
 -- tombstone alone is never sufficient: a key is first recorded only after an independently
 -- confirmed, complete authorized plan exists. It does not claim that every downstream model
 -- finished successfully. Ordinary incremental runs never remove an already recorded key.
@@ -27,7 +27,8 @@ matching_plan_targets as (
         on plan.target_layer = targets.target_layer
         and plan.target_relation = targets.target_relation
         and plan.target_kind = targets.target_kind
-    where plan.plan_status = 'AUTHORIZED' and plan.planned_action = 'DELETE_CURRENT_ROWS'
+        and plan.planned_action = targets.planned_action
+    where plan.plan_status = 'AUTHORIZED'
     group by plan.deletion_request_id, plan.customer_key
 ),
 

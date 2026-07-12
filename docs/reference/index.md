@@ -18,9 +18,9 @@ for task-oriented instructions, and [Explanation](../explanation/index.md) for d
 | Models | 33 | 9 views, 15 tables, 3 incremental models, and 6 ephemeral models |
 | Seeds | 5 | Four source extracts and one independent deletion-confirmation control |
 | SQL functions | 3 | Created in the fixed `priva_internal` schema |
-| Local macros | 8 | Includes catalog, schema, key, deletion-target, case, and access-control macros |
-| Data tests | 293 | 253 generic tests and 40 singular tests |
-| Unit tests | 3 | Service-resolution behavior plus fail-closed deletion authorization |
+| Local macros | 9 | Includes catalog, schema, key, erased-member, deletion-target, case, and access-control macros |
+| Data tests | 298 | 257 generic tests and 41 singular tests |
+| Unit tests | 6 | Service resolution, erased-fact reassignment, invoice quality, and authorization |
 | Sources | 0 | Seeds are referenced directly with `ref()` |
 | Snapshots | 0 | Current-state outputs use replacement; deletion request, plan, and execution ledgers are incremental |
 | Exposures, metrics, semantic models | 0 | No semantic-layer resources are defined |
@@ -52,7 +52,7 @@ checked-in synthetic seeds.
 ## Scope
 
 `bricksgdpr` is a Databricks demonstration of pseudonymization, controlled resolution, access
-metadata, quarantine, and logical current-state deletion. It is not a GDPR compliance
+metadata, quarantine, and current-state identity unlinking. It is not a GDPR compliance
 certification or legal-advice system. Production controls outside this repository include lawful
 basis, consent, retention enforcement, audit operations, incident response, subject-request
 orchestration, backup erasure, and case approval.

@@ -4,8 +4,6 @@ with
 expected_events as (
     select events.event_id
     from {{ ref('int_customer_events_keyed') }} as events
-    left anti join {{ ref('int_terminal_deleted_customer_keys') }} as deletions
-        on events.customer_key = deletions.customer_key
 ),
 
 actual_event_counts as (

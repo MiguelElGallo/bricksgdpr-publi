@@ -5,10 +5,11 @@ icon: lucide/clipboard-check
 # Verify terminal deletion
 
 Use this guide to prove that a source deletion is stored, independently confirmed, planned across
-every governed relation, and absent from current outputs only after authorization.
+every governed relation, and removes original identity links only after authorization. Event and
+invoice facts retain their grain under the erased member.
 
-This verifies logical current-state deletion in the demo. It does not prove physical erasure from
-Delta history, caches, exports, object versions, or backups.
+This verifies current-state identity unlinking in the demo. It does not prove anonymisation or
+physical erasure from Delta history, caches, exports, object versions, or backups.
 
 ## Load the target
 
@@ -53,7 +54,7 @@ uv run dbt test --select assert_layer3_terminal_deletion
 
 Every command should pass in the trusted deployment or owner session. Together they check the
 source control fixtures, confirmation gate, exact 17-target plan, accepted/quarantine partitions,
-mapping exclusions, Layer2, and Layer3.
+mapping exclusions, Layer2/Layer3 reassignment, and case-view exclusion.
 
 ## Inspect the control states
 
@@ -77,16 +78,34 @@ Confirm that only the authorized request has plan rows:
 uv run dbt show --inline "
 select
     deletion_request_id,
+    planned_action,
     count(distinct customer_key) as historical_key_count,
     count(distinct concat(target_layer, '.', target_relation)) as target_count,
     count(*) as plan_row_count
 from {{ ref('int_customer_deletion_plan') }}
-group by deletion_request_id
+group by deletion_request_id, planned_action
 " --limit 10
 ```
 
-The single result is `CCHG-0099-D` with 2 historical keys, 17 targets, and 34 plan rows. The pending
-request has no plan row and therefore cannot enter the execution gate.
+The rows for `CCHG-0099-D` total two historical keys, 17 targets, and 34 plan rows across delete,
+reassign, and exclude actions. The pending request has no plan row and cannot enter the gate.
+
+Confirm original modeled customer and service keys are replaced:
+
+```bash
+uv run dbt show --inline "
+select 'event' as fact_name, event_key as record_key, customer_key,
+    cast(null as string) as service_key, is_erased_customer
+from {{ ref('fct_customer_event') }} where event_key = 'EVT-0099'
+union all
+select 'invoice', invoice_key, customer_key, service_key, is_erased_customer
+from {{ ref('fct_invoice') }} where invoice_key = 'INV-0099'
+" --limit 10
+```
+
+Both rows remain, use `customer_key = -99999`, and have `is_erased_customer = true`; the invoice's
+service key is also `-99999`. Their source transaction IDs remain and can be re-linked through the
+restricted source history in this demo, so these facts remain Personal Data.
 
 ## Verify the customer case view with an authorized session
 
@@ -117,7 +136,8 @@ Layer3 facts.
 
 Record the catalog, schema prefix, build run, request and decision IDs, authorization timestamp,
 plan target count, test results, and authorized identity used for the case-view assertion. Describe
-the result as current-state logical deletion.
+the result as current-state identity unlinking with erased-member fact retention. Do not describe
+the retained facts as anonymous without a separate identifiability assessment.
 
 For production erasure claims, separately verify source purge, replay prevention, Delta retention,
 caches, exports, backups, and disaster-recovery copies. Read

@@ -30,6 +30,9 @@ it owns the underlying relations.
 `restricted_users` can read protected Layer3 but receive no grant on the case-view schema. This
 keeps routine analytical access separate from readable case work.
 
+`case_users` receive the inverse boundary: they can query `layer3_case`, but not Layer3 directly.
+That prevents a case persona from bypassing erased-row exclusions on the protected fact tables.
+
 ## This is not a case-management system
 
 The predicate checks group membership only. There is no case ID, approved-subject list, purpose,

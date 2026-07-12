@@ -11,15 +11,17 @@ plan, and prove the final result.
 
 The short version is:
 
-| Layer3 table | Before total | Before subject rows | After total | After subject rows | Change |
+| Layer3 table | Before total | Before original-key rows | After total | After original-key rows | Change |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `dim_customer` | 16 | 1 | 15 | 0 | -1 |
-| `dim_service` | 17 | 1 | 16 | 0 | -1 |
+| `dim_customer` | 17 | 1 | 16 | 0 | -1 |
+| `dim_service` | 18 | 1 | 17 | 0 | -1 |
 | `dim_date` | 1,461 | 0 | 1,461 | 0 | 0 |
-| `fct_customer_event` | 29 | 1 | 28 | 0 | -1 |
-| `fct_invoice` | 26 | 1 | 25 | 0 | -1 |
+| `fct_customer_event` | 29 | 1 | 29 | 0 | 0 |
+| `fct_invoice` | 26 | 1 | 26 | 0 | 0 |
 
-`dim_date` does not identify a customer, so deletion deliberately leaves it unchanged.
+The dimensions include one permanent `ERASED_SUBJECT` member with key `-99999`. Deletion removes
+the identifying customer and service members, reassigns facts to the special members, and leaves
+`dim_date` unchanged.
 
 !!! warning "Current-state deletion, not physical erasure"
     dbt replaces governed current outputs from anti-joined inputs, while incremental control
@@ -38,7 +40,8 @@ The customer source contains two changes for one stable customer ID:
 | Deletion tombstone | `CCHG-0099-D` | `CUST-0099` | `900-00-0099` | `2026-02-15 12:00:00` |
 
 The SSNs differ. The plan expands the stable `customer_id` to both historical customer keys. Only
-the key derived from `900-00-0199` has current Layer3 fixture rows, but both keys are suppressed.
+the key derived from `900-00-0199` has current Layer3 fixture rows, but both original identity keys
+are suppressed.
 
 The dependent source rows are:
 
@@ -141,9 +144,9 @@ Expected result:
 
 | `relation_name` | `total_rows` | `subject_rows` |
 | --- | ---: | ---: |
-| `dim_customer` | 16 | 1 |
+| `dim_customer` | 17 | 1 |
 | `dim_date` | 1,461 | 0 |
-| `dim_service` | 17 | 1 |
+| `dim_service` | 18 | 1 |
 | `fct_customer_event` | 29 | 1 |
 | `fct_invoice` | 26 | 1 |
 
@@ -158,6 +161,11 @@ uv run dbt test --select assert_layer3_deletion_walkthrough_fixture \
 
 Secret-derived pseudonymous keys differ between deployments. The placeholders below describe
 their purpose without publishing or hardcoding a deployed hash.
+
+Both customer and service dimensions already contain the `-99999` special member. It represents
+no natural person or real service and has no readable mapping row. Keeping it present before facts
+need it follows the dimensional-model convention that fact foreign keys should resolve to a
+descriptive special member instead of becoming null.
 
 ### `dim_customer` before
 
@@ -180,7 +188,7 @@ There is one active customer row at grain `customer_key`:
 | `source_updated_at` | `2026-01-05 09:00:00` |
 
 There is no second customer row for the tombstone SSN. Its historical key is nevertheless in the
-future plan so data under either identity cannot survive.
+future plan so neither original identity key can survive in governed current outputs.
 
 ### `dim_service` before
 
@@ -234,6 +242,7 @@ There is one event row at grain `event_key`:
 | `measure_value` | `9.50` |
 | `measure_unit` | `GB` |
 | `source_updated_at` | `2026-02-20 09:00:00` |
+| `is_erased_customer` | `false` |
 
 ### `fct_invoice` before
 
@@ -254,6 +263,7 @@ There is one invoice row at grain `invoice_key`:
 | `source_is_due` | `false` |
 | `is_due` | `false` at project `as_of_date` `2026-03-01` |
 | `source_updated_at` | `2026-02-28 18:00:00` |
+| `is_erased_customer` | `false` |
 
 For the complete grain, column, and relationship contracts, see
 [Layer3 and case views](../reference/layer3-and-case.md).
@@ -278,11 +288,12 @@ The meanings are deliberately separate:
 | `DETECTED` | The source tombstone was persisted | The request may delete data |
 | `CONFIRMED` | An independent review approved this request | The plan is complete |
 | `AUTHORIZED` | Required review metadata exists and no legal hold applies | Current outputs were rebuilt |
-| Plan row | One historical key and one governed target are authorized | A physical row existed in that target |
+| Plan row | One historical key, target, and action are authorized | A physical row existed in that target |
 
 The suppression gate fails closed. A `CONFIRMED` row with missing decision time, reviewer role,
 reason, or legal-hold value becomes `INVALID`. A key reaches the gate only when its plan contains
-all 17 required targets.
+all 17 required targets and their exact actions: deletion, erased-member reassignment, or
+case-view exclusion.
 
 ## Apply the confirmed deletion
 
@@ -296,7 +307,7 @@ The default cutoff includes the confirmation. The incremental plan now retains 3
 
 - two historical customer keys;
 - 17 governed targets per key; and
-- eight Layer3 plan rows: two keys times four customer-bearing Layer3 tables.
+- eight Layer3 plan rows: dimensions are deleted and facts are reassigned for each key.
 
 `dim_date` is not a deletion target because it contains no customer identity.
 
@@ -371,30 +382,71 @@ select * from results order by relation_name
 
 | `relation_name` | `total_rows` | `subject_rows` |
 | --- | ---: | ---: |
-| `dim_customer` | 15 | 0 |
+| `dim_customer` | 16 | 0 |
 | `dim_date` | 1,461 | 0 |
-| `dim_service` | 16 | 0 |
-| `fct_customer_event` | 28 | 0 |
-| `fct_invoice` | 25 | 0 |
+| `dim_service` | 17 | 0 |
+| `fct_customer_event` | 29 | 0 |
+| `fct_invoice` | 26 | 0 |
 
 Here is what changed, table by table:
 
 | Table | After deletion |
 | --- | --- |
-| `dim_customer` | No row matches either historical customer key. The total falls from 16 to 15. |
-| `dim_service` | The `SVC-0099-A` service-version row is absent. The total falls from 17 to 16. |
+| `dim_customer` | No row matches either historical key; the `-99999` erased member remains. Total: 17 to 16. |
+| `dim_service` | `SVC-0099-A` is absent; the `-99999` erased service remains. Total: 18 to 17. |
 | `dim_date` | All 1,461 calendar rows remain, including `20260201`, `20260220`, and `20260303`. |
-| `fct_customer_event` | `EVT-0099` is absent. The total falls from 29 to 28. |
-| `fct_invoice` | `INV-0099` is absent. The total falls from 26 to 25. |
+| `fct_customer_event` | `EVT-0099` remains with `customer_key = -99999` and `is_erased_customer = true`. Total stays 29. |
+| `fct_invoice` | `INV-0099` remains with all customer/service keys `-99999` and `is_erased_customer = true`. Total stays 26. |
 
-The four protected tables do not contain readable SSNs, names, or email addresses. Deletion is
-matched using the secret-derived historical `customer_key` values.
+The four protected tables do not contain readable SSNs, names, or email addresses. The original
+secret-derived historical keys disappear and retained facts share one non-person sentinel. Their
+source transaction IDs remain, however, and can be deterministically re-linked through the
+restricted source history retained by this demo.
+
+The retained fact rows now look like this:
+
+=== "Event after"
+
+    | Column | Value |
+    | --- | --- |
+    | `event_key` | `EVT-0099` |
+    | `customer_key` | `-99999` |
+    | `event_date_key` | `20260220` |
+    | `occurred_at` | `2026-02-20 08:00:00` |
+    | `event_type` | `USAGE` |
+    | `measure_value` | `9.50` |
+    | `measure_unit` | `GB` |
+    | `is_erased_customer` | `true` |
+
+=== "Invoice after"
+
+    | Column | Value |
+    | --- | --- |
+    | `invoice_key` | `INV-0099` |
+    | `customer_key` | `-99999` |
+    | `service_key` | `-99999` |
+    | `service_version_key` | `-99999` |
+    | `issue_date_key` | `20260201` |
+    | `due_date_key` | `20260303` |
+    | `paid_date_key` | `null` |
+    | `amount` | `99.00` |
+    | `currency_code` | `EUR` |
+    | `is_paid` | `false` |
+    | `is_erased_customer` | `true` |
+
+!!! danger "A dummy key is not automatic GDPR anonymisation"
+    Exact timestamps, unusual measures, invoice amounts, and retained transaction IDs can still
+    permit singling out or linkage. Production retention needs a documented purpose and legal
+    basis or exception, a re-identification risk assessment, and further generalisation or
+    aggregation where required. Pseudonymised data remains Personal Data. The EDPB's July 2026
+    version-one anonymisation guidance assesses record isolation, linkage, and inference and is
+    currently under [public consultation](https://www.edpb.europa.eu/public-consultations/guidelines-022026-on-anonymisation_en).
 
 ## What happens to the case views?
 
-The four `layer3_case` views preserve the grain of their protected parents. For an authorized case
-or privacy identity, the `CUST-0099`, `SVC-0099-A`, `EVT-0099`, and `INV-0099` rows disappear with
-those parents.
+The four `layer3_case` views exclude special members and erased facts explicitly. For an authorized
+case or privacy identity, `CUST-0099`, `SVC-0099-A`, `EVT-0099`, and `INV-0099` are all absent even
+though the two protected fact rows remain for aggregate analysis.
 
 An unaffiliated identity sees zero rows both before and after because the views fail closed. That is
 access denial, not deletion evidence. Follow
@@ -411,15 +463,15 @@ uv run dbt test --select tag:deletion_control
 ```
 
 The walkthrough fixture test protects all documented numbers. It verifies one valid upstream
-customer, service, event, and invoice; two historical keys; eight Layer3 plan rows; the exact final
-totals; and zero remaining subject rows in all four customer-bearing tables.
+customer, service, event, and invoice; two historical keys; eight Layer3 plan rows with exact
+actions; the exact final totals; zero original subject keys; and one reassigned event and invoice.
 
 You have now proved that:
 
 - the source deletion was detected and stored;
 - a separate, complete confirmation authorized it;
 - the complete plan existed before the suppression gate opened;
-- all four customer-bearing Layer3 tables removed the subject;
+- dimensions removed the subject while facts retained their grain under `-99999`;
 - `dim_date` remained unchanged;
 - control evidence remained deliberately retained; and
 - no unsupported physical-erasure claim was made.

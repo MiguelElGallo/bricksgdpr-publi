@@ -26,7 +26,7 @@ as resources are materialized.
 | Layer1 | `layer1` | Four staging views and three quarantine tables | `privacy_admins` |
 | Mapping | `priva_map` | Two raw-to-pseudonymous mapping tables | `privacy_admins`, `restricted_users` through masks |
 | Layer2 | `layer2` | Four protected accepted tables | `privacy_admins`, `restricted_users` |
-| Layer3 | `layer3` | Three dimensions and two facts | All three persona groups |
+| Layer3 | `layer3` | Three dimensions and two facts | `privacy_admins`, `restricted_users` |
 | Layer3 case | `layer3_case` | Four standard controlled readable views | `privacy_admins`, `case_users` |
 | Internal | `priva_internal` | Three SQL functions | Deployment identity only |
 
@@ -66,7 +66,7 @@ Persona acceptance SQL does not follow prefixed schema names. It supports only t
 | --- | --- | --- |
 | `privacy_admins` | Project catalog | All six data schemas |
 | `restricted_users` | Project catalog | `priva_map`, `layer2`, `layer3` |
-| `case_users` | Project catalog | `layer3`, `layer3_case` |
+| `case_users` | Project catalog | `layer3_case` |
 
 Only direct parent privileges are compared by the dbt access tests. The exact effective-entitlement
 boundary also depends on account-group nesting and caller metadata visibility.

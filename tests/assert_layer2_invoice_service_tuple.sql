@@ -11,3 +11,4 @@ left anti join {{ ref('int_customer_services_resolved') }} as services
     and invoices.service_key = services.service_key
     and invoices.service_version_key = services.service_version_key
     and invoices.issued_date between services.valid_from and services.valid_to
+where not invoices.is_erased_customer
