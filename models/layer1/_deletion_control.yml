@@ -3,7 +3,7 @@ version: 2
 models:
   - name: stg_customer_deletion_confirmations
     description: >
-      Typed privacy-review decisions at one row per detected deletion request. This relation is a
+      Typed privacy-review history at one row per decision revision. This relation is a
       separate control input from the customer source feed so a source tombstone cannot authorize
       its own deletion propagation. The demo-only deletion_decision_as_of variable can hide later
       decisions to reproduce an earlier control state in an isolated schema.
@@ -12,10 +12,14 @@ models:
         enforced: true
       tags: [deletion_control, personal_data_control]
     columns:
+      - name: decision_revision_id
+        data_type: string
+        description: Stable revision identifier and history grain.
+        data_tests: [not_null, unique]
       - name: deletion_request_id
         data_type: string
         description: Source change identifier of the deletion request being reviewed.
-        data_tests: [not_null, unique]
+        data_tests: [not_null]
       - name: decision_status
         data_type: string
         description: Privacy review outcome; only CONFIRMED can become authorized.
@@ -24,6 +28,22 @@ models:
           - accepted_values:
               arguments:
                 values: ["PENDING", "CONFIRMED", "REJECTED"]
+      - name: deletion_mode
+        data_type: string
+        description: >
+          Requested governed-output policy. Required for CONFIRMED revisions; null is allowed for
+          pending or rejected evidence.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["SPECIAL_DELETION", "FULL_GOVERNED_OUTPUT_DELETION"]
+      - name: deletion_policy_version
+        data_type: string
+        description: Immutable target/action contract version stored with this revision.
+      - name: recorded_at
+        data_type: timestamp
+        description: Append-history ordering timestamp used by the decision cutoff and latest-state ranking.
+        data_tests: [not_null]
       - name: decided_at
         data_type: timestamp
         description: Review timestamp; null while the decision remains pending.
@@ -37,6 +57,40 @@ models:
         data_type: boolean
         description: When true, prevents authorization even if the decision is confirmed.
         data_tests: [not_null]
+
+  - name: customer_deletion_authorization_history
+    description: >
+      Evaluated privacy decision history at one row per revision. It preserves every authorized
+      SPECIAL and FULL governed-output policy so a full refresh can reconstruct initial admission
+      and later monotonic escalation.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - {name: decision_revision_id, data_type: string, description: Stable decision revision key, data_tests: [not_null, unique]}
+      - {name: deletion_request_id, data_type: string, description: Detected source request key, data_tests: [not_null]}
+      - {name: customer_id, data_type: string, description: Stable customer identifier for historical-key expansion, data_tests: [not_null]}
+      - {name: customer_ssn, data_type: string, description: SSN carried by the source tombstone, data_tests: [not_null]}
+      - {name: source_deleted_at, data_type: timestamp, description: Source tombstone time, data_tests: [not_null]}
+      - {name: detected_at, data_type: timestamp, description: Request intake time, data_tests: [not_null]}
+      - {name: decision_status, data_type: string, description: Review status, data_tests: [not_null]}
+      - name: deletion_mode
+        data_type: string
+        description: Requested governed-output deletion mode.
+      - {name: recorded_at, data_type: timestamp, description: Revision ordering timestamp, data_tests: [not_null]}
+      - {name: decided_at, data_type: timestamp, description: Privacy review evidence timestamp}
+      - {name: decided_by_role, data_type: string, description: Synthetic reviewer role}
+      - {name: decision_reason, data_type: string, description: Stable privacy decision reason}
+      - {name: legal_hold, data_type: boolean, description: Explicit legal-hold evidence}
+      - {name: deletion_policy_version, data_type: string, description: Version of target/action semantics, data_tests: [not_null]}
+      - name: authorization_status
+        data_type: string
+        description: Fail-closed evaluated status for this exact revision.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["AUTHORIZED", "PENDING", "REJECTED", "HELD", "INVALID"]
 
   - name: customer_deletion_requests
     description: >
@@ -114,6 +168,15 @@ models:
           - accepted_values:
               arguments:
                 values: ["PENDING", "CONFIRMED", "REJECTED"]
+      - name: decision_revision_id
+        data_type: string
+        description: Latest effective revision identifier; null when no decision exists yet.
+      - name: deletion_mode
+        data_type: string
+        description: Latest requested deletion mode; null until a mode-bearing decision exists.
+      - name: recorded_at
+        data_type: timestamp
+        description: Ordering timestamp of the latest effective revision.
       - name: decided_at
         data_type: timestamp
         description: Review timestamp when a decision was recorded.
@@ -128,6 +191,9 @@ models:
         description: >
           Explicit exception gate that blocks authorization when true. Null preserves missing
           review evidence and always produces a fail-closed status.
+      - name: deletion_policy_version
+        data_type: string
+        description: Target/action contract version applied to this current state.
       - name: authorization_status
         data_type: string
         description: "Effective fail-closed gate: AUTHORIZED, PENDING, REJECTED, HELD, or INVALID."
@@ -138,9 +204,9 @@ models:
                 values: ["AUTHORIZED", "PENDING", "REJECTED", "HELD", "INVALID"]
 
 unit_tests:
-  - name: incomplete_confirmations_fail_closed
-    description: A CONFIRMED decision cannot authorize deletion when required review evidence is missing.
-    model: customer_deletion_authorizations
+  - name: invalid_confirmations_fail_closed
+    description: A CONFIRMED revision cannot authorize deletion with missing evidence or an invalid mode.
+    model: customer_deletion_authorization_history
     given:
       - input: ref('customer_deletion_requests')
         format: sql
@@ -151,13 +217,27 @@ unit_tests:
             '900-00-0001' as customer_ssn,
             cast('2026-02-15 12:00:00' as timestamp) as source_deleted_at,
             cast('2026-02-15 12:01:00' as timestamp) as detected_at
-          from values ('NO-TIME'), ('NO-ROLE'), ('NO-REASON'), ('NO-HOLD') as requests(request_id)
+          from values
+            ('NO-RECORDED'), ('NO-TIME'), ('NO-ROLE'), ('NO-REASON'), ('NO-HOLD'),
+            ('NO-MODE'), ('NO-POLICY'), ('BAD-MODE'), ('BAD-POLICY')
+            as requests(request_id)
       - input: ref('stg_customer_deletion_confirmations')
         format: sql
         rows: |
           select
+            concat('REV-', request_id) as decision_revision_id,
             request_id as deletion_request_id,
             'CONFIRMED' as decision_status,
+            case
+                when request_id = 'NO-MODE' then cast(null as string)
+                when request_id = 'BAD-MODE' then 'UNSUPPORTED'
+                else 'SPECIAL_DELETION'
+            end as deletion_mode,
+            case when request_id = 'NO-POLICY' then cast(null as string)
+                when request_id = 'BAD-POLICY' then 'UNSUPPORTED_POLICY'
+                else 'CUSTOMER_DELETION_V1' end as deletion_policy_version,
+            case when request_id = 'NO-RECORDED' then cast(null as timestamp)
+                else cast('2026-02-16 08:00:00' as timestamp) end as recorded_at,
             case when request_id = 'NO-TIME' then cast(null as timestamp)
                 else cast('2026-02-16 08:00:00' as timestamp) end as decided_at,
             case when request_id = 'NO-ROLE' then cast(null as string)
@@ -166,10 +246,18 @@ unit_tests:
                 else 'VERIFIED_SOURCE_DELETION' end as decision_reason,
             case when request_id = 'NO-HOLD' then cast(null as boolean)
                 else false end as legal_hold
-          from values ('NO-TIME'), ('NO-ROLE'), ('NO-REASON'), ('NO-HOLD') as decisions(request_id)
+          from values
+            ('NO-RECORDED'), ('NO-TIME'), ('NO-ROLE'), ('NO-REASON'), ('NO-HOLD'),
+            ('NO-MODE'), ('NO-POLICY'), ('BAD-MODE'), ('BAD-POLICY')
+            as decisions(request_id)
     expect:
       rows:
+        - {deletion_request_id: NO-RECORDED, authorization_status: INVALID}
         - {deletion_request_id: NO-TIME, authorization_status: INVALID}
         - {deletion_request_id: NO-ROLE, authorization_status: INVALID}
         - {deletion_request_id: NO-REASON, authorization_status: INVALID}
         - {deletion_request_id: NO-HOLD, authorization_status: INVALID}
+        - {deletion_request_id: NO-MODE, authorization_status: INVALID}
+        - {deletion_request_id: NO-POLICY, authorization_status: INVALID}
+        - {deletion_request_id: BAD-MODE, authorization_status: INVALID}
+        - {deletion_request_id: BAD-POLICY, authorization_status: INVALID}

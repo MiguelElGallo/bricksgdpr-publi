@@ -13,7 +13,7 @@ pseudonymous equivalents.
 | Model | Materialization | Grain | Default rows |
 | --- | --- | --- | ---: |
 | `fa_pd_customer` | Table | One latest active customer with no matching authorized deletion plan | 15 |
-| `fa_pd_service_address` | Table | One valid service period belonging to an active mapped customer | 16 |
+| `fa_pd_service_address` | Table | One valid service period belonging to an active mapped customer | 17 |
 
 The repository uses `fa_pd` for its full-access Personal Data mapping models.
 
@@ -23,11 +23,12 @@ The repository uses `fa_pd` for its full-access Personal Data mapping models.
 
 1. `UPSERT` rows are ranked by `customer_id`, newest `source_updated_at` and
    `customer_change_id` first.
-2. Any `DELETE` row excludes every upsert with the same `customer_id` or SSN.
-3. Only rank-one active upserts remain.
+2. The terminal ledger attaches the authorized mode to each historical customer key.
+3. Both SPECIAL and FULL remove matching upserts from the mapping output.
+4. Only rank-one active policy-eligible upserts remain.
 
-A confirmed delete is terminal even when a later upsert exists. A detected but pending, rejected,
-or held request does not enter the mapping exclusion gate.
+An authorized delete is terminal even when a later upsert exists. A source tombstone with a
+pending, invalid, rejected, or held decision does not enter the mapping exclusion gate.
 
 ### Columns
 

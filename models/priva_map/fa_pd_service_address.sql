@@ -42,6 +42,33 @@ keyed_services as (
         valid_to,
         source_updated_at
     from service_values
+),
+
+mode_annotated_services as (
+    {{ attach_customer_deletion_mode(
+        source_relation='keyed_services',
+        customer_key_expression='source_rows.customer_key',
+        output_columns=[
+            'customer_key', 'service_key', 'service_version_key',
+            'installation_address_key', 'service_id_value', 'customer_ssn_value',
+            'installation_address_value', 'service_type', 'is_valid', 'valid_from',
+            'valid_to', 'source_updated_at'
+        ],
+        deletion_relation=ref('int_terminal_deleted_customer_keys')
+    ) }}
+),
+
+policy_eligible_services as (
+    {{ apply_customer_deletion_policy(
+        source_relation='mode_annotated_services',
+        output_columns=[
+            'customer_key', 'service_key', 'service_version_key',
+            'installation_address_key', 'service_id_value', 'customer_ssn_value',
+            'installation_address_value', 'service_type', 'is_valid', 'valid_from',
+            'valid_to', 'source_updated_at'
+        ],
+        special_behavior='DELETE'
+    ) }}
 )
 
 select
@@ -57,6 +84,6 @@ select
     services.valid_from,
     services.valid_to,
     services.source_updated_at
-from keyed_services as services
+from policy_eligible_services as services
 inner join {{ ref('fa_pd_customer') }} as customers
     on services.customer_key = customers.customer_key

@@ -12,15 +12,15 @@ clear, but several conveniences are unsuitable as production claims.
 - A readable-to-pseudonymous mapping can be isolated from ordinary analytics.
 - Stable, domain-separated keys can preserve joins across layers.
 - Late and invalid records can be quarantined instead of disappearing.
-- Current governed outputs can remove identifying links and retain fact grain under an erased member.
+- Current governed outputs can choose SPECIAL erased-member fact retention or FULL fact deletion.
 - Unity Catalog masks, grants, tags, and UDF privileges can be tested as metadata.
 - Positive and negative persona behavior can be exercised without retaining credentials.
 
 ## Synthetic inputs are control fixtures
 
-The four source CSV seeds contain deterministic edge cases and between 19 and 37 rows; a fifth
-two-row seed represents independent deletion decisions. Exact counts such as 15 protected
-customers or 26 accepted invoices make regression tests easy to understand. They are not
+The four source CSV seeds contain deterministic edge cases and between 21 and 39 rows; a fifth
+four-row seed represents immutable independent decision revisions. Exact counts such as 15 protected
+customers or 27 accepted invoices make regression tests easy to understand. They are not
 production capacities, error budgets, or expected distributions.
 
 The source simulator keeps raw values and deletion fixtures in Git. Real Personal Data must not be
@@ -28,8 +28,8 @@ committed as a seed.
 
 ## Full replacement simplifies current state
 
-Tables are replaced on rebuild, so a corrected late arrival can leave quarantine and a deleted
-subject's facts can move to erased members. Production ingestion usually needs
+Tables are replaced on rebuild, so a corrected late arrival can leave quarantine and an authorized
+subject's facts can be reassigned or removed according to mode. Production ingestion usually needs
 incremental replay controls, idempotent event handling, stateful tombstone propagation, retention,
 and recovery procedures.
 

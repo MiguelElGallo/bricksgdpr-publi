@@ -16,6 +16,15 @@
   (restricted, (prefix ~ '_layer3') if prefix else 'layer3'),
   (case_users, (prefix ~ '_layer3_case') if prefix else 'layer3_case')
 ] %}
+{% set selected_schemas = [
+  (prefix ~ '_layer1_source') if prefix else 'layer1_source',
+  (prefix ~ '_layer1') if prefix else 'layer1',
+  (prefix ~ '_priva_map') if prefix else 'priva_map',
+  (prefix ~ '_layer2') if prefix else 'layer2',
+  (prefix ~ '_layer3') if prefix else 'layer3',
+  (prefix ~ '_layer3_case') if prefix else 'layer3_case',
+  'priva_internal'
+] %}
 {% set expected_rows = [] %}
 {% for grantee, schema_name in schema_access %}
   {% do expected_rows.append(
@@ -34,6 +43,11 @@ actual_schema_privileges as (
         catalog_name = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
         and privilege_type = 'USE_SCHEMA'
         and grantee in ('{{ privacy }}', '{{ restricted }}', '{{ case_users }}')
+        and schema_name in (
+            {% for schema_name in selected_schemas %}
+            '{{ schema_name }}'{% if not loop.last %},{% endif %}
+            {% endfor %}
+        )
 ),
 
 schema_differences as (
@@ -93,6 +107,11 @@ unexpected_schema_privileges as (
         catalog_name = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
         and grantee in ('{{ privacy }}', '{{ restricted }}', '{{ case_users }}')
         and privilege_type != 'USE_SCHEMA'
+        and schema_name in (
+            {% for schema_name in selected_schemas %}
+            '{{ schema_name }}'{% if not loop.last %},{% endif %}
+            {% endfor %}
+        )
 )
 
 select 'schema' as object_type, grantee, schema_name as object_name

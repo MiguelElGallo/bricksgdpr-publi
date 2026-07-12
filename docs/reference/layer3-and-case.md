@@ -104,10 +104,11 @@ For the boundary and production gaps, see
 
 ## Deletion behavior
 
-Deleted customer keys are absent from every Layer3 relation and all case views. The real customer
-and service dimension rows disappear. Event and invoice facts retain their grain but point to
-`-99999`, set `is_erased_customer = true`, and are explicitly excluded from case views. `dim_date`
-has no customer key and is unchanged.
+Deleted customer keys are absent from every Layer3 relation and all case views. Under
+`SPECIAL_DELETION`, real customer/service dimensions disappear while event and invoice facts retain
+their grain under `-99999`, set `is_erased_customer = true`, and are excluded from case views. Under
+`FULL_GOVERNED_OUTPUT_DELETION`, the subject's event and invoice facts are also absent. `dim_date`
+has no customer key and is unchanged under both modes.
 
 The erased-member pattern follows Kimball's recommendation to use descriptive special dimension
 records instead of null fact foreign keys. It is a referential-integrity technique, not proof of

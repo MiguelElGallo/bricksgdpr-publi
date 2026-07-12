@@ -15,6 +15,10 @@ models:
       grants:
         select: [privacy_admins]
     columns:
+      - name: decision_revision_id
+        data_type: string
+        description: Exact privacy decision revision that created this plan row.
+        data_tests: [not_null]
       - name: deletion_request_id
         data_type: string
         description: Confirmed request that authorized this plan row.
@@ -22,6 +26,22 @@ models:
       - name: customer_key
         data_type: string
         description: Versioned customer key for one current or historical source identity.
+        data_tests: [not_null]
+      - name: deletion_mode
+        data_type: string
+        description: Mode selected by the authorizing decision revision.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["SPECIAL_DELETION", "FULL_GOVERNED_OUTPUT_DELETION"]
+      - name: deletion_policy_version
+        data_type: string
+        description: Versioned target/action contract used to build this plan.
+        data_tests: [not_null]
+      - name: authorization_recorded_at
+        data_type: timestamp
+        description: Immutable ingestion timestamp used to order decision revisions.
         data_tests: [not_null]
       - name: target_layer
         data_type: string
@@ -46,7 +66,7 @@ models:
           - not_null
           - accepted_values:
               arguments:
-                values: ["DELETE_CURRENT_ROWS", "REASSIGN_TO_ERASED_MEMBER", "EXCLUDE_ERASED_ROWS"]
+                values: ["DELETE_CURRENT_ROWS", "REASSIGN_TO_ERASED_MEMBER", "EXCLUDE_ERASED_ROWS", "EXCLUDE_DELETED_ROWS"]
       - name: plan_status
         data_type: string
         description: Constant AUTHORIZED state; unconfirmed requests produce no plan rows.

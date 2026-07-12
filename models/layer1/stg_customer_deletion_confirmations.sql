@@ -4,8 +4,12 @@ with source as (
 
 typed as (
     select
+        trim(decision_revision_id) as decision_revision_id,
         trim(deletion_request_id) as deletion_request_id,
         upper(trim(decision_status)) as decision_status,
+        nullif(upper(trim(deletion_mode)), '') as deletion_mode,
+        nullif(upper(trim(deletion_policy_version)), '') as deletion_policy_version,
+        cast(nullif(trim(recorded_at), '') as timestamp) as recorded_at,
         cast(nullif(trim(decided_at), '') as timestamp) as decided_at,
         nullif(trim(decided_by_role), '') as decided_by_role,
         nullif(trim(decision_reason), '') as decision_reason,
@@ -16,5 +20,5 @@ typed as (
 select *
 from typed
 where
-    decided_at is null
-    or decided_at <= cast('{{ var("deletion_decision_as_of") }}' as timestamp)
+    recorded_at is null
+    or recorded_at <= cast('{{ var("deletion_decision_as_of") }}' as timestamp)

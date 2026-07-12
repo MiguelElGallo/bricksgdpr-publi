@@ -6,18 +6,18 @@ icon: lucide/layers-3
 # Sources and Layer1
 
 Layer1 consists of four deterministic source seeds, one independent confirmation seed, five typed
-staging views, three raw quarantine tables, and two deletion-control tables. The project defines no
+staging views, three raw quarantine tables, and three deletion-control tables. The project defines no
 dbt `source` resources.
 
 ## Seeds
 
 | Seed | Rows | Grain | Direct Personal Data |
 | --- | ---: | --- | --- |
-| `customer` | 19 | One source customer change | Source customer identifiers, SSN, name, email, phone, birth date, and customer address |
-| `customer_events` | 30 | One measured customer event | SSN |
-| `customer_services` | 20 | One service identifier and validity interval | SSN and installation address |
-| `invoices` | 37 | One invoice | SSN and source service reference |
-| `customer_deletion_confirmations` | 2 | One privacy decision per detected request | Request identifier and decision metadata |
+| `customer` | 21 | One source customer change | Source customer identifiers, SSN, name, email, phone, birth date, and customer address |
+| `customer_events` | 32 | One measured customer event | SSN |
+| `customer_services` | 22 | One service identifier and validity interval | SSN and installation address |
+| `invoices` | 39 | One invoice | SSN and source service reference |
+| `customer_deletion_confirmations` | 4 | One immutable privacy decision revision | Request identifier, mode, policy version, and decision metadata |
 
 All seed columns are loaded as strings according to `seeds/_seeds.yml`. Staging models apply the
 warehouse types.
@@ -30,8 +30,9 @@ warehouse types.
 | --- | --- | --- |
 | Active customers | `CUST-0001` through `CUST-0014` | Fourteen ordinary current customer-map rows |
 | Inactive customer | `CUST-0015` | Excluded from the customer map |
-| Pending delete followed by later upsert | `CUST-0097` | Request is detected; no plan is created; current upsert remains |
-| Confirmed delete after an SSN change | `CUST-0099` | Both SSN keys are planned and unlinked; dependent facts are reassigned |
+| Unconfirmed delete followed by later upsert | `CUST-0095` | Request is detected; no plan is created; all dependent rows remain |
+| SPECIAL delete with same-mode review | `CUST-0097` | Identity/service rows are deleted; facts use `-99999`; latest review becomes effective |
+| SPECIAL-to-FULL delete after an SSN change | `CUST-0099` | Both SSN keys escalate; every governed dependent row is deleted |
 | Late customer references | SSN ending `0098` | Event, service, and invoice quarantine as `CUSTOMER_NOT_FOUND` |
 | Invalid service flag | `SVC-0013-B` | Quarantines as `INVALID_VALIDITY_FLAG` |
 | Invalid service period | `SVC-0014-A` | Quarantines as `INVALID_VALIDITY_PERIOD` |
@@ -47,6 +48,7 @@ Exact IDs and counts are demonstration fixtures, not production data-quality thr
 | `stg_customer_events` | View | One event | Trims IDs; uppercases event type/unit; casts timestamp and decimal measure |
 | `stg_customer_services` | View | One service validity interval | Trims IDs/address; uppercases type/country; casts Boolean, dates, and timestamp |
 | `stg_invoices` | View | One invoice | Trims IDs; uppercases currency; casts amount, dates, Booleans, and timestamp |
+| `stg_customer_deletion_confirmations` | View | One decision revision | Normalizes status, mode, policy version, decision evidence, and demo cutoff |
 
 Staging preserves source grain and does not resolve customer or service relationships.
 
@@ -88,17 +90,17 @@ when the same keyed source row becomes resolvable.
 
 | Stream | Accepted | Quarantine | Deleted | Reassigned subset | Seed total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Events | 29 | 1 | 0 | 1 | 30 |
-| Service periods | 16 | 3 | 1 | 0 | 20 |
-| Invoices | 26 | 11 | 0 | 1 | 37 |
+| Events | 30 | 1 | 1 | 1 | 32 |
+| Service periods | 17 | 3 | 2 | 0 | 22 |
+| Invoices | 27 | 11 | 1 | 1 | 39 |
 
 ## Deletion scope
 
 A source tombstone is stored in `customer_deletion_requests`, but downstream deletion begins only
-after an independent confirmation without a legal hold. The authorized plan removes identity and
-dimension rows, reassigns retained event/invoice facts to `-99999`, and excludes them from case
-views. The source simulator, ordinary source-history staging views, and restricted control evidence
-remain outside that current-output absence claim.
+after an independent confirmation without a legal hold. SPECIAL removes identity and dimension
+rows, reassigns retained event/invoice facts to `-99999`, and excludes them from case views. FULL
+also removes the governed event/invoice facts. The source simulator, ordinary source-history
+staging views, and restricted control evidence remain outside that current-output absence claim.
 
 See [Customer deletion control](deletion-control.md) for the complete state machine, exact target
 inventory, and fixture behavior.

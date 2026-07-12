@@ -6,7 +6,7 @@ icon: lucide/shield
 # Layer2
 
 Layer2 replaces raw identity values with versioned pseudonymous keys, classifies records, and
-reassigns retained event/invoice facts to the erased member after authorization.
+applies authorized SPECIAL reassignment or FULL governed-output deletion.
 
 ## Models
 
@@ -15,14 +15,14 @@ reassigns retained event/invoice facts to the erased member after authorization.
 | `int_customer_deletion_plan` | Incremental table | One row per authorized historical customer key and target relation | Auditable 17-target worklist retained across ordinary runs |
 | `int_terminal_deleted_customer_keys` | Incremental table | One key per historical identity admitted by a complete authorized plan | Durable fail-closed deletion/reassignment gate |
 | `int_customer_events_keyed` | Ephemeral | One source event | Replaces SSN with `customer_key` |
-| `int_customer_event_resolution` | Ephemeral | One source event | Accepts erased facts or assigns ordinary resolution status |
+| `int_customer_event_resolution` | Ephemeral | One ordinary/SPECIAL event; FULL rows removed | Attaches mode, classifies, and applies the shared policy macro |
 | `int_customer_events_resolved` | Table | One accepted event | Contains customer/erased key, measures, and erasure flag |
 | `int_customer_protected` | Table | One active customer | Projects customer keys and nonidentity attributes from `fa_pd_customer` |
 | `int_customer_services_keyed` | Ephemeral | One source service period | Replaces SSN, service ID, version tuple, and address with keys |
 | `int_customer_service_resolution` | Ephemeral | One nondeleted service period | Assigns service resolution status |
 | `int_customer_services_resolved` | Table | One accepted service period | Contains complete pseudonymous service tuple |
 | `int_invoices_keyed` | Ephemeral | One source invoice | Replaces SSN and service ID with keys |
-| `int_invoice_resolution` | Ephemeral | One source invoice | Accepts erased facts or resolves and validates the ordinary tuple |
+| `int_invoice_resolution` | Ephemeral | One ordinary/SPECIAL invoice; FULL rows removed | Validates original keys, then applies the shared policy macro |
 | `int_invoices_resolved` | Table | One accepted invoice | Contains resolved/erased tuple, due state, and erasure flag |
 
 **Sources:** `models/layer2/*.sql`, `models/layer2/_layer2_*.yml`.
@@ -35,9 +35,10 @@ stable `customer_id` expands the request to every historical SSN, which is canon
 pseudonymized in the `customer.ssn` domain. A source `DELETE` alone never enters this set, and later
 upserts cannot restore a key retained by the incremental authorized plan.
 
-The table retains the first admitting request and authorization/admission timestamps. Ordinary
-incremental runs never remove an admitted key, even if later control input disappears or the target
-inventory evolves. A deliberate `--full-refresh` can still rebuild this demo ledger.
+The table retains initial and effective decision revision, request, mode, policy, and timestamps.
+Newer same-mode evidence advances the effective fields, SPECIAL can escalate to FULL, and ordinary
+incremental runs never downgrade or remove an admitted key. A deliberate `--full-refresh` can
+still rebuild this demo ledger.
 
 Admission is not atomic completion evidence: downstream relations build afterward, and one may
 fail while others succeed. The full build result and post-build tests are the demo's completion
@@ -47,9 +48,10 @@ evidence.
 
 | Priority | Condition | `resolution_status` |
 | ---: | --- | --- |
-| 1 | Customer is suppression-admitted | `ACCEPTED`; replace customer key with `-99999` |
-| 2 | No matching `fa_pd_customer.customer_key` | `CUSTOMER_NOT_FOUND` |
-| 3 | Customer exists | `ACCEPTED` |
+| 1 | Mode is FULL | Row removed by the shared policy macro |
+| 2 | Mode is SPECIAL | `ACCEPTED`; replace customer key with `-99999` |
+| 3 | No matching `fa_pd_customer.customer_key` | `CUSTOMER_NOT_FOUND` |
+| 4 | Customer exists | `ACCEPTED` with `is_erased_customer = false` |
 
 **Source:** `models/layer2/int_customer_event_resolution.sql`.
 
@@ -57,7 +59,7 @@ evidence.
 
 | Priority | Condition | `resolution_status` |
 | ---: | --- | --- |
-| Pre-filter | `customer_key` is terminally deleted | Record excluded from accepted and quarantine output |
+| Pre-filter | Mode is SPECIAL or FULL | Record excluded from accepted and quarantine output |
 | 1 | Customer map missing | `CUSTOMER_NOT_FOUND` |
 | 2 | `is_valid = false` | `INVALID_VALIDITY_FLAG` |
 | 3 | `valid_to < valid_from` | `INVALID_VALIDITY_PERIOD` |
@@ -82,7 +84,7 @@ evidence.
 | 10 | Paid with null `paid_at` | `PAYMENT_DATE_MISSING` |
 | 11 | Unpaid with nonnull `paid_at` | `PAYMENT_DATE_UNEXPECTED` |
 | 12 | `paid_at < issued_date` | `PAYMENT_BEFORE_ISSUE_DATE` |
-| 13 | All controls pass | `ACCEPTED`; erased rows replace customer/service keys with `-99999` |
+| 13 | All controls pass | `ACCEPTED`; SPECIAL replaces customer/service keys with `-99999`; FULL is removed |
 
 The priority order determines the single reported reason when more than one condition is invalid.
 
@@ -102,13 +104,14 @@ input value for comparison.
 
 ## Partition contract
 
-Every event has one accepted or quarantine outcome. Every invoice has one accepted, quarantine, or
-authorized-suppression outcome. Valid authorized-subject invoices remain accepted only after their
-modeled keys are replaced; invalid authorized-subject invoices are not promoted and do not enter
-raw quarantine. Service periods remain subject to current-row deletion because they are
-identifying dimension-like records.
+Every ordinary/SPECIAL event has one accepted or quarantine outcome; FULL events have no governed
+output. Every ordinary/SPECIAL invoice has one accepted, quarantine, or authorized-suppression
+outcome; FULL invoices have no governed output. Valid SPECIAL invoices remain accepted only after
+their modeled keys are replaced; invalid SPECIAL invoices are not promoted and do not enter raw
+quarantine. Service periods are deleted under both modes because they are identifying
+dimension-like records.
 
-The checked-in fixtures produce 29 accepted events, 16 accepted service periods, and 26 accepted
+The checked-in fixtures produce 30 accepted events, 17 accepted service periods, and 27 accepted
 invoices.
 
 ## Assumptions and limits

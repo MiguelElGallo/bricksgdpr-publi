@@ -4,172 +4,182 @@ icon: lucide/clipboard-check
 
 # Customer deletion control
 
-This page is the exact reference contract for customer-driven deletion. A `DELETE` change in the
-customer source is the driver, but it is not sufficient by itself to remove downstream data.
+This is the executable contract for a customer-driven deletion. The source `DELETE` detects a
+request; an independent, versioned decision chooses what happens next.
+
+| Decision mode | Identity, mapping, service, and quarantine rows | Event and invoice facts | Case views |
+| --- | --- | --- | --- |
+| `SPECIAL_DELETION` | Delete current rows | Keep the fact grain and replace customer/service keys with `-99999` | Exclude erased rows |
+| `FULL_GOVERNED_OUTPUT_DELETION` | Delete current rows | Delete current rows | Exclude deleted rows |
+
+`FULL_GOVERNED_OUTPUT_DELETION` is deliberately narrower than “GDPR erasure.” It means full
+deletion from the 17 governed current outputs in this project. It does not claim that source
+systems, Delta history, caches, exports, backups, or recipients were erased.
 
 ## State machine
 
 ```mermaid
 flowchart LR
-    A["Customer source DELETE"] --> B["DETECTED<br/>persist request"]
-    B --> C{"Independent decision"}
-    C -->|"PENDING or REJECTED"| D["No plan<br/>no deletion authorization"]
-    C -->|"Legal hold"| E["HELD<br/>no plan"]
-    C -->|"CONFIRMED and no hold"| F["AUTHORIZED"]
-    F --> G["Expand every historical customer identity"]
-    G --> H["Create one plan row per key and target relation"]
-    H --> I["Execution gate"]
-    I --> J["Remove identity links<br/>reassign retained facts"]
+    A["Customer source DELETE"] --> B["DETECTED request"]
+    B --> C{"Independent decision complete?"}
+    C -->|"No"| D["PENDING / INVALID / HELD / REJECTED<br/>no plan"]
+    C -->|"Yes"| E{"deletion_mode"}
+    E -->|"SPECIAL_DELETION"| F["Delete identity rows<br/>reassign facts to -99999"]
+    E -->|"FULL_GOVERNED_OUTPUT_DELETION"| G["Delete all governed customer-dependent rows"]
+    F --> H["Complete 17-target plan"]
+    G --> H
+    H --> I["Durable customer-key ledger"]
+    I --> J["Mapping, Layer2, Layer3, and case outputs"]
 ```
 
-The ordering is mandatory:
+The source cannot authorize its own deletion:
 
-1. `stg_customer` detects a source row whose `source_operation` is `DELETE`.
-2. `customer_deletion_requests` stores the request as `DETECTED`. It is incremental and keyed by
-   `deletion_request_id`, so ordinary runs do not recreate or silently forget an existing request.
-3. `customer_deletion_authorizations` joins a separate privacy decision. `CONFIRMED` authorizes
-   work only when `legal_hold` is false. Missing decisions default to `PENDING`.
-4. `int_customer_deletion_plan` exists only for `AUTHORIZED` requests. It expands the stable
-   `customer_id` to every historical SSN, derives every customer key, and creates a row for every
-   governed target.
-5. `int_terminal_deleted_customer_keys` reads only complete authorized plans. It admits a key only
-   when all 17 targets and their exact actions are present. Existing mapping, Layer2, quarantine,
-   Layer3, and case models consume that suppression gate.
+1. `customer_deletion_requests` stores every source tombstone as `DETECTED`.
+2. `stg_customer_deletion_confirmations` reads a separate append-style decision history.
+3. `customer_deletion_authorization_history` evaluates every revision fail closed.
+4. `customer_deletion_authorizations` exposes the latest reviewed state for each request.
+5. `int_customer_deletion_plan` expands the stable `customer_id` to every historical customer key
+   and writes one row per key, decision revision, and governed target.
+6. `int_terminal_deleted_customer_keys` admits only plans containing all 17 exact mode-specific
+   actions. Customer-dependent models read this ledger through the shared macros.
 
-There is no direct path from source tombstone to downstream anti-join.
+There is no direct source-tombstone-to-anti-join path.
 
-## Control relations
+## Required decision evidence
 
-| Relation | Materialization | Grain | Purpose |
-| --- | --- | --- | --- |
-| `stg_customer_deletion_confirmations` | View | One row per reviewed request | Types the independent decision input |
-| `customer_deletion_requests` | Incremental table | One row per source `DELETE` change | Persists detection evidence |
-| `customer_deletion_authorizations` | Table | One row per detected request | Applies confirmation and legal-hold gates |
-| `int_customer_deletion_plan` | Incremental table | One row per authorized historical customer key and target | Retains exact planned coverage across ordinary runs |
-| `int_terminal_deleted_customer_keys` | Incremental table | One row per admitted historical customer key | Durably records suppression admission and feeds deletion/reassignment logic |
+A `CONFIRMED` revision becomes `AUTHORIZED` only when all of these are true:
 
-The checked-in confirmation seed is a deterministic demo input. A production system should use a
-separately authorized case-management or privacy-control source and an append-only audit trail.
-A dbt `--full-refresh` can rebuild this demo's incremental ledger, so the ledger is not presented as
-a production records-management system.
+- `decision_revision_id` is stable and unique;
+- `deletion_mode` is one of the two supported modes;
+- `deletion_policy_version` equals the implemented `CUSTOMER_DELETION_V1` policy;
+- `recorded_at`, `decided_at`, reviewer role, and reason are present;
+- `legal_hold` is explicitly `false`.
 
-The authorization gate fails closed. A `CONFIRMED` decision becomes `INVALID`, not `AUTHORIZED`,
-when its decision timestamp, reviewer role, reason, or legal-hold value is missing. The shared
-target inventory drives plan creation, completeness checking, and the coverage test.
+Missing evidence or an unsupported mode/policy becomes `INVALID`. A hold becomes `HELD`; a missing
+decision remains `PENDING`. None of those states creates plan rows.
 
-Suppression admission happens before downstream models run. dbt does not provide one atomic
-transaction across all 17 targets, so the admission timestamp is not proof that every target
-finished successfully. A successful build and post-build tests provide completion evidence for
-this demo; production orchestration needs a separate completion/audit event.
+`recorded_at` is the immutable revision-ordering field. `decided_at` is retained as business
+evidence but is not trusted to order revisions because a review can be backdated.
 
-## Decision and authorization values
+## Monotonic ledger rules
 
-| Input `decision_status` | `legal_hold` | Effective `authorization_status` | Plan created |
-| --- | --- | --- | --- |
-| Missing or `PENDING` | `false` | `PENDING` | No |
-| `REJECTED` | `false` | `REJECTED` | No |
-| `CONFIRMED` | `true` | `HELD` | No |
-| `CONFIRMED` | `false` | `AUTHORIZED` | Yes |
+The terminal ledger has one effective row per historical customer key.
 
-Incomplete `CONFIRMED` input has effective status `INVALID` and creates no plan.
+- `FULL_GOVERNED_OUTPUT_DELETION` has precedence over `SPECIAL_DELETION`.
+- SPECIAL can escalate to FULL; FULL never downgrades during ordinary incremental runs.
+- A newer revision in the same mode advances the effective revision and policy evidence.
+- Initial request, revision, mode, policy, and timestamps never change.
+- Moving the demo cutoff backward does not remove an admitted key during an ordinary run.
 
-`CONFIRMED` means the privacy workflow has verified that this exact detected source request may
-proceed. The demo does not decide whether Article 17 applies, verify a natural person's identity,
-or adjudicate a legal exception; those are controller responsibilities outside dbt.
+The ledger proves admission to the execution gate, not completion of all downstream relations.
+dbt has no single transaction spanning all 17 targets; successful builds and post-build tests are
+the completion evidence in this demo.
 
-## Planned target coverage
+## Target/action matrix
 
-For every historical customer key, the plan contains these 17 current-state targets:
+For every historical customer key, the plan contains exactly 17 target rows.
 
-| Action | Targets |
-| --- | --- |
-| `DELETE_CURRENT_ROWS` (9 targets) | Three Layer1 quarantine tables, two `priva_map` tables, Layer2 customer/service tables, and Layer3 customer/service dimensions |
-| `REASSIGN_TO_ERASED_MEMBER` (4 targets) | Layer2 and Layer3 event/invoice fact tables |
-| `EXCLUDE_ERASED_ROWS` (4 targets) | Four controlled case views |
+| Target group | Count | SPECIAL action | FULL action |
+| --- | ---: | --- | --- |
+| Layer1 quarantines | 3 | `DELETE_CURRENT_ROWS` | `DELETE_CURRENT_ROWS` |
+| `priva_map` customer/service mappings | 2 | `DELETE_CURRENT_ROWS` | `DELETE_CURRENT_ROWS` |
+| Layer2 customer and service tables | 2 | `DELETE_CURRENT_ROWS` | `DELETE_CURRENT_ROWS` |
+| Layer2 event and invoice facts | 2 | `REASSIGN_TO_ERASED_MEMBER` | `DELETE_CURRENT_ROWS` |
+| Layer3 customer and service dimensions | 2 | `DELETE_CURRENT_ROWS` | `DELETE_CURRENT_ROWS` |
+| Layer3 event and invoice facts | 2 | `REASSIGN_TO_ERASED_MEMBER` | `DELETE_CURRENT_ROWS` |
+| Four case views | 4 | `EXCLUDE_ERASED_ROWS` | `EXCLUDE_DELETED_ROWS` |
+| **Total** | **17** | **9 delete, 4 reassign, 4 exclude** | **13 delete, 4 exclude** |
 
-`-99999` is the dedicated erased-subject member for both customer and service relationships. It is
-not the generic unknown/missing member and has no readable mapping row.
+## Macro contract
 
-`assert_customer_deletion_control` fails if any target is missing or unexpected. The fixture
-`CUST-0099` has two historical SSNs, so its confirmed request produces 34 plan rows: two keys times
-17 targets.
+Every customer-dependent model first attaches the effective mode, then applies its local policy.
 
-Follow [Customer deletion: before and after](../tutorials/observe-terminal-deletion.md) to build the
-real pre-confirmation and post-confirmation states and inspect every Layer3 table.
+```jinja
+with mode_annotated as (
+    {{ attach_customer_deletion_mode(
+        source_relation=ref('int_customer_events_keyed'),
+        customer_key_expression='source_rows.customer_key',
+        output_columns=[
+            'event_id', 'customer_key', 'event_type', 'occurred_at',
+            'measure_value', 'measure_unit', 'source_updated_at'
+        ],
+        deletion_relation=ref('int_terminal_deleted_customer_keys'),
+        source_alias='source_rows'
+    ) }}
+)
 
-## Deliberately retained evidence
+{{ apply_customer_deletion_policy(
+    source_relation='mode_annotated',
+    output_columns=[
+        'event_id', 'customer_key', 'event_type', 'occurred_at',
+        'measure_value', 'measure_unit', 'source_updated_at'
+    ],
+    special_behavior='REPLACE',
+    special_replacements={'customer_key': erased_member_key()},
+    erased_flag_column='is_erased_customer',
+    deletion_mode_column='deletion_mode',
+    source_alias='policy_rows'
+) }}
+```
 
-The source simulator and ordinary staging views retain source changes, including the deletion
-tombstone and earlier upserts. Four persisted deletion-control tables retain the minimum request,
-decision, plan, and suppression-admission evidence needed to demonstrate the workflow. These are
-restricted control records across Layer1 and Layer2, not analytical outputs.
+Use `special_behavior='DELETE'` for identity, mapping, service, and quarantine models. Use
+`special_behavior='REPLACE'` only for facts that are allowed to retain their grain. FULL rows are
+always removed. The macro rejects duplicate/invalid output columns, unknown replacement columns,
+DELETE calls with replacements, and REPLACE calls without an erased flag.
 
-All other persisted Personal Data-bearing demo relations are in the plan. Event and invoice facts
-retain their grain under `-99999`, with the original customer and service keys removed. Staging,
-source, and fact retention must have a documented purpose and retention period in production; the
-demo fixtures are not a justification for indefinite retention.
+dbt recommends macros for reusable SQL and documents their arguments; it also cautions that
+readability matters. This split keeps the reusable policy small while each model explicitly lists
+its relation, key expression, output columns, and replacement behavior.[^dbt-macros][^dbt-args]
 
-## Executed behavior versus physical erasure
+## Why `-99999` is used only for SPECIAL
 
-The dbt build enforces logical current-state unlinking: authorized identity keys disappear from
-current outputs and retained facts point to erased members. It does not prove that those facts are
-anonymous, nor removal from Delta history, deletion-vector files,
-caches, exports, source systems, replicas, object versions, backups, or recipient systems.
+Kimball recommends descriptive special dimension members instead of null fact foreign keys. The
+dedicated `-99999` customer/service members preserve referential integrity and are distinct from an
+unknown or not-yet-arrived member.[^kimball-nulls]
 
-For Delta tables with deletion vectors, Databricks documents a separate physical sequence:
-`REORG TABLE ... APPLY (PURGE)` rewrites current files, then `VACUUM` removes expired historical
-files. Upstream sources and downstream recipients must be handled separately.[^databricks-gdpr]
-[^databricks-vacuum]
+That is dimensional modeling guidance, not an anonymisation conclusion. The source transaction ID
+and remaining fact attributes can still permit linkage, so the retained SPECIAL facts remain
+Personal Data in this project.
 
-## GDPR control mapping
+## GDPR engineering mapping
 
-| Requirement | Design response | Remaining production obligation |
+| GDPR concern | Implemented control | Production responsibility |
 | --- | --- | --- |
-| Article 5 storage limitation and accountability | Durable request state, explicit statuses, target inventory, executable tests | Define retention schedules and retain proportionate evidence |
-| Article 12 response timing | Detection and decision timestamps make elapsed time measurable | Enforce the one-month response workflow and extension notices |
-| Article 17 erasure and exceptions | Confirmation plus legal-hold gate prevents an unreviewed tombstone from self-authorizing | Verify identity, grounds, scope, and Article 17(3) exceptions |
-| Recital 26 and Article 4 identifiability | Original keys and readable mappings are removed; facts use one shared erased member | Prove remaining facts are not reasonably linkable, or continue treating them as Personal Data[^gdpr-recital-26] |
-| Article 19 recipient notification | Target list demonstrates internal propagation scope | Maintain recipient/disclosure inventory and notify recipients where required |
-| Article 25 protection by design/default | No plan exists before confirmation; one gate controls all downstream models | Periodically test effectiveness and cover systems outside this repo |
-| Article 30 processing records | Exact model, state, timestamp, and target fields support traceability | Maintain the controller's full record of processing activities |
+| Accountability and storage limitation | Durable detection, immutable decisions, versioned plan, executable coverage tests | Define and enforce retention schedules |
+| Article 17 scope and exceptions | Independent confirmation plus explicit legal-hold gate | Verify identity, legal grounds, and Article 17(3) exceptions |
+| Article 19 recipients | Exact internal target inventory | Track and notify external recipients where required |
+| Protection by design/default | No plan before authorization; unsupported policies fail closed | Periodically test effectiveness and cover systems outside this repo |
+| Identifiability | Original modeled keys/mappings removed; SPECIAL facts marked and access-limited | Treat retained facts as Personal Data unless anonymisation is separately demonstrated |
 
-The GDPR requires erasure without undue delay when Article 17 applies, while also defining
-exceptions such as legal obligations and legal claims. It requires communication of erasure to
-recipients under Article 19, accountability under Article 5, and safeguards by design and by
-default under Article 25.[^gdpr-5][^gdpr-12][^gdpr-17][^gdpr-19][^gdpr-25][^gdpr-30]
+The GDPR requires erasure without undue delay when Article 17 applies and defines exceptions. It
+also requires accountability, appropriate retention, and communication to recipients.[^gdpr-5]
+[^gdpr-17][^gdpr-19] This page is engineering guidance, not legal advice or certification.
 
-This mapping is engineering guidance, not legal advice or a compliance certification.
+## Current-state versus physical deletion
 
-Kimball's dimensional guidance recommends special dimension records instead of null fact foreign
-keys. That preserves referential integrity, but it does not decide GDPR status: the EDPB states
-that pseudonymised data remains Personal Data when it can be attributed using additional
-information.[^kimball-nulls][^edpb-pseudonymisation][^gdpr-4] The EDPB's July 2026 version-one
-anonymisation guidance uses three practical checks: no record isolation, no linkage, and no
-inference. Retaining exact transaction IDs means this demo does not claim to pass that
-framework.[^edpb-anonymisation-news][^edpb-anonymisation]
+The build reconstructs current governed relations. It does not prove deletion from Delta table
+history or files, upstream replay, caches, exports, object versions, backups, disaster-recovery
+copies, or recipient systems. Those require separate retention and purge controls. Read
+[Terminal deletion versus physical erasure](../explanation/terminal-deletion-vs-erasure.md).
 
 ## Implementation paths
 
-- `seeds/customer_deletion_confirmations.csv`
-- `models/layer1/stg_customer_deletion_confirmations.sql`
-- `models/layer1/customer_deletion_requests.sql`
+- `macros/customer_deletion_policy.sql`
+- `macros/customer_deletion_policy.yml`
+- `macros/deletion_control.sql`
+- `models/layer1/customer_deletion_authorization_history.sql`
 - `models/layer1/customer_deletion_authorizations.sql`
 - `models/layer2/int_customer_deletion_plan.sql`
 - `models/layer2/int_terminal_deleted_customer_keys.sql`
 - `tests/assert_customer_deletion_control.sql`
-- `tests/assert_unconfirmed_deletion_not_authorized.sql`
 
-[^gdpr-5]: [GDPR Article 5 — principles and accountability](https://eur-lex.europa.eu/eli/reg/2016/679/art_5/oj/eng)
-[^gdpr-12]: [GDPR Article 12 — action without undue delay and within one month](https://eur-lex.europa.eu/eli/reg/2016/679/art_12/oj/eng)
+Follow [Customer deletion: before and after](../tutorials/observe-terminal-deletion.md) for the
+complete Layer3 table snapshots and [Verify customer deletion](../how-to-guides/verify-terminal-deletion.md)
+for the operator checklist.
+
+[^gdpr-5]: [GDPR Article 5 — principles, storage limitation, and accountability](https://eur-lex.europa.eu/eli/reg/2016/679/art_5/oj/eng)
 [^gdpr-17]: [GDPR Article 17 — right to erasure and exceptions](https://eur-lex.europa.eu/eli/reg/2016/679/art_17/oj/eng)
-[^gdpr-4]: [GDPR Article 4 — Personal Data and pseudonymisation definitions](https://eur-lex.europa.eu/eli/reg/2016/679/art_4/oj/eng)
 [^gdpr-19]: [GDPR Article 19 — notification to recipients](https://eur-lex.europa.eu/eli/reg/2016/679/art_19/oj/eng)
-[^gdpr-25]: [GDPR Article 25 — data protection by design and by default](https://eur-lex.europa.eu/eli/reg/2016/679/art_25/oj/eng)
-[^gdpr-30]: [GDPR Article 30 — records of processing activities](https://eur-lex.europa.eu/eli/reg/2016/679/art_30/oj/eng)
-[^gdpr-recital-26]: [GDPR Recital 26 — identifiability and anonymous information](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng)
-[^databricks-gdpr]: [Databricks — Prepare your data for GDPR compliance](https://docs.databricks.com/aws/en/ldp/gdpr)
-[^databricks-vacuum]: [Databricks — Remove unused data files with VACUUM](https://docs.databricks.com/aws/en/delta/vacuum)
 [^kimball-nulls]: [Kimball Group — Dealing with null fact foreign keys](https://www.kimballgroup.com/2003/02/design-tip-43-dealing-with-nulls-in-the-dimensional-model/)
-[^edpb-pseudonymisation]: [EDPB Guidelines 01/2025 on Pseudonymisation](https://www.edpb.europa.eu/public-consultations/guidelines-012025-on-pseudonymisation_en)
-[^edpb-anonymisation-news]: [EDPB announcement — record isolation, linkage, and inference criteria, 8 July 2026](https://www.edpb.europa.eu/news/edpb-sheds-light-on-anonymisation-and-web-scraping-for-generative-ai-and-adopts-final-version_en)
-[^edpb-anonymisation]: [EDPB Guidelines 02/2026 on Anonymisation, version 1 under public consultation](https://www.edpb.europa.eu/public-consultations/guidelines-022026-on-anonymisation_en)
+[^dbt-macros]: [dbt Developer Hub — Jinja and macros](https://docs.getdbt.com/docs/build/jinja-macros)
+[^dbt-args]: [dbt Developer Hub — macro argument documentation](https://docs.getdbt.com/reference/resource-properties/arguments)

@@ -1,0 +1,25 @@
+version: 2
+
+macros:
+  - name: attach_customer_deletion_mode
+    description: >
+      Adds the effective deletion mode to source-keyed rows without changing their original keys.
+      Use this before quality classification whenever later policy depends on the mode.
+    arguments:
+      - {name: source_relation, type: relation, description: Relation or CTE containing original keyed rows.}
+      - {name: customer_key_expression, type: string, description: SQL expression resolving the source customer key.}
+      - {name: output_columns, type: "list[string]", description: Ordered source columns to preserve.}
+      - {name: deletion_relation, type: "optional[relation]", description: Effective one-row-per-key deletion ledger.}
+      - {name: source_alias, type: string, description: Valid SQL alias used by customer_key_expression.}
+  - name: apply_customer_deletion_policy
+    description: >
+      Generates the final customer-dependent SELECT. DELETE removes both modes; REPLACE removes
+      full governed-output deletion rows and rewrites configured SPECIAL_DELETION keys.
+    arguments:
+      - {name: source_relation, type: relation, description: Mode-annotated relation or CTE.}
+      - {name: output_columns, type: "list[string]", description: Ordered columns in the protected output.}
+      - {name: special_behavior, type: string, description: DELETE or REPLACE.}
+      - {name: special_replacements, type: "optional[dict[string, string]]", description: Output-column replacement SQL for SPECIAL_DELETION.}
+      - {name: erased_flag_column, type: "optional[string]", description: Boolean output flag required by REPLACE.}
+      - {name: deletion_mode_column, type: string, description: Mode column added by attach_customer_deletion_mode.}
+      - {name: source_alias, type: string, description: Valid SQL alias used in generated SQL.}

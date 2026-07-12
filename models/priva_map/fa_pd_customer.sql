@@ -9,13 +9,39 @@ with ranked_upserts as (
     where source_operation = 'UPSERT'
 ),
 
+mode_annotated_customers as (
+    {{ attach_customer_deletion_mode(
+        source_relation='ranked_upserts',
+        customer_key_expression=personal_data_key(
+            'source_rows.customer_ssn', 'customer.ssn', 'ssn'
+        ),
+        output_columns=[
+            'customer_change_id', 'customer_pk', 'customer_id', 'customer_ssn',
+            'first_name', 'last_name', 'email', 'phone', 'birth_date', 'address_line1',
+            'address_line2', 'city', 'postal_code', 'country_code', 'customer_segment',
+            'is_active', 'source_operation', 'source_updated_at', 'change_rank'
+        ],
+        deletion_relation=ref('int_terminal_deleted_customer_keys')
+    ) }}
+),
+
+policy_eligible_customers as (
+    {{ apply_customer_deletion_policy(
+        source_relation='mode_annotated_customers',
+        output_columns=[
+            'customer_change_id', 'customer_pk', 'customer_id', 'customer_ssn',
+            'first_name', 'last_name', 'email', 'phone', 'birth_date', 'address_line1',
+            'address_line2', 'city', 'postal_code', 'country_code', 'customer_segment',
+            'is_active', 'source_operation', 'source_updated_at', 'change_rank'
+        ],
+        special_behavior='DELETE'
+    ) }}
+),
+
 current_customers as (
-    select upserts.*
-    from ranked_upserts as upserts
-    left anti join {{ ref('int_terminal_deleted_customer_keys') }} as deletions
-        on {{ personal_data_key('upserts.customer_ssn', 'customer.ssn', 'ssn') }}
-            = deletions.customer_key
-    where upserts.change_rank = 1 and upserts.is_active
+    select *
+    from policy_eligible_customers
+    where change_rank = 1 and is_active
 ),
 
 raw_values as (

@@ -24,8 +24,8 @@ The repository is a dbt project with Databricks deployment and identity helpers.
 | `models/` | Layer1, `priva_map`, Layer2, Layer3, and case models |
 | `seeds/` | Four deterministic CSV source simulators, one deletion-confirmation control, and metadata |
 | `functions/` | Three dbt-managed Databricks SQL functions |
-| `macros/` | Nine local Jinja macros |
-| `tests/` | Thirty-nine singular dbt data tests |
+| `macros/` | Eleven public Jinja macros plus two private validation helpers |
+| `tests/` | Forty-one singular dbt data tests |
 | `acceptance/personas/` | Three positive and six denial SQL file tasks |
 | `scripts/generate_seeds.py` | Deterministic CSV generator |
 | `scripts/provision_identities.sh` | Persona identity topology preflight and apply operation |
@@ -36,7 +36,7 @@ The repository is a dbt project with Databricks deployment and identity helpers.
 
 | Path | dbt resources | Default materialization |
 | --- | ---: | --- |
-| `models/layer1/` | 5 typed staging models, 3 quarantine models, 2 deletion-control models | Views; quarantine/authorization models use tables and the request ledger is incremental |
+| `models/layer1/` | 5 typed staging models, 3 quarantine models, 3 deletion-control models | Views; quarantine/authorization models use tables and the request ledger is incremental |
 | `models/priva_map/` | 2 mapping models | Table |
 | `models/layer2/` | 6 ephemeral boundary/classifier models, 4 protected models, 2 deletion-control models | Table; the plan and execution ledger are incremental |
 | `models/layer3/` | 3 dimensions, 2 facts | Table |
@@ -49,12 +49,12 @@ The repository is a dbt project with Databricks deployment and identity helpers.
 | `seeds/_seeds.yml` | Five seeds and their string input types |
 | `functions/_functions.yml` | Function signatures and fixed placement |
 | `models/layer1/_layer1.yml` | Staging and quarantine contracts |
-| `models/layer1/_deletion_control.yml` | Detection, confirmation, and authorization contracts |
+| `models/layer1/_deletion_control.yml` | Detection, decision-history, and current authorization contracts plus fail-closed unit tests |
 | `models/priva_map/_priva_map.yml` | Mapping columns, tags, masks, and generic tests |
 | `models/layer2/_layer2_customer.yml` | Protected customer model |
-| `models/layer2/_layer2_events.yml` | Event boundary, classifier, and accepted model |
+| `models/layer2/_layer2_events.yml` | Terminal ledger, event boundary/classifier/accepted model, and policy unit tests |
 | `models/layer2/_layer2_services.yml` | Service boundary, classifier, accepted model, and two unit tests |
-| `models/layer2/_layer2_invoices.yml` | Invoice boundary, classifier, and accepted model |
+| `models/layer2/_layer2_invoices.yml` | Invoice boundary, classifier, accepted model, and policy unit tests |
 | `models/layer2/_deletion_control.yml` | Authorized relation-by-relation deletion-plan contract |
 | `models/layer3/_layer3_dimensions.yml` | Customer, service, and date dimensions |
 | `models/layer3/_layer3_facts.yml` | Event and invoice facts |

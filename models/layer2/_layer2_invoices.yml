@@ -115,17 +115,16 @@ models:
 
 unit_tests:
   - name: erased_invoice_uses_special_customer_and_service_members
-    description: An accepted erased invoice must retain its grain while losing customer and service links.
-    model: int_invoices_resolved
+    description: SPECIAL retains an invoice under erased members while FULL removes the invoice.
+    model: int_invoice_resolution
     given:
-      - input: ref('int_invoice_resolution')
+      - input: ref('int_invoices_keyed')
         format: sql
         rows: |
           select
-            'INV-ERASED' as invoice_id,
-            'original-customer-key' as customer_key,
-            'original-service-key' as service_key,
-            cast(null as string) as resolved_service_version_key,
+            'INV-SPECIAL' as invoice_id,
+            'special-customer-key' as customer_key,
+            'special-service-key' as service_key,
             cast(99.00 as decimal(18, 2)) as amount,
             'EUR' as currency_code,
             cast('2026-02-01' as date) as issued_date,
@@ -133,16 +132,70 @@ unit_tests:
             false as is_paid,
             cast(null as date) as paid_at,
             false as source_is_due,
-            cast('2026-02-28 18:00:00' as timestamp) as source_updated_at,
-            true as is_erased_customer,
-            'ACCEPTED' as resolution_status
+            cast('2026-02-28 18:00:00' as timestamp) as source_updated_at
+          union all
+          select
+            'INV-FULL', 'full-customer-key', 'full-service-key',
+            cast(49.00 as decimal(18, 2)), 'EUR', cast('2026-02-01' as date),
+            cast('2026-03-03' as date), false, cast(null as date), false,
+            cast('2026-02-28 18:00:00' as timestamp)
+          union all
+          select
+            'INV-ORDINARY', 'ordinary-customer-key', 'ordinary-service-key',
+            cast(29.00 as decimal(18, 2)), 'EUR', cast('2026-02-01' as date),
+            cast('2026-03-03' as date), false, cast(null as date), false,
+            cast('2026-02-28 18:00:00' as timestamp)
+      - input: ref('int_terminal_deleted_customer_keys')
+        format: sql
+        rows: |
+          select 'special-customer-key' as customer_key, 'SPECIAL_DELETION' as deletion_mode
+          union all
+          select 'full-customer-key', 'FULL_GOVERNED_OUTPUT_DELETION'
+      - input: ref('int_customer_services_keyed')
+        format: sql
+        rows: |
+          select
+            'special-customer-key' as customer_key,
+            'special-service-key' as service_key,
+            'special-service-version-key' as service_version_key,
+            true as is_valid,
+            cast('2026-01-01' as date) as valid_from,
+            cast('2026-12-31' as date) as valid_to
+          union all
+          select
+            'full-customer-key', 'full-service-key', 'full-service-version-key',
+            true, cast('2026-01-01' as date), cast('2026-12-31' as date)
+          union all
+          select
+            'ordinary-customer-key', 'ordinary-service-key', 'ordinary-service-version-key',
+            true, cast('2026-01-01' as date), cast('2026-12-31' as date)
+      - input: ref('int_customer_services_resolved')
+        format: sql
+        rows: |
+          select
+            'ordinary-customer-key' as customer_key,
+            'ordinary-service-key' as service_key,
+            'ordinary-service-version-key' as service_version_key,
+            cast('2026-01-01' as date) as valid_from,
+            cast('2026-12-31' as date) as valid_to
+      - input: ref('fa_pd_customer')
+        format: sql
+        rows: |
+          select 'ordinary-customer-key' as customer_key
     expect:
       rows:
-        - invoice_id: INV-ERASED
+        - invoice_id: INV-SPECIAL
           customer_key: "{{ var('erased_member_key') }}"
           service_key: "{{ var('erased_member_key') }}"
-          service_version_key: "{{ var('erased_member_key') }}"
+          resolved_service_version_key: "{{ var('erased_member_key') }}"
           is_erased_customer: true
+          resolution_status: ACCEPTED
+        - invoice_id: INV-ORDINARY
+          customer_key: ordinary-customer-key
+          service_key: ordinary-service-key
+          resolved_service_version_key: ordinary-service-version-key
+          is_erased_customer: false
+          resolution_status: ACCEPTED
 
   - name: erased_invoice_still_checks_quality_rules
     description: Erasure must not promote invalid source invoices into retained facts.
@@ -172,7 +225,7 @@ unit_tests:
       - input: ref('int_terminal_deleted_customer_keys')
         format: sql
         rows: |
-          select 'deleted-customer-key' as customer_key
+          select 'deleted-customer-key' as customer_key, 'SPECIAL_DELETION' as deletion_mode
       - input: ref('int_customer_services_keyed')
         format: sql
         rows: |
@@ -203,5 +256,5 @@ unit_tests:
           select cast(null as string) as customer_key where false
     expect:
       rows:
-        - {invoice_id: INV-INVALID-DATES, is_erased_customer: true, resolution_status: INVALID_INVOICE_DATE_RANGE}
-        - {invoice_id: INV-INVALID-SERVICE, is_erased_customer: true, resolution_status: SERVICE_INVALID}
+        - {invoice_id: INV-INVALID-DATES, customer_key: "{{ var('erased_member_key') }}", is_erased_customer: true, resolution_status: INVALID_INVOICE_DATE_RANGE}
+        - {invoice_id: INV-INVALID-SERVICE, customer_key: "{{ var('erased_member_key') }}", is_erased_customer: true, resolution_status: SERVICE_INVALID}

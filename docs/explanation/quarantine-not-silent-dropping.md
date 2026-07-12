@@ -7,10 +7,10 @@ icon: lucide/triangle-alert
 A source row that cannot enter protected analytics still carries operational meaning. Silently
 dropping it would hide both a data-quality problem and a possible gap in governed processing.
 
-bricksgdpr divides events into accepted or quarantined outcomes. Invoices have a third explicit
-outcome: an invalid row for a suppression-admitted customer is authorized-suppressed from current
-accepted and raw-quarantine outputs. Service periods for deleted subjects are removed because they
-are identifying dimension records.
+bricksgdpr divides ordinary/SPECIAL events into accepted or quarantined outcomes; FULL events have
+no governed output. Invoices add a third explicit outcome: an invalid SPECIAL row is
+authorized-suppressed from accepted and raw-quarantine outputs. FULL invoices are removed. Service
+periods under either mode are removed because they are identifying dimension records.
 
 ```mermaid
 flowchart LR
@@ -48,10 +48,10 @@ The quarantine models are rebuilt as tables rather than appended as an error log
 arrives before its customer receives `CUSTOMER_NOT_FOUND`. When the customer later appears, the
 same deterministic keys resolve and the next rebuild moves the service into Layer2.
 
-This behavior is different from authorized deletion. Valid event and invoice facts are accepted
-under the erased member; an invalid erased invoice is authorized-suppressed rather than promoted
-or copied into a raw quarantine. Customer and service dimension rows are removed. Deletion is not
-presented as a fixable late-arrival error.
+This behavior is different from authorized deletion. Valid SPECIAL facts are accepted under the
+erased member; an invalid SPECIAL invoice is authorized-suppressed rather than promoted or copied
+into raw quarantine. FULL facts and both modes' customer/service dimensions are removed. Deletion
+is not presented as a fixable late-arrival error.
 
 ## What the partition tests prove
 

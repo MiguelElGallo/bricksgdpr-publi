@@ -27,7 +27,7 @@ If this is your first encounter with the project, begin with the
 - [Reconcile access controls](reconcile-access-controls.md)
 - [Provision persona identities](provision-persona-identities.md)
 - [Validate persona access](validate-persona-access.md)
-- [Verify terminal deletion](verify-terminal-deletion.md)
+- [Verify customer deletion](verify-terminal-deletion.md)
 
 !!! note
     Commands that change Databricks resources are called out explicitly. Read the surrounding

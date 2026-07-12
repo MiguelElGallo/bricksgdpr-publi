@@ -23,7 +23,8 @@ icon: lucide/book-a
 | Layer1 source | Four dbt seed tables that simulate upstream extracts |
 | Layer2 | Pseudonymous key boundary, classifier, and accepted protected tables |
 | Layer3 | Protected dimensions and facts for analytical access |
-| Current-state identity unlinking | Absence of original subject keys and readable mappings; retained facts use erased members |
+| Current-state identity unlinking | Absence of original subject keys and readable mappings; SPECIAL facts use erased members |
+| FULL governed-output deletion | Removal of a subject's rows from all 17 governed current outputs; not a claim about source/history/backups |
 | Mapping tuple | Complete set of stored pseudonymous keys used to validate a customer or service join |
 | Personal Data | GDPR term for information relating to an identified or identifiable natural person; pseudonymized values remain Personal Data |
 | Pepper | Secret input included in deterministic key generation; `pepper_v1` is an operator-managed value |
@@ -39,7 +40,8 @@ icon: lucide/book-a
 | Source simulator | Checked-in deterministic seeds; not a production ingestion or retention design |
 | Stable SSN assumption | Nondeleted customer relationships use the SSN-derived key and do not maintain a historical alias map |
 | Standard view | Persisted SQL view whose query-time predicate and masks evaluate for the caller; the four case models are standard views |
-| Terminal deletion | Rule that an authorized deletion plan excludes all historical SSN keys for a customer ID, even after a later upsert; a source tombstone alone is not authorization |
+| SPECIAL deletion | Removal of identity/dimension rows with eligible fact grain retained under `-99999` |
+| Terminal deletion | Monotonic rule that authorized historical customer keys cannot be resurrected or downgraded by an ordinary run |
 | Type-1 current dimension | Customer dimension that exposes only the current active protected row |
 | Type-2-style service dimension | One row per service validity period keyed by service ID plus start date; not a complete SCD2 implementation |
 | `USING COLUMNS` | Unity Catalog mask metadata that passes the matching stored pseudonymous column to the mask function |

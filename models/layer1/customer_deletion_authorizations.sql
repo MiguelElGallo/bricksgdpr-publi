@@ -7,31 +7,36 @@
     }
 ) }}
 
+with ranked_history as (
+    select
+        history.*,
+        row_number() over (
+            partition by history.deletion_request_id
+            order by history.recorded_at desc, history.decision_revision_id desc
+        ) as revision_rank
+    from {{ ref('customer_deletion_authorization_history') }} as history
+)
+
 select
     requests.deletion_request_id,
     requests.customer_id,
     requests.customer_ssn,
     requests.source_deleted_at,
     requests.detected_at,
-    coalesce(decisions.decision_status, 'PENDING') as decision_status,
-    decisions.decided_at,
-    decisions.decided_by_role,
-    decisions.decision_reason,
-    decisions.legal_hold,
+    history.decision_revision_id,
+    coalesce(history.decision_status, 'PENDING') as decision_status,
+    history.deletion_mode,
+    history.recorded_at,
+    history.decided_at,
+    history.decided_by_role,
+    history.decision_reason,
+    history.legal_hold,
     case
-        when decisions.decision_status is null then 'PENDING'
-        when decisions.legal_hold is null then 'INVALID'
-        when decisions.legal_hold then 'HELD'
-        when
-            decisions.decision_status = 'CONFIRMED'
-            and decisions.decided_at is not null
-            and decisions.decided_by_role is not null
-            and decisions.decision_reason is not null
-            then 'AUTHORIZED'
-        when decisions.decision_status = 'CONFIRMED' then 'INVALID'
-        when decisions.decision_status = 'REJECTED' then 'REJECTED'
-        else 'PENDING'
-    end as authorization_status
+        when history.decision_revision_id is null then '{{ var("deletion_policy_version") }}'
+        else history.deletion_policy_version
+    end as deletion_policy_version,
+    coalesce(history.authorization_status, 'PENDING') as authorization_status
 from {{ ref('customer_deletion_requests') }} as requests
-left join {{ ref('stg_customer_deletion_confirmations') }} as decisions
-    on requests.deletion_request_id = decisions.deletion_request_id
+left join ranked_history as history
+    on requests.deletion_request_id = history.deletion_request_id
+    and history.revision_rank = 1

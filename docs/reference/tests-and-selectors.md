@@ -5,20 +5,20 @@ icon: lucide/test-tube-2
 
 # Tests and selectors
 
-The project contains 298 data tests and 6 unit tests.
+The project contains 329 data tests and 7 unit tests.
 
 ## Test counts
 
 | Test class | Count | Definition location |
 | --- | ---: | --- |
-| `not_null` generic data tests | 198 | Model YAML files |
-| `unique` generic data tests | 27 | Model YAML files |
+| `not_null` generic data tests | 224 | Model YAML files |
+| `unique` generic data tests | 28 | Model YAML files |
 | `relationships` generic data tests | 14 | Model YAML files |
-| `accepted_values` generic data tests | 18 | Model YAML files |
+| `accepted_values` generic data tests | 22 | Model YAML files |
 | Singular data tests | 41 | `tests/*.sql` |
-| Unit tests | 6 | Deletion-control, erased-fact, invoice-quality, and service-resolution model YAML files |
-| **Total data tests** | **298** | Generic plus singular |
-| **Total including unit tests** | **304** | Data tests plus unit tests |
+| Unit tests | 7 | Deletion-control, erased-fact, invoice-quality, and service-resolution model YAML files |
+| **Total data tests** | **329** | Generic plus singular |
+| **Total including unit tests** | **336** | Data tests plus unit tests |
 
 The count does not include positive/negative persona SQL tasks under `acceptance/personas/`; those
 are external acceptance checks, not dbt test nodes.
@@ -31,8 +31,8 @@ are external acceptance checks, not dbt test nodes.
 | --- | --- |
 | `assert_seed_row_bounds` | Each of the four source-extract seeds contains 10 through 100 rows |
 | `assert_customer_deletion_fixture` | Delete, post-delete upsert, historical SSN, and inactive controls have exact shapes |
-| `assert_customer_deletion_control` | Two requests produce one pending state and one 34-row authorized plan with exact 17-target coverage |
-| `assert_layer3_deletion_walkthrough_fixture` | Both decision-time states have exact Layer3 totals, subject counts, and Layer3 plan coverage |
+| `assert_customer_deletion_control` | Three requests, four authorized revisions, exact mode actions, 102 plan rows, escalation, and same-mode evidence are exact |
+| `assert_layer3_deletion_walkthrough_fixture` | Before, SPECIAL-only, and final mixed-mode states have exact Layer3 totals and plan coverage |
 | `assert_erased_member_invariants` | Special members and every fact flag/key tuple remain globally consistent |
 | `assert_unconfirmed_deletion_not_authorized` | Pending deletion is detected but has no plan and remains in mapping, Layer2, and Layer3 |
 | `assert_layer1_control_fixtures` | Late, invalid, inconsistent-payment, and deleted-dependent source controls exist exactly once |
@@ -42,7 +42,7 @@ are external acceptance checks, not dbt test nodes.
 
 | Test | Contract |
 | --- | --- |
-| `assert_priva_map_contract` | Default 15/16 counts, v1 prefixes, domain separation, and fixture exclusions |
+| `assert_priva_map_contract` | Default 15/17 counts, v1 prefixes, domain separation, and fixture exclusions |
 | `assert_priva_map_masks_attached` | Exact 13 raw-column masks and `USING COLUMNS` mappings |
 | `assert_priva_map_tags_attached` | Exact map table tags and Personal Data column category/state tags |
 | `assert_personal_data_udfs` | Determinism, domain separation, null behavior, prefix, canonical equivalence, and core/wrapper equivalence |
@@ -52,17 +52,17 @@ are external acceptance checks, not dbt test nodes.
 | Test | Contract |
 | --- | --- |
 | `assert_layer2_customer_map_tuple` | Every protected customer key tuple exists in the customer map |
-| `assert_layer2_event_fixtures` | Late event quarantines and erased event retains grain under `-99999` |
-| `assert_layer2_event_partition` | Every event appears once across accepted/quarantine |
+| `assert_layer2_event_fixtures` | Late event quarantines, SPECIAL retains under `-99999`, and FULL removes its event |
+| `assert_layer2_event_partition` | Every ordinary/SPECIAL event appears once; every FULL event appears zero times |
 | `assert_layer2_service_fixtures` | Late/invalid service reasons and deletion exclusion match fixtures |
 | `assert_layer2_service_partition` | Every nondeleted service period appears once across accepted/quarantine |
 | `assert_layer2_service_map_tuple` | Every accepted service has a complete matching map tuple |
 | `assert_layer2_invoice_due_logic` | `is_due` matches the configured inclusive as-of expression |
-| `assert_layer2_invoice_fixtures` | Exact 26/11 counts, erased-member invoice, and control reasons |
+| `assert_layer2_invoice_fixtures` | Exact 27/11 counts, SPECIAL/FULL outcomes, and control reasons |
 | `assert_layer2_invoice_partition` | Every invoice has one accepted, quarantine, or authorized-suppression outcome |
 | `assert_layer2_invoice_service_tuple` | Every accepted invoice has one effective accepted service tuple |
 | `assert_layer2_no_raw_columns` | No finite forbidden raw name or disallowed `_value` suffix exists in Layer2 |
-| `assert_layer2_terminal_deletion` | Deleted keys are absent from accepted and quarantine Layer2 outputs |
+| `assert_layer2_terminal_deletion` | Original deleted keys are absent from accepted and quarantine Layer2 outputs |
 
 ### Layer3 controls
 
@@ -76,7 +76,7 @@ are external acceptance checks, not dbt test nodes.
 | `assert_layer3_invoice_payment_invariants` | Paid invoices have paid date; unpaid invoices do not |
 | `assert_layer3_no_raw_columns` | No finite forbidden raw name or disallowed `_value` suffix exists in Layer3 |
 | `assert_protected_no_readable_tags` | Protected schemas have no `RAW` or `CONTROLLED_READABLE` column tag |
-| `assert_layer3_terminal_deletion` | Deleted keys are absent from dimensions and facts |
+| `assert_layer3_terminal_deletion` | Original deleted keys are absent from dimensions and facts; SPECIAL uses only the sentinel |
 
 ### Case controls
 
@@ -102,10 +102,13 @@ are external acceptance checks, not dbt test nodes.
 
 | Unit test | Model | Expected row |
 | --- | --- | --- |
+| `invalid_confirmations_fail_closed` | `customer_deletion_authorization_history` | Missing/unsupported evidence is `INVALID` |
 | `service_arriving_before_customer_is_quarantined` | `int_customer_service_resolution` | `SVC-LATE-A`, `CUSTOMER_NOT_FOUND` |
 | `quarantined_service_recovers_when_customer_arrives` | `int_customer_service_resolution` | `SVC-LATE-A`, `ACCEPTED` |
-| `erased_event_uses_special_customer_member` | `int_customer_events_resolved` | Original customer replaced by `-99999` |
-| `erased_invoice_uses_special_customer_and_service_members` | `int_invoices_resolved` | Customer/service tuple replaced by `-99999` |
+| `erased_event_uses_special_customer_member` | `int_customer_event_resolution` | Ordinary false, SPECIAL `-99999`, FULL absent |
+| `erased_invoice_uses_special_customer_and_service_members` | `int_invoice_resolution` | Ordinary retained, SPECIAL tuple `-99999`, FULL absent |
+| `erased_invoice_still_checks_quality_rules` | `int_invoice_resolution` | SPECIAL does not promote invalid invoices |
+| `latest_same_mode_policy_revision_wins` | `int_terminal_deleted_customer_keys` | Latest effective revision plus preserved initial evidence |
 
 Seed-specific singular tests additionally prove suppression detection and end-to-end reassignment.
 

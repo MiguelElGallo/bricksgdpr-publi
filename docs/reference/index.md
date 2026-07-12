@@ -15,12 +15,12 @@ for task-oriented instructions, and [Explanation](../explanation/index.md) for d
 
 | Resource type | Count | Notes |
 | --- | ---: | --- |
-| Models | 33 | 9 views, 15 tables, 3 incremental models, and 6 ephemeral models |
+| Models | 34 | 9 views, 16 tables, 3 incremental models, and 6 ephemeral models |
 | Seeds | 5 | Four source extracts and one independent deletion-confirmation control |
 | SQL functions | 3 | Created in the fixed `priva_internal` schema |
-| Local macros | 9 | Includes catalog, schema, key, erased-member, deletion-target, case, and access-control macros |
-| Data tests | 298 | 257 generic tests and 41 singular tests |
-| Unit tests | 6 | Service resolution, erased-fact reassignment, invoice quality, and authorization |
+| Local public macros | 11 | Includes catalog, schema, key, deletion policy, case, and access-control macros |
+| Data tests | 329 | 288 generic tests and 41 singular tests |
+| Unit tests | 7 | Authorization, mode policy, service resolution, and invoice quality |
 | Sources | 0 | Seeds are referenced directly with `ref()` |
 | Snapshots | 0 | Current-state outputs use replacement; deletion request, plan, and execution ledgers are incremental |
 | Exposures, metrics, semantic models | 0 | No semantic-layer resources are defined |

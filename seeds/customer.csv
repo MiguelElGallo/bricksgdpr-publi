@@ -14,6 +14,8 @@ CCHG-0012-U,12,CUST-0012,900-00-0012,Eino,Winter,customer12@example.invalid,+358
 CCHG-0013-U,13,CUST-0013,900-00-0013,Venla,Summer,customer13@example.invalid,+358-555-0113,1983-02-14,113 Demo Street,,Oulu,00013,FI,small_business,True,UPSERT,2026-01-13T09:00:00
 CCHG-0014-U,14,CUST-0014,900-00-0014,Miro,Cloud,customer14@example.invalid,+358-555-0114,1984-03-15,114 Demo Street,,Lahti,00014,FI,enterprise,True,UPSERT,2026-01-14T09:00:00
 CCHG-0015-U,15,CUST-0015,900-00-0015,Aino,Demo,customer15@example.invalid,+358-555-0115,1985-04-16,115 Demo Street,,Helsinki,00015,FI,household,False,UPSERT,2026-01-15T09:00:00
+CCHG-0095-D,95,CUST-0095,900-00-0095,,,,,,,,,,,,False,DELETE,2026-01-08T12:00:00
+CCHG-0095-U,95,CUST-0095,900-00-0095,Unconfirmed,Request,unconfirmed.request@example.invalid,+358-555-0195,1985-12-15,195 Demo Street,,Tampere,00095,FI,enterprise,True,UPSERT,2026-02-22T12:00:00
 CCHG-0097-D,97,CUST-0097,900-00-0097,,,,,,,,,,,,False,DELETE,2026-01-10T12:00:00
 CCHG-0097-U,97,CUST-0097,900-00-0097,Pending,Review,pending.review@example.invalid,+358-555-0197,1987-02-17,197 Demo Street,,Oulu,00097,FI,small_business,True,UPSERT,2026-02-20T12:00:00
 CCHG-0099-U,99,CUST-0099,900-00-0199,Deleted,Demonstration,deleted.customer@example.invalid,+358-555-0199,1975-09-09,999 Erasure Avenue,,Helsinki,00999,FI,household,True,UPSERT,2026-01-05T09:00:00

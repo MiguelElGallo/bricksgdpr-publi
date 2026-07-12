@@ -2,7 +2,7 @@
 
 select
     event_id,
-    case when is_erased_customer then {{ erased_member_key() }} else customer_key end as customer_key,
+    customer_key,
     event_type,
     occurred_at,
     measure_value,

@@ -14,9 +14,13 @@ models:
       grants:
         select: [privacy_admins]
     columns:
+      - name: decision_revision_id
+        data_type: string
+        description: Effective decision revision; advances on escalation or a newer same-mode revision.
+        data_tests: [not_null]
       - name: deletion_request_id
         data_type: string
-        description: First complete authorized request that admitted this key to suppression.
+        description: Request of the effective revision; it advances on escalation or a newer same-mode revision.
         data_tests: [not_null]
       - name: customer_key
         data_type: string
@@ -26,10 +30,38 @@ models:
         data_type: timestamp
         description: Timestamp of the independent decision that authorized suppression.
         data_tests: [not_null]
+      - name: authorization_recorded_at
+        data_type: timestamp
+        description: Immutable recorded timestamp of the effective authorization revision.
+        data_tests: [not_null]
+      - name: deletion_mode
+        data_type: string
+        description: Effective terminal mode; FULL has priority and can never downgrade to SPECIAL.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["SPECIAL_DELETION", "FULL_GOVERNED_OUTPUT_DELETION"]
+      - name: deletion_policy_version
+        data_type: string
+        description: Policy version attached to the effective mode.
+        data_tests: [not_null]
+      - {name: initial_decision_revision_id, data_type: string, description: First admitted decision revision, data_tests: [not_null]}
+      - {name: initial_deletion_request_id, data_type: string, description: First complete request for this key, data_tests: [not_null]}
+      - name: initial_deletion_mode
+        data_type: string
+        description: First admitted mode, preserved after escalation.
+        data_tests: [not_null]
+      - {name: initial_deletion_policy_version, data_type: string, description: Policy version of first admission, data_tests: [not_null]}
+      - {name: initial_authorized_at, data_type: timestamp, description: First authorization timestamp, data_tests: [not_null]}
+      - {name: initial_authorization_recorded_at, data_type: timestamp, description: Recorded timestamp of first admission, data_tests: [not_null]}
       - name: suppression_recorded_at
         data_type: timestamp
         description: Timestamp when this durable suppression-admission row was first written.
         data_tests: [not_null]
+      - name: mode_escalated_at
+        data_type: timestamp
+        description: Ledger update timestamp when SPECIAL escalated to FULL; null without escalation.
 
   - name: int_customer_events_keyed
     description: >
@@ -112,25 +144,112 @@ models:
         data_tests: [not_null]
 
 unit_tests:
-  - name: erased_event_uses_special_customer_member
-    description: An accepted erased event must retain its grain while losing its original customer key.
-    model: int_customer_events_resolved
+  - name: latest_same_mode_policy_revision_wins
+    description: A newer revision within the winning mode advances policy evidence without changing first admission.
+    model: int_terminal_deleted_customer_keys
+    overrides:
+      macros:
+        is_incremental: false
     given:
-      - input: ref('int_customer_event_resolution')
+      - input: ref('int_customer_deletion_plan')
+        format: sql
+        rows: |
+          with revisions as (
+              select * from values
+                  ('REV-SPECIAL-V1', 'POLICY_V1', cast('2026-02-16 08:00:00' as timestamp)),
+                  ('REV-SPECIAL-V2', 'POLICY_V2', cast('2026-02-20 08:00:00' as timestamp))
+                  as revisions(decision_revision_id, deletion_policy_version, recorded_at)
+          ),
+          targets as (
+              select * from values
+                  ('layer1', 'quarantine_customer_events', 'TABLE', 'DELETE_CURRENT_ROWS'),
+                  ('layer1', 'quarantine_customer_services', 'TABLE', 'DELETE_CURRENT_ROWS'),
+                  ('layer1', 'quarantine_invoices', 'TABLE', 'DELETE_CURRENT_ROWS'),
+                  ('priva_map', 'fa_pd_customer', 'TABLE', 'DELETE_CURRENT_ROWS'),
+                  ('priva_map', 'fa_pd_service_address', 'TABLE', 'DELETE_CURRENT_ROWS'),
+                  ('layer2', 'int_customer_protected', 'TABLE', 'DELETE_CURRENT_ROWS'),
+                  ('layer2', 'int_customer_events_resolved', 'TABLE', 'REASSIGN_TO_ERASED_MEMBER'),
+                  ('layer2', 'int_customer_services_resolved', 'TABLE', 'DELETE_CURRENT_ROWS'),
+                  ('layer2', 'int_invoices_resolved', 'TABLE', 'REASSIGN_TO_ERASED_MEMBER'),
+                  ('layer3', 'dim_customer', 'TABLE', 'DELETE_CURRENT_ROWS'),
+                  ('layer3', 'dim_service', 'TABLE', 'DELETE_CURRENT_ROWS'),
+                  ('layer3', 'fct_customer_event', 'TABLE', 'REASSIGN_TO_ERASED_MEMBER'),
+                  ('layer3', 'fct_invoice', 'TABLE', 'REASSIGN_TO_ERASED_MEMBER'),
+                  ('layer3_case', 'case_dim_customer', 'VIEW', 'EXCLUDE_ERASED_ROWS'),
+                  ('layer3_case', 'case_dim_service', 'VIEW', 'EXCLUDE_ERASED_ROWS'),
+                  ('layer3_case', 'case_fct_customer_event', 'VIEW', 'EXCLUDE_ERASED_ROWS'),
+                  ('layer3_case', 'case_fct_invoice', 'VIEW', 'EXCLUDE_ERASED_ROWS')
+                  as targets(
+                      target_layer, target_relation, target_kind, special_deletion_action
+                  )
+          )
+          select
+              revisions.decision_revision_id,
+              'REQUEST-1' as deletion_request_id,
+              'customer-key' as customer_key,
+              'SPECIAL_DELETION' as deletion_mode,
+              revisions.deletion_policy_version,
+              revisions.recorded_at as authorization_recorded_at,
+              targets.target_layer,
+              targets.target_relation,
+              targets.target_kind,
+              targets.special_deletion_action as planned_action,
+              'AUTHORIZED' as plan_status,
+              revisions.recorded_at as authorized_at
+          from revisions cross join targets
+    expect:
+      rows:
+        - decision_revision_id: REV-SPECIAL-V2
+          deletion_policy_version: POLICY_V2
+          initial_decision_revision_id: REV-SPECIAL-V1
+          initial_deletion_policy_version: POLICY_V1
+          deletion_mode: SPECIAL_DELETION
+          initial_deletion_mode: SPECIAL_DELETION
+
+  - name: erased_event_uses_special_customer_member
+    description: SPECIAL retains an event under the erased member while FULL removes the event.
+    model: int_customer_event_resolution
+    given:
+      - input: ref('int_customer_events_keyed')
         format: sql
         rows: |
           select
-            'EVT-ERASED' as event_id,
-            'original-customer-key' as customer_key,
+            'EVT-SPECIAL' as event_id,
+            'special-customer-key' as customer_key,
             'USAGE' as event_type,
             cast('2026-02-20 08:00:00' as timestamp) as occurred_at,
             cast(9.50 as decimal(18, 2)) as measure_value,
             'GB' as measure_unit,
-            cast('2026-02-20 09:00:00' as timestamp) as source_updated_at,
-            true as is_erased_customer,
-            'ACCEPTED' as resolution_status
+            cast('2026-02-20 09:00:00' as timestamp) as source_updated_at
+          union all
+          select
+            'EVT-FULL', 'full-customer-key', 'USAGE',
+            cast('2026-02-20 08:00:00' as timestamp),
+            cast(7.25 as decimal(18, 2)), 'GB',
+            cast('2026-02-20 09:00:00' as timestamp)
+          union all
+          select
+            'EVT-ORDINARY', 'ordinary-customer-key', 'SUPPORT',
+            cast('2026-02-20 10:00:00' as timestamp),
+            cast(5.00 as decimal(18, 2)), 'MINUTES',
+            cast('2026-02-20 11:00:00' as timestamp)
+      - input: ref('int_terminal_deleted_customer_keys')
+        format: sql
+        rows: |
+          select 'special-customer-key' as customer_key, 'SPECIAL_DELETION' as deletion_mode
+          union all
+          select 'full-customer-key', 'FULL_GOVERNED_OUTPUT_DELETION'
+      - input: ref('fa_pd_customer')
+        format: sql
+        rows: |
+          select 'ordinary-customer-key' as customer_key
     expect:
       rows:
-        - event_id: EVT-ERASED
+        - event_id: EVT-SPECIAL
           customer_key: "{{ var('erased_member_key') }}"
           is_erased_customer: true
+          resolution_status: ACCEPTED
+        - event_id: EVT-ORDINARY
+          customer_key: ordinary-customer-key
+          is_erased_customer: false
+          resolution_status: ACCEPTED

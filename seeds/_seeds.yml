@@ -29,13 +29,17 @@ seeds:
 
   - name: customer_deletion_confirmations
     description: >
-      Synthetic privacy-control decisions keyed to detected source deletion requests. A
-      CONFIRMED decision without a legal hold is the only state that authorizes a downstream
-      deletion plan; PENDING and REJECTED decisions remain non-authorizing evidence.
+      Synthetic append-style privacy decision revisions keyed to detected source deletion
+      requests. Recorded timestamps order revisions independently from review evidence. A valid
+      CONFIRMED revision without a legal hold is the only state that authorizes a downstream plan.
     config:
       column_types:
+        decision_revision_id: string
         deletion_request_id: string
         decision_status: string
+        deletion_mode: string
+        deletion_policy_version: string
+        recorded_at: string
         decided_at: string
         decided_by_role: string
         decision_reason: string

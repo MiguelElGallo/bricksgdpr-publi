@@ -1,10 +1,28 @@
 {{ config(materialized='ephemeral', tags=['layer2_services']) }}
 
-with nondeleted_services as (
-    select services.*
-    from {{ ref('int_customer_services_keyed') }} as services
-    left anti join {{ ref('int_terminal_deleted_customer_keys') }} as deletions
-        on services.customer_key = deletions.customer_key
+with mode_annotated_services as (
+    {{ attach_customer_deletion_mode(
+        source_relation=ref('int_customer_services_keyed'),
+        customer_key_expression='source_rows.customer_key',
+        output_columns=[
+            'service_id', 'customer_key', 'service_key', 'service_version_key',
+            'installation_address_key', 'service_type', 'is_valid', 'valid_from',
+            'valid_to', 'source_updated_at'
+        ],
+        deletion_relation=ref('int_terminal_deleted_customer_keys')
+    ) }}
+),
+
+nondeleted_services as (
+    {{ apply_customer_deletion_policy(
+        source_relation='mode_annotated_services',
+        output_columns=[
+            'service_id', 'customer_key', 'service_key', 'service_version_key',
+            'installation_address_key', 'service_type', 'is_valid', 'valid_from',
+            'valid_to', 'source_updated_at'
+        ],
+        special_behavior='DELETE'
+    ) }}
 )
 
 select

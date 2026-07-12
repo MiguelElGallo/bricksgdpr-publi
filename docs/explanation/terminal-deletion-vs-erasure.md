@@ -14,13 +14,13 @@ does not delete anything by itself. A separate privacy decision must be `CONFIRM
 hold may apply, before the request becomes `AUTHORIZED`.
 
 Only then does the deletion plan expand the stable customer ID to every historical SSN, derive all
-corresponding customer keys, and authorize target-specific action:
+corresponding customer keys, and authorize mode-specific action:
 
 - both `priva_map` tables;
 - customer/service Layer2 relations;
 - Layer1 quarantine tables;
 - Layer3 customer/service dimensions;
-- event and invoice fact reassignment to `-99999` in Layer2 and Layer3;
+- SPECIAL event/invoice reassignment to `-99999`, or FULL governed-output fact deletion;
 - controlled case views.
 
 Dependent extracts that still carry an older SSN lose their identifying link because the plan
@@ -34,9 +34,9 @@ The exact models, states, and 17 planned targets are listed in
 
 The synthetic CSV seeds retain the upsert, tombstone, and confirmation fixtures so the demo is
 reproducible. Ordinary Layer1 staging views retain source-shaped rows, and restricted deletion
-control tables retain minimum case evidence. Event and invoice facts also retain measures and dates
-under the shared erased member, while original customer/service keys are absent. The absence claim
-does not cover the source simulator, ordinary history views, or evidence records.
+control tables retain minimum case evidence. SPECIAL facts retain measures and dates under the
+shared erased member; FULL facts are absent from governed current outputs. The absence claim does
+not cover the source simulator, ordinary history views, or evidence records.
 
 ## Why the erased member is not automatically anonymous
 
@@ -59,8 +59,8 @@ replacement of identifying transaction IDs.
 ## Why a successful query is not physical erasure
 
 The models use replacement materializations. After a successful rebuild, current mappings and
-dimensions no longer return the original customer/service keys, facts use erased members, and case
-views exclude those facts. Storage systems can still retain other copies:
+dimensions no longer return the original customer/service keys; SPECIAL facts use erased members,
+FULL facts are absent, and case views expose neither. Storage systems can still retain other copies:
 
 - Delta table history and deletion vectors;
 - cloud-object versions;

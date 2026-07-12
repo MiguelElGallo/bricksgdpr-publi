@@ -103,7 +103,7 @@ The result is `0`.
 The source row was preserved, classified with a stable reason, excluded from protected analytics,
 and made available for controlled remediation. It was not silently dropped.
 
-Next, [observe terminal deletion](observe-terminal-deletion.md).
+Next, follow [Customer deletion: before and after](observe-terminal-deletion.md).
 
 Read [Quarantine instead of silent dropping](../explanation/quarantine-not-silent-dropping.md)
 for the design rationale. The exact Layer1 relations belong in the

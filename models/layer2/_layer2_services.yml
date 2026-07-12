@@ -111,13 +111,18 @@ unit_tests:
             'service-key' as service_key,
             'service-version-key' as service_version_key,
             'address-key' as installation_address_key,
+            'INTERNET' as service_type,
             true as is_valid,
             cast('2026-01-01' as date) as valid_from,
-            cast('2027-01-01' as date) as valid_to
+            cast('2027-01-01' as date) as valid_to,
+            cast('2026-01-01 08:00:00' as timestamp) as source_updated_at
       - input: ref('int_terminal_deleted_customer_keys')
         format: sql
         rows: |
-          select cast(null as string) as customer_key where false
+          select
+            cast(null as string) as customer_key,
+            cast(null as string) as deletion_mode
+          where false
       - input: ref('fa_pd_customer')
         format: sql
         rows: |
@@ -148,13 +153,18 @@ unit_tests:
             'service-key' as service_key,
             'service-version-key' as service_version_key,
             'address-key' as installation_address_key,
+            'INTERNET' as service_type,
             true as is_valid,
             cast('2026-01-01' as date) as valid_from,
-            cast('2027-01-01' as date) as valid_to
+            cast('2027-01-01' as date) as valid_to,
+            cast('2026-01-01 08:00:00' as timestamp) as source_updated_at
       - input: ref('int_terminal_deleted_customer_keys')
         format: sql
         rows: |
-          select cast(null as string) as customer_key where false
+          select
+            cast(null as string) as customer_key,
+            cast(null as string) as deletion_mode
+          where false
       - input: ref('fa_pd_customer')
         format: sql
         rows: |

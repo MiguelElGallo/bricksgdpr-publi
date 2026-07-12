@@ -5,7 +5,7 @@ icon: lucide/braces
 
 # Functions and macros
 
-The project defines three dbt-managed Databricks SQL functions and nine local Jinja macros.
+The project defines three dbt-managed Databricks SQL functions and eleven public local Jinja macros.
 
 ## SQL functions
 
@@ -123,6 +123,60 @@ Returns the SQL string literal configured by `erased_member_key` (`-99999` by de
 facts and Layer3 special members use it consistently.
 
 **Source for both:** `macros/deletion_control.sql`.
+
+### `attach_customer_deletion_mode`
+
+```jinja
+attach_customer_deletion_mode(
+    source_relation,
+    customer_key_expression,
+    output_columns,
+    deletion_relation=none,
+    source_alias='source_rows'
+)
+```
+
+| Argument | Required | Contract |
+| --- | --- | --- |
+| `source_relation` | Yes | Relation or CTE containing the customer-dependent rows |
+| `customer_key_expression` | Yes | Nonempty SQL expression evaluated against `source_alias` |
+| `output_columns` | Yes | Nonempty, duplicate-free list of simple identifiers |
+| `deletion_relation` | No | Ledger relation; defaults to `int_terminal_deleted_customer_keys` |
+| `source_alias` | No | Simple SQL identifier used to qualify source columns |
+
+The macro returns the explicit output columns plus `deletion_mode`. It performs one left join to
+the one-row-per-customer-key terminal ledger.
+
+### `apply_customer_deletion_policy`
+
+```jinja
+apply_customer_deletion_policy(
+    source_relation,
+    output_columns,
+    special_behavior,
+    special_replacements=none,
+    erased_flag_column=none,
+    deletion_mode_column='deletion_mode',
+    source_alias='policy_rows'
+)
+```
+
+| Argument | Required | Contract |
+| --- | --- | --- |
+| `source_relation` | Yes | Mode-annotated relation or CTE |
+| `output_columns` | Yes | Explicit output projection |
+| `special_behavior` | Yes | `DELETE` or `REPLACE` |
+| `special_replacements` | For REPLACE | Mapping from output column to SQL replacement expression |
+| `erased_flag_column` | For REPLACE | New Boolean output column; true only for SPECIAL rows |
+| `deletion_mode_column` | No | Mode column name, default `deletion_mode` |
+| `source_alias` | No | Simple SQL identifier used to qualify policy rows |
+
+FULL rows are always filtered out. DELETE also filters SPECIAL rows. REPLACE retains SPECIAL rows,
+replaces only the configured keys, and emits an explicit true/false erased flag. Unsupported modes
+fail closed because only null (ordinary) and SPECIAL pass the REPLACE filter.
+
+**Source for both:** `macros/customer_deletion_policy.sql`; argument metadata is in
+`macros/customer_deletion_policy.yml`.
 
 ### `case_access_predicate`
 

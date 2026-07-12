@@ -2,143 +2,172 @@
 icon: lucide/clipboard-check
 ---
 
-# Verify terminal deletion
+# Verify customer deletion
 
-Use this guide to prove that a source deletion is stored, independently confirmed, planned across
-every governed relation, and removes original identity links only after authorization. Event and
-invoice facts retain their grain under the erased member.
+Use this checklist after changing the deletion control, adding a customer-dependent model, or
+deploying the project.
 
-This verifies current-state identity unlinking in the demo. It does not prove anonymisation or
-physical erasure from Delta history, caches, exports, object versions, or backups.
-
-## Load the target
+## 1. Load and verify the target
 
 ```bash
 set -a
 source .env
 set +a
+
+uv run databricks auth describe --profile "$DATABRICKS_CONFIG_PROFILE"
+uv run databricks current-user me --profile "$DATABRICKS_CONFIG_PROFILE"
 ```
 
-Confirm that the checked-in synthetic seeds have not been modified.
+Confirm the expected workspace, identity, catalog, and optional schema prefix before replacing
+relations.
 
-## Replace the current relations
+## 2. Build the canonical final state
 
 ```bash
 uv run dbt build --full-refresh --exclude tag:access_control
+uv run dbt run-operation apply_access_controls
+uv run dbt test --select tag:access_control
+uv run dbt build --select '*'
 ```
 
 !!! warning
-    `--full-refresh` replaces current governed tables in `DBT_PROJECT_CATALOG`. Confirm the target
-    before running it. It also rebuilds the demo request ledger from the current source fixture;
-    production audit evidence must live in an append-only control system that a dbt full refresh
-    cannot reset.
+    `--full-refresh` replaces current demo relations and reconstructs the incremental control
+    ledgers. Production decision/audit history must live in a durable append-only control system.
 
-## Reconcile and verify access
+## 3. Check the authorization states
 
 ```bash
-uv run dbt run-operation apply_access_controls
-uv run dbt test --select tag:access_control
+uv run dbt show --inline "
+select deletion_request_id, decision_revision_id, deletion_mode,
+       deletion_policy_version, authorization_status
+from {{ ref('customer_deletion_authorizations') }}
+order by deletion_request_id
+" --limit 10
 ```
 
-This prevents a deletion check from being accepted against relations with a drifted access
-contract.
+Expected current state:
 
-## Run the deletion assertions
+| Request | Status | Mode |
+| --- | --- | --- |
+| `CCHG-0095-D` | `PENDING` | null |
+| `CCHG-0097-D` | `AUTHORIZED` | `SPECIAL_DELETION` |
+| `CCHG-0099-D` | `AUTHORIZED` | `FULL_GOVERNED_OUTPUT_DELETION` |
+
+The unconfirmed `0095` fixture must still exist in mapping, Layer2, and Layer3. Detection alone
+must never delete it.
+
+## 4. Check plan coverage
+
+```bash
+uv run dbt show --inline "
+select deletion_mode, planned_action,
+       count(distinct concat(target_layer, '.', target_relation)) as target_count,
+       count(*) as plan_rows
+from {{ ref('int_customer_deletion_plan') }}
+group by deletion_mode, planned_action
+order by deletion_mode, planned_action
+" --limit 20
+```
+
+The fixed target inventory is:
+
+| Mode | Action | Distinct targets |
+| --- | --- | ---: |
+| FULL | `DELETE_CURRENT_ROWS` | 13 |
+| FULL | `EXCLUDE_DELETED_ROWS` | 4 |
+| SPECIAL | `DELETE_CURRENT_ROWS` | 9 |
+| SPECIAL | `REASSIGN_TO_ERASED_MEMBER` | 4 |
+| SPECIAL | `EXCLUDE_ERASED_ROWS` | 4 |
+
+The canonical fixture produces 102 plan rows across four authorized decision revisions and their
+historical customer keys.
+
+## 5. Check the terminal ledger
+
+```bash
+uv run dbt show --inline "
+select decision_revision_id, deletion_request_id, deletion_mode,
+       initial_decision_revision_id, initial_deletion_mode,
+       deletion_policy_version, authorization_recorded_at,
+       initial_authorization_recorded_at, mode_escalated_at
+from {{ ref('int_terminal_deleted_customer_keys') }}
+order by deletion_request_id, customer_key
+" --limit 10
+```
+
+Expected:
+
+- one SPECIAL key for `CCHG-0097-D`, with the later same-mode review effective and the first
+  SPECIAL revision preserved as initial evidence;
+- two FULL keys for `CCHG-0099-D`, both initially SPECIAL and both with escalation evidence;
+- no key for `CCHG-0095-D`.
+
+## 6. Check every Layer3 table
+
+```bash
+uv run dbt show --inline "
+select 'dim_customer' as relation_name, count(*) as row_count from {{ ref('dim_customer') }}
+union all select 'dim_service', count(*) from {{ ref('dim_service') }}
+union all select 'dim_date', count(*) from {{ ref('dim_date') }}
+union all select 'fct_customer_event', count(*) from {{ ref('fct_customer_event') }}
+union all select 'fct_invoice', count(*) from {{ ref('fct_invoice') }}
+order by relation_name
+" --limit 10
+```
+
+Expected final totals are 16 customers, 18 services, 1,461 dates, 30 events, and 27 invoices.
+
+Then inspect the three fixture outcomes:
+
+```bash
+uv run dbt show --inline "
+select event_key as record_key, customer_key,
+       cast(null as string) as service_key, is_erased_customer
+from {{ ref('fct_customer_event') }}
+where event_key in ('EVT-0095', 'EVT-0097', 'EVT-0099')
+union all
+select invoice_key, customer_key, service_key, is_erased_customer
+from {{ ref('fct_invoice') }}
+where invoice_key in ('INV-0095', 'INV-0097', 'INV-0099')
+order by record_key
+" --limit 10
+```
+
+- `0095` rows are present and ordinary;
+- `0097` rows are present under `-99999` with the erased flag;
+- `0099` rows are absent.
+
+## 7. Run the executable controls
 
 ```bash
 uv run dbt test --select tag:deletion_control
 uv run dbt test --select assert_priva_map_contract
 uv run dbt test --select assert_layer2_terminal_deletion
 uv run dbt test --select assert_layer3_terminal_deletion
+uv run dbt test --select test_type:unit
 ```
 
-Every command should pass in the trusted deployment or owner session. Together they check the
-source control fixtures, confirmation gate, exact 17-target plan, accepted/quarantine partitions,
-mapping exclusions, Layer2/Layer3 reassignment, and case-view exclusion.
+These tests cover fail-closed authorization, exact action inventory, ordinary/SPECIAL/FULL model
+behavior, fact/quarantine partitions, same-mode evidence selection, mapping removal, erased-member
+invariants, and Layer3 outcomes.
 
-## Inspect the control states
+## 8. Adding another customer-dependent table
 
-```bash
-uv run dbt show --inline "
-select
-    deletion_request_id,
-    decision_status,
-    legal_hold,
-    authorization_status
-from {{ ref('customer_deletion_authorizations') }}
-order by deletion_request_id
-" --limit 10
-```
+Before merging a new table:
 
-The expected states are `CCHG-0097-D = PENDING` and `CCHG-0099-D = AUTHORIZED`.
+1. Add it to `customer_deletion_target_relations()` with both FULL and SPECIAL actions.
+2. Call `attach_customer_deletion_mode()` with its relation, customer-key expression, and explicit
+   output columns.
+3. Call `apply_customer_deletion_policy()` with `special_behavior='DELETE'` or `REPLACE`.
+4. For REPLACE, provide every replacement expression and `erased_flag_column`.
+5. Add a unit test containing an ordinary row, a SPECIAL row, and a FULL row.
+6. Update the fixed target counts and Layer3 walkthrough if the governed inventory changes.
 
-Confirm that only the authorized request has plan rows:
+See [Functions and macros](../reference/functions-and-macros.md) for every parameter.
 
-```bash
-uv run dbt show --inline "
-select
-    deletion_request_id,
-    planned_action,
-    count(distinct customer_key) as historical_key_count,
-    count(distinct concat(target_layer, '.', target_relation)) as target_count,
-    count(*) as plan_row_count
-from {{ ref('int_customer_deletion_plan') }}
-group by deletion_request_id, planned_action
-" --limit 10
-```
+## 9. Record the evidence boundary
 
-The rows for `CCHG-0099-D` total two historical keys, 17 targets, and 34 plan rows across delete,
-reassign, and exclude actions. The pending request has no plan row and cannot enter the gate.
-
-Confirm original modeled customer and service keys are replaced:
-
-```bash
-uv run dbt show --inline "
-select 'event' as fact_name, event_key as record_key, customer_key,
-    cast(null as string) as service_key, is_erased_customer
-from {{ ref('fct_customer_event') }} where event_key = 'EVT-0099'
-union all
-select 'invoice', invoice_key, customer_key, service_key, is_erased_customer
-from {{ ref('fct_invoice') }} where invoice_key = 'INV-0099'
-" --limit 10
-```
-
-Both rows remain, use `customer_key = -99999`, and have `is_erased_customer = true`; the invoice's
-service key is also `-99999`. Their source transaction IDs remain and can be re-linked through the
-restricted source history in this demo, so these facts remain Personal Data.
-
-## Verify the customer case view with an authorized session
-
-In a separately authenticated `case_users` or `privacy_admins` SQL session, run this aggregate
-query against the canonical demo catalog:
-
-```sql
-select
-    count_if(customer_id = 'CUST-0097') as pending_customer_rows,
-    count_if(customer_id = 'CUST-0099') as authorized_deleted_rows
-from bricksgdpr.layer3_case.case_dim_customer
-where customer_id in ('CUST-0097', 'CUST-0099');
-```
-
-The expected result is `pending_customer_rows = 1` and `authorized_deleted_rows = 0`. This proves
-that confirmation, rather than mere detection, controls the authorized customer case view. It does
-not independently inspect every case fact; the trusted owner-side model tests cover the underlying
-Layer3 facts.
-
-!!! warning "Current test limitation"
-    Do not use an unaffiliated zero-row result as authorized evidence. The current
-    `assert_case_views_terminal_deletion` singular test expands the internal pseudonymization UDF,
-    but ordinary consumer personas correctly lose UDF `EXECUTE` after access reconciliation. The
-    test therefore cannot provide independent persona proof in its current form and should be
-    redesigned.
-
-## Record the scope of the evidence
-
-Record the catalog, schema prefix, build run, request and decision IDs, authorization timestamp,
-plan target count, test results, and authorized identity used for the case-view assertion. Describe
-the result as current-state identity unlinking with erased-member fact retention. Do not describe
-the retained facts as anonymous without a separate identifiability assessment.
-
-For production erasure claims, separately verify source purge, replay prevention, Delta retention,
-caches, exports, backups, and disaster-recovery copies. Read
-[Terminal deletion versus erasure](../explanation/terminal-deletion-vs-erasure.md) for the boundary.
+Record the catalog, schema prefix, build run, decision revisions, policy version, ledger state, test
+results, and operator identity. Describe FULL as deletion from governed current outputs and SPECIAL
+as erased-member fact retention. Do not claim physical erasure or anonymisation without separate
+source, Delta-retention, export, backup, recipient, and identifiability evidence.

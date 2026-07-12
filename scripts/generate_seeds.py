@@ -12,6 +12,7 @@ Row = dict[str, RowValue]
 SEED_DIR = Path(__file__).resolve().parents[1] / "seeds"
 ACTIVE_CUSTOMERS = range(1, 15)
 INACTIVE_CUSTOMER_NUMBER = 15
+UNCONFIRMED_DELETION_CUSTOMER_NUMBER = 95
 PENDING_DELETION_CUSTOMER_NUMBER = 97
 LATE_CUSTOMER_NUMBER = 98
 DELETED_CUSTOMER_NUMBER = 99
@@ -112,6 +113,41 @@ def customer_rows() -> list[Row]:
     inactive_customer["is_active"] = False
     rows.append(inactive_customer)
 
+    rows.append(
+        {
+            "customer_change_id": "CCHG-0095-D",
+            "customer_pk": UNCONFIRMED_DELETION_CUSTOMER_NUMBER,
+            "customer_id": customer_id(UNCONFIRMED_DELETION_CUSTOMER_NUMBER),
+            "customer_ssn": ssn(UNCONFIRMED_DELETION_CUSTOMER_NUMBER),
+            "first_name": "",
+            "last_name": "",
+            "email": "",
+            "phone": "",
+            "birth_date": "",
+            "address_line1": "",
+            "address_line2": "",
+            "city": "",
+            "postal_code": "",
+            "country_code": "",
+            "customer_segment": "",
+            "is_active": False,
+            "source_operation": "DELETE",
+            "source_updated_at": "2026-01-08T12:00:00",
+        }
+    )
+
+    unconfirmed_upsert = active_customer_row(UNCONFIRMED_DELETION_CUSTOMER_NUMBER)
+    unconfirmed_upsert.update(
+        {
+            "customer_change_id": "CCHG-0095-U",
+            "first_name": "Unconfirmed",
+            "last_name": "Request",
+            "email": "unconfirmed.request@example.invalid",
+            "source_updated_at": "2026-02-22T12:00:00",
+        }
+    )
+    rows.append(unconfirmed_upsert)
+
     pending_delete: Row = {
         "customer_change_id": "CCHG-0097-D",
         "customer_pk": PENDING_DELETION_CUSTOMER_NUMBER,
@@ -206,6 +242,8 @@ def event_rows() -> list[Row]:
             )
             event_number += 1
     for ssn_number, event_id in (
+        (UNCONFIRMED_DELETION_CUSTOMER_NUMBER, "EVT-0095"),
+        (PENDING_DELETION_CUSTOMER_NUMBER, "EVT-0097"),
         (LATE_CUSTOMER_NUMBER, "EVT-0098"),
         (DELETED_CUSTOMER_HISTORICAL_SSN_NUMBER, "EVT-0099"),
     ):
@@ -250,6 +288,8 @@ def service_rows() -> list[Row]:
     invalid_flag = service_row(13, "B")
     invalid_flag["is_valid"] = False
     rows.append(invalid_flag)
+    rows.append(service_row(UNCONFIRMED_DELETION_CUSTOMER_NUMBER))
+    rows.append(service_row(PENDING_DELETION_CUSTOMER_NUMBER))
     rows.append(service_row(LATE_CUSTOMER_NUMBER))
     deleted_service = service_row(DELETED_CUSTOMER_NUMBER)
     deleted_service["customer_ssn"] = ssn(DELETED_CUSTOMER_HISTORICAL_SSN_NUMBER)
@@ -383,6 +423,16 @@ def invoice_rows() -> list[Row]:
         ]
     )
     for number, source_ssn_number, invoice_id in (
+        (
+            UNCONFIRMED_DELETION_CUSTOMER_NUMBER,
+            UNCONFIRMED_DELETION_CUSTOMER_NUMBER,
+            "INV-0095",
+        ),
+        (
+            PENDING_DELETION_CUSTOMER_NUMBER,
+            PENDING_DELETION_CUSTOMER_NUMBER,
+            "INV-0097",
+        ),
         (LATE_CUSTOMER_NUMBER, LATE_CUSTOMER_NUMBER, "INV-0098"),
         (
             DELETED_CUSTOMER_NUMBER,

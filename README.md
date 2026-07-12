@@ -78,15 +78,14 @@ validation commands.
 
 Current control fixtures produce:
 
-- 15 protected customers, including one detected-but-pending deletion fixture;
-- 29 accepted events—including one erased-member fact—and one late event in quarantine;
-- 16 accepted service periods and three quarantined service periods;
-- 26 accepted invoices—including one erased-member fact—and 11 quarantined invoices;
-- no original customer/service keys for confirmed deletions in governed outputs or case views;
-  event and invoice grain is retained under the non-person sentinel `-99999`.
+- 15 protected customers, including one detected-but-unconfirmed fixture that remains linked;
+- 30 accepted events, including one SPECIAL fact under `-99999`, plus one quarantined and one FULL-deleted event;
+- 17 accepted service periods, three quarantined periods, and two deletion-controlled periods;
+- 27 accepted invoices, including one SPECIAL fact, plus 11 quarantined and one FULL-deleted invoice;
+- no original customer/service keys for authorized deletions in governed outputs or case views.
 
-This is executable current-state identity unlinking driven by a persisted request, independent
-confirmation, and an exact 17-target action plan. The synthetic seeds, source-shaped staging views, and
+This is executable SPECIAL/FULL governed-output handling driven by a persisted request, independent
+versioned confirmation, and an exact 17-target action plan. The synthetic seeds, source-shaped staging views, and
 restricted control evidence intentionally retain reproducible fixtures; they are outside that
 current-output deletion claim. Production physical erasure still
 requires source purge, Delta retention, cache/export, and backup controls described in

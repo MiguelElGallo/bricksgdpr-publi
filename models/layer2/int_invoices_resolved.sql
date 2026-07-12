@@ -2,12 +2,9 @@
 
 select
     invoice_id,
-    case when is_erased_customer then {{ erased_member_key() }} else customer_key end as customer_key,
-    case when is_erased_customer then {{ erased_member_key() }} else service_key end as service_key,
-    case
-        when is_erased_customer then {{ erased_member_key() }}
-        else resolved_service_version_key
-    end as service_version_key,
+    customer_key,
+    service_key,
+    resolved_service_version_key as service_version_key,
     amount,
     currency_code,
     issued_date,

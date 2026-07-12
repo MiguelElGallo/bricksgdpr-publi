@@ -65,7 +65,7 @@ cross join service_metrics
 cross join exclusion_metrics
 where
     customer_metrics.row_count != 15
-    or service_metrics.row_count != 16
+    or service_metrics.row_count != 17
     or customer_metrics.invalid_version_count != 0
     or service_metrics.invalid_version_count != 0
     or customer_metrics.domain_collision_count != 0
