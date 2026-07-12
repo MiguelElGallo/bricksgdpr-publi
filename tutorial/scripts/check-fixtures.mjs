@@ -5,7 +5,12 @@ import { fileURLToPath } from "node:url";
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const tutorialRoot = resolve(scriptDirectory, "..");
 const repositoryRoot = resolve(tutorialRoot, "..");
-const fixtureNames = ["customer.csv", "customer_services.csv", "invoices.csv"];
+const fixtureNames = [
+  "customer.csv",
+  "customer_deletion_confirmations.csv",
+  "customer_services.csv",
+  "invoices.csv",
+];
 
 for (const name of fixtureNames) {
   const canonical = await readFile(resolve(repositoryRoot, "seeds", name));

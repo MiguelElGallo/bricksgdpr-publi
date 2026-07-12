@@ -4,8 +4,8 @@ icon: lucide/clipboard-check
 
 # Verify terminal deletion
 
-Use this guide to prove that the checked-in deletion fixtures are absent from every current
-governed relation after a full replacement build.
+Use this guide to prove that a source deletion is stored, independently confirmed, planned across
+every governed relation, and absent from current outputs only after authorization.
 
 This verifies logical current-state deletion in the demo. It does not prove physical erasure from
 Delta history, caches, exports, object versions, or backups.
@@ -28,7 +28,9 @@ uv run dbt build --full-refresh --exclude tag:access_control
 
 !!! warning
     `--full-refresh` replaces current governed tables in `DBT_PROJECT_CATALOG`. Confirm the target
-    before running it.
+    before running it. It also rebuilds the demo request ledger from the current source fixture;
+    production audit evidence must live in an append-only control system that a dbt full refresh
+    cannot reset.
 
 ## Reconcile and verify access
 
@@ -50,7 +52,41 @@ uv run dbt test --select assert_layer3_terminal_deletion
 ```
 
 Every command should pass in the trusted deployment or owner session. Together they check the
-source control fixtures, accepted/quarantine partitions, mapping exclusions, Layer2, and Layer3.
+source control fixtures, confirmation gate, exact 17-target plan, accepted/quarantine partitions,
+mapping exclusions, Layer2, and Layer3.
+
+## Inspect the control states
+
+```bash
+uv run dbt show --inline "
+select
+    deletion_request_id,
+    decision_status,
+    legal_hold,
+    authorization_status
+from {{ ref('customer_deletion_authorizations') }}
+order by deletion_request_id
+" --limit 10
+```
+
+The expected states are `CCHG-0097-D = PENDING` and `CCHG-0099-D = AUTHORIZED`.
+
+Confirm that only the authorized request has plan rows:
+
+```bash
+uv run dbt show --inline "
+select
+    deletion_request_id,
+    count(distinct customer_key) as historical_key_count,
+    count(distinct concat(target_layer, '.', target_relation)) as target_count,
+    count(*) as plan_row_count
+from {{ ref('int_customer_deletion_plan') }}
+group by deletion_request_id
+" --limit 10
+```
+
+The single result is `CCHG-0099-D` with 2 historical keys, 17 targets, and 34 plan rows. The pending
+request has no plan row and therefore cannot enter the execution gate.
 
 ## Verify the customer case view with an authorized session
 
@@ -58,14 +94,17 @@ In a separately authenticated `case_users` or `privacy_admins` SQL session, run 
 query against the canonical demo catalog:
 
 ```sql
-select count(*) as deleted_customer_rows
+select
+    count_if(customer_id = 'CUST-0097') as pending_customer_rows,
+    count_if(customer_id = 'CUST-0099') as authorized_deleted_rows
 from bricksgdpr.layer3_case.case_dim_customer
 where customer_id in ('CUST-0097', 'CUST-0099');
 ```
 
-The expected result is `0`. This proves the absence of the two terminal-deletion fixtures from the
-authorized customer case view. It does not independently inspect every case fact; the trusted
-owner-side model tests cover the underlying Layer3 facts.
+The expected result is `pending_customer_rows = 1` and `authorized_deleted_rows = 0`. This proves
+that confirmation, rather than mere detection, controls the authorized customer case view. It does
+not independently inspect every case fact; the trusted owner-side model tests cover the underlying
+Layer3 facts.
 
 !!! warning "Current test limitation"
     Do not use an unaffiliated zero-row result as authorized evidence. The current
@@ -76,8 +115,9 @@ owner-side model tests cover the underlying Layer3 facts.
 
 ## Record the scope of the evidence
 
-Record the catalog, schema prefix, build run, test results, and authorized identity used for the
-case-view assertion. Describe the result as current-state logical deletion.
+Record the catalog, schema prefix, build run, request and decision IDs, authorization timestamp,
+plan target count, test results, and authorized identity used for the case-view assertion. Describe
+the result as current-state logical deletion.
 
 For production erasure claims, separately verify source purge, replay prevention, Delta retention,
 caches, exports, backups, and disaster-recovery copies. Read

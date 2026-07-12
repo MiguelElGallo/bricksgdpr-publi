@@ -97,6 +97,7 @@ const customerRequiredResources: Record<CustomerStepId, string[]> = {
   current: [
     "model.bricksgdpr_tutorial.int_current_customers",
     "test.bricksgdpr_tutorial.assert_current_customers_terminal_deletion",
+    "test.bricksgdpr_tutorial.assert_deletion_confirmation_gate",
   ],
   mapping: [
     "model.bricksgdpr_tutorial.demo_customer_map",
@@ -169,7 +170,8 @@ const customerProofResults = {
       { name: "customer_segment", type: "VARCHAR" },
       { name: "is_active", type: "BOOLEAN" },
       { name: "current_customer_count", type: "BIGINT" },
-      { name: "terminal_deleted_rows", type: "BIGINT" },
+      { name: "pending_customer_rows", type: "BIGINT" },
+      { name: "authorized_deleted_rows", type: "BIGINT" },
     ],
     rows: [
       [
@@ -179,7 +181,8 @@ const customerProofResults = {
         "customer01@example.invalid",
         "small_business",
         true,
-        14,
+        15,
+        1,
         0,
       ],
     ],
@@ -193,7 +196,7 @@ const customerProofResults = {
       { name: "keys_differ", type: "BOOLEAN" },
       { name: "mapped_customer_count", type: "BIGINT" },
     ],
-    rows: [["CUST-0001", CUSTOMER_KEY, CUSTOMER_EMAIL_KEY, "small_business", true, 14]],
+    rows: [["CUST-0001", CUSTOMER_KEY, CUSTOMER_EMAIL_KEY, "small_business", true, 15]],
   },
   layer2: {
     columns: [
@@ -205,7 +208,7 @@ const customerProofResults = {
       { name: "protected_column_count", type: "BIGINT" },
       { name: "protected_schema_violations", type: "BIGINT" },
     ],
-    rows: [[CUSTOMER_KEY, CUSTOMER_EMAIL_KEY, "small_business", true, 14, 13, 0]],
+    rows: [[CUSTOMER_KEY, CUSTOMER_EMAIL_KEY, "small_business", true, 15, 13, 0]],
   },
   layer3: {
     columns: [
@@ -216,7 +219,7 @@ const customerProofResults = {
       { name: "layer2_row_preserved", type: "BOOLEAN" },
       { name: "dimension_customer_count", type: "BIGINT" },
     ],
-    rows: [[CUSTOMER_KEY, CUSTOMER_EMAIL_KEY, "small_business", true, true, 14]],
+    rows: [[CUSTOMER_KEY, CUSTOMER_EMAIL_KEY, "small_business", true, true, 15]],
   },
 };
 
@@ -247,7 +250,7 @@ const combinedCatalog = [
     schema: "main",
     name: "int_current_customers",
     tableType: "VIEW",
-    rowCount: 14,
+    rowCount: 15,
     columns: [{ name: "customer_id", type: "VARCHAR", nullable: false }],
   },
   {
@@ -268,21 +271,21 @@ const combinedCatalog = [
     schema: "main",
     name: "demo_customer_map",
     tableType: "BASE TABLE",
-    rowCount: 14,
+    rowCount: 15,
     columns: [{ name: "customer_key", type: "VARCHAR", nullable: false }],
   },
   {
     schema: "main",
     name: "int_customer_protected",
     tableType: "BASE TABLE",
-    rowCount: 14,
+    rowCount: 15,
     columns: [{ name: "customer_key", type: "VARCHAR", nullable: false }],
   },
   {
     schema: "main",
     name: "dim_customer",
     tableType: "BASE TABLE",
-    rowCount: 14,
+    rowCount: 15,
     columns: [{ name: "customer_key", type: "VARCHAR", nullable: false }],
   },
 ];

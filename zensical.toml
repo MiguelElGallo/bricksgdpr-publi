@@ -44,6 +44,7 @@ nav = [
       { "Commands" = "reference/commands.md" },
       { "Catalogs and schemas" = "reference/catalogs-and-schemas.md" },
       { "Sources and Layer1" = "reference/sources-and-layer1.md" },
+      { "Customer deletion control" = "reference/deletion-control.md" },
       { "priva_map" = "reference/priva-map.md" },
       { "Layer2" = "reference/layer2.md" },
       { "Layer3 and case views" = "reference/layer3-and-case.md" },

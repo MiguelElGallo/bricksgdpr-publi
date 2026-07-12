@@ -3,12 +3,12 @@ version: 2
 models:
   - name: int_terminal_deleted_customer_keys
     description: >
-      Ephemeral terminal-deletion control at one row per current or historical SSN key associated
-      with a deleted customer ID. It is expanded into classifiers and never persists a deleted
-      customer's pseudonymous key as a durable relation.
+      Ephemeral execution gate containing distinct customer keys from authorized plan rows. Every
+      downstream anti-join depends on this relation, so detection without confirmation cannot
+      trigger current-state deletion.
     columns:
       - name: customer_key
-        description: Transient versioned key used only to anti-join deleted subjects.
+        description: Authorized historical customer key used to anti-join deleted subjects.
 
   - name: int_customer_events_keyed
     description: >

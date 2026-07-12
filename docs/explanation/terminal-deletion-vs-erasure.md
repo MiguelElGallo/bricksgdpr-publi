@@ -9,11 +9,12 @@ not, by itself, physically erase every copy of a person's data.
 
 ## What “terminal” means here
 
-A customer change row with `source_operation = 'DELETE'` is a tombstone. Once a stable customer ID
-has any such row, later upserts do not resurrect it.
+A customer change row with `source_operation = 'DELETE'` is first stored as a detected request. It
+does not delete anything by itself. A separate privacy decision must be `CONFIRMED`, and no legal
+hold may apply, before the request becomes `AUTHORIZED`.
 
-The deletion control expands that customer ID to every historical SSN recorded for it, derives all
-corresponding customer keys, and removes those keys from:
+Only then does the deletion plan expand the stable customer ID to every historical SSN, derive all
+corresponding customer keys, and authorize those keys for removal from:
 
 - both `priva_map` tables;
 - durable Layer2 relations;
@@ -21,15 +22,20 @@ corresponding customer keys, and removes those keys from:
 - Layer3 dimensions and facts;
 - controlled case views.
 
-Dependent extracts that still carry an older SSN are removed because the control expands through
-the stable customer ID first.
+Dependent extracts that still carry an older SSN are removed because the plan expands through the
+stable customer ID first. A later upsert cannot resurrect an authorized key. A pending, rejected,
+or held request creates no plan and cannot enter the execution gate.
+
+The exact models, states, and 17 planned targets are listed in
+[Customer deletion control](../reference/deletion-control.md).
 
 ## What remains on purpose
 
-The synthetic CSV seeds retain the upsert and tombstone fixtures so the demo is reproducible.
-Ordinary Layer1 staging views therefore also retain those source-shaped rows. The absence claim
-starts at the mapping boundary and includes protected, quarantine, analytical, and case outputs—not
-the source simulator or its staging views.
+The synthetic CSV seeds retain the upsert, tombstone, and confirmation fixtures so the demo is
+reproducible. Ordinary Layer1 staging views retain source-shaped rows, and restricted deletion
+control tables retain minimum case evidence. The absence claim covers every current-state target
+enumerated in the deletion plan—not the source simulator, ordinary source-history staging views,
+or the evidence records themselves.
 
 ## Why a successful query is not physical erasure
 
@@ -48,9 +54,10 @@ prove or coordinate them merely by returning zero current rows.
 
 ## The production sequence is a design obligation
 
-A production erasure workflow normally has to fence replay, resolve every identity version,
-delete dependents before the final map, purge or age out source and storage history, cover exports
-and backups, and record evidence. The exact operations are environment-specific and are not
+A production erasure workflow normally has to verify the request and applicable legal basis, honor
+exceptions and restrictions, fence replay, resolve every identity version, delete dependents
+before the final map, notify recipients, purge or age out source and storage history, cover exports
+and backups, and record evidence. The exact operations are environment-specific and are not fully
 implemented in this repository.
 
 For that reason, the documentation provides a how-to for

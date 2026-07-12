@@ -4,8 +4,9 @@ icon: lucide/trash-2
 
 # Observe terminal deletion
 
-In this tutorial, we will use the `CUST-0099` fixture to see how one deletion tombstone suppresses
-every historical identity associated with a stable customer ID.
+In this tutorial, we will compare pending `CUST-0097` with confirmed `CUST-0099`. Both have a source
+deletion tombstone, but only the confirmed request creates a plan and suppresses every historical
+identity associated with its stable customer ID.
 
 This is a lesson about logical current-state deletion. It is not proof that old bytes have been
 removed from Delta history, caches, exports, or backups.
@@ -41,8 +42,41 @@ You should see:
 - an earlier `UPSERT` using `900-00-0199`; and
 - a later `DELETE` tombstone using `900-00-0099`.
 
-The SSNs differ. The stable `customer_id` is what lets the deletion control expand to both
+The SSNs differ. The stable `customer_id` is what later lets the authorized plan expand to both
 historical identities.
+
+## Observe detection and confirmation
+
+Inspect the stored request and its independent decision:
+
+```bash
+uv run dbt show --inline "
+select
+    deletion_request_id,
+    decision_status,
+    legal_hold,
+    authorization_status
+from {{ ref('customer_deletion_authorizations') }}
+order by deletion_request_id
+" --limit 10
+```
+
+`CCHG-0097-D` is `PENDING`; `CCHG-0099-D` is `AUTHORIZED`. Now inspect the plan:
+
+```bash
+uv run dbt show --inline "
+select
+    deletion_request_id,
+    count(distinct customer_key) as historical_keys,
+    count(distinct concat(target_layer, '.', target_relation)) as targets,
+    count(*) as plan_rows
+from {{ ref('int_customer_deletion_plan') }}
+group by deletion_request_id
+" --limit 10
+```
+
+Only `CCHG-0099-D` appears, with two historical keys, 17 targets, and 34 plan rows. Detection alone
+did not create work for `CCHG-0097-D`.
 
 ## Observe the expanded deletion keys
 
@@ -64,8 +98,8 @@ inner join subject_ssns as source
 " --limit 10
 ```
 
-The result contains two keys. The relation is ephemeral, so those keys guide the build without
-becoming a durable deletion table.
+The result contains two keys. The ephemeral gate is derived from the persisted plan, so those keys
+can guide every downstream model without duplicating confirmation logic.
 
 ## Check the governed outputs
 
@@ -95,6 +129,9 @@ where customer_key in (select customer_key from subject_keys)
 
 Every `remaining_rows` value should be `0`.
 
+Run the same map query for `CUST-0097`; its pending request has no plan, so its latest active upsert
+remains present. This is the fixture that proves a tombstone cannot authorize itself.
+
 The same anti-join is applied to events, services, invoices, and raw quarantine outputs before
 they are materialized.
 
@@ -115,9 +152,9 @@ return no violating rows. They do not by themselves prove what an authorized cas
 
 ## What you have observed
 
-Deletion wins over later or earlier upserts for the same stable customer ID. Rebuilding the demo's
-full-replacement DAG removes the subject from current mapping, protected, quarantine, and case
-outputs.
+An independently confirmed deletion wins over later or earlier upserts for the same stable customer
+ID. A pending deletion remains detected but produces no plan. Rebuilding the demo removes only the
+authorized subject from current mapping, protected, quarantine, and case outputs.
 
 Next, [prove a protected-layer invariant](prove-a-protected-layer-invariant.md).
 

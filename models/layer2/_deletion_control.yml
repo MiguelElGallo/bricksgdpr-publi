@@ -1,0 +1,58 @@
+version: 2
+
+models:
+  - name: int_customer_deletion_plan
+    description: >
+      Authorized deletion worklist at one row per historical customer key and governed target
+      relation. It is created only for confirmed requests without a legal hold and enumerates all
+      current-state tables and case views that must exclude the subject.
+    config:
+      contract:
+        enforced: true
+      grants:
+        select: [privacy_admins]
+    columns:
+      - name: deletion_request_id
+        data_type: string
+        description: Confirmed request that authorized this plan row.
+        data_tests: [not_null]
+      - name: customer_key
+        data_type: string
+        description: Versioned customer key for one current or historical source identity.
+        data_tests: [not_null]
+      - name: target_layer
+        data_type: string
+        description: dbt layer or controlled mapping area containing the target relation.
+        data_tests: [not_null]
+      - name: target_relation
+        data_type: string
+        description: Exact dbt relation whose current rows must exclude the customer key.
+        data_tests: [not_null]
+      - name: target_kind
+        data_type: string
+        description: Whether the target is a persisted TABLE or derived VIEW.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["TABLE", "VIEW"]
+      - name: planned_action
+        data_type: string
+        description: Constant DELETE_CURRENT_ROWS action consumed by the execution gate.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["DELETE_CURRENT_ROWS"]
+      - name: plan_status
+        data_type: string
+        description: Constant AUTHORIZED state; unconfirmed requests produce no plan rows.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["AUTHORIZED"]
+      - name: authorized_at
+        data_type: timestamp
+        description: Timestamp of the independent confirmation that authorized the plan.
+        data_tests: [not_null]

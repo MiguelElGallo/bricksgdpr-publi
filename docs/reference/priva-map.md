@@ -12,7 +12,7 @@ pseudonymous equivalents.
 
 | Model | Materialization | Grain | Default rows |
 | --- | --- | --- | ---: |
-| `fa_pd_customer` | Table | One latest active customer with no matching terminal deletion | 14 |
+| `fa_pd_customer` | Table | One latest active customer with no matching authorized deletion plan | 15 |
 | `fa_pd_service_address` | Table | One valid service period belonging to an active mapped customer | 16 |
 
 The repository uses `fa_pd` for its full-access Personal Data mapping models.
@@ -26,7 +26,8 @@ The repository uses `fa_pd` for its full-access Personal Data mapping models.
 2. Any `DELETE` row excludes every upsert with the same `customer_id` or SSN.
 3. Only rank-one active upserts remain.
 
-A delete is terminal even when a later upsert exists.
+A confirmed delete is terminal even when a later upsert exists. A detected but pending, rejected,
+or held request does not enter the mapping exclusion gate.
 
 ### Columns
 

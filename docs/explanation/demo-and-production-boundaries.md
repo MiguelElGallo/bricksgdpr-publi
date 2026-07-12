@@ -12,15 +12,16 @@ clear, but several conveniences are unsuitable as production claims.
 - A readable-to-pseudonymous mapping can be isolated from ordinary analytics.
 - Stable, domain-separated keys can preserve joins across layers.
 - Late and invalid records can be quarantined instead of disappearing.
-- Current governed outputs can enforce terminal deletion from a replayable fixture.
+- Current governed outputs can enforce deletion from a replayable, independently confirmed fixture.
 - Unity Catalog masks, grants, tags, and UDF privileges can be tested as metadata.
 - Positive and negative persona behavior can be exercised without retaining credentials.
 
 ## Synthetic inputs are control fixtures
 
-The four CSV seeds contain deterministic edge cases and between 19 and 37 rows. Exact counts such
-as 14 protected customers or 25 accepted invoices make regression tests easy to understand. They
-are not production capacities, error budgets, or expected distributions.
+The four source CSV seeds contain deterministic edge cases and between 19 and 37 rows; a fifth
+two-row seed represents independent deletion decisions. Exact counts such as 15 protected
+customers or 25 accepted invoices make regression tests easy to understand. They are not
+production capacities, error budgets, or expected distributions.
 
 The source simulator keeps raw values and deletion fixtures in Git. Real Personal Data must not be
 committed as a seed.

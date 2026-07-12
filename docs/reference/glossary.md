@@ -39,7 +39,7 @@ icon: lucide/book-a
 | Source simulator | Checked-in deterministic seeds; not a production ingestion or retention design |
 | Stable SSN assumption | Nondeleted customer relationships use the SSN-derived key and do not maintain a historical alias map |
 | Standard view | Persisted SQL view whose query-time predicate and masks evaluate for the caller; the four case models are standard views |
-| Terminal deletion | Rule that any delete for a customer ID permanently excludes all of that ID's historical SSN keys, even after a later upsert |
+| Terminal deletion | Rule that an authorized deletion plan excludes all historical SSN keys for a customer ID, even after a later upsert; a source tombstone alone is not authorization |
 | Type-1 current dimension | Customer dimension that exposes only the current active protected row |
 | Type-2-style service dimension | One row per service validity period keyed by service ID plus start date; not a complete SCD2 implementation |
 | `USING COLUMNS` | Unity Catalog mask metadata that passes the matching stored pseudonymous column to the mask function |

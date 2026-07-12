@@ -17,7 +17,8 @@ runs a focused dbt command, and shows the exact result to inspect. A completed c
 view until the learner chooses **Next**:
 
 1. inspect the readable `stg_customer` change for `CUST-0001`;
-2. reduce 19 changes to 14 current customers, including one current row for `CUST-0001`;
+2. detect and confirm deletion requests, then reduce 19 changes to 15 current customers, including
+   pending `CUST-0097` and one current row for `CUST-0001`;
 3. create distinct, domain-separated keys in `demo_customer_map`;
 4. leave readable mapping values behind in protected `int_customer_protected`;
 5. preserve the protected key and customer grain in `dim_customer` and run the final fixture proof.

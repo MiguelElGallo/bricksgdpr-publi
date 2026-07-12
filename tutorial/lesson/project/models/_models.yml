@@ -17,8 +17,8 @@ models:
   - name: int_current_customers
     description: >
       Browser-visible current-state view at one active synthetic upsert per customer. Historical
-      identifiers for any customer with a deletion tombstone are excluded before this relation is
-      used by the invoice and customer lessons.
+      identifiers are excluded only when a detected tombstone has an independent confirmation and
+      an authorized deletion plan.
     columns:
       - name: customer_id
         description: Readable synthetic customer identifier retained inside the tutorial boundary.
@@ -33,6 +33,30 @@ models:
           - accepted_values:
               arguments:
                 values: [true]
+
+  - name: int_customer_deletion_requests
+    description: Browser demo registry at one row per detected source DELETE change.
+    columns:
+      - name: deletion_request_id
+        data_tests: [not_null, unique]
+
+  - name: int_customer_deletion_authorizations
+    description: >
+      Independent decision gate at one row per detected request; only AUTHORIZED rows can create
+      deletion work.
+    columns:
+      - name: deletion_request_id
+        data_tests: [not_null, unique]
+      - name: authorization_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["AUTHORIZED", "PENDING", "REJECTED", "HELD"]
+
+  - name: int_customer_deletion_plan
+    description: >
+      Authorized browser worklist at one row per historical SSN and tutorial target relation.
+      Pending or rejected requests produce no plan rows.
 
   - name: demo_customer_map
     description: >

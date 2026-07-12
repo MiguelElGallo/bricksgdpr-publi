@@ -160,13 +160,13 @@ fixture_metrics as (
 select *
 from fixture_metrics
 where
-    current_customer_count != 14
+    current_customer_count != 15
     or current_fixture_count != 1
-    or mapped_customer_count != 14
+    or mapped_customer_count != 15
     or mapped_fixture_count != 1
-    or protected_customer_count != 14
+    or protected_customer_count != 15
     or protected_fixture_count != 1
-    or dimension_customer_count != 14
+    or dimension_customer_count != 15
     or dimension_fixture_count != 1
     or propagated_fixture_count != 1
     or domain_separated_count != 1

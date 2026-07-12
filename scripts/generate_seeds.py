@@ -12,7 +12,7 @@ Row = dict[str, RowValue]
 SEED_DIR = Path(__file__).resolve().parents[1] / "seeds"
 ACTIVE_CUSTOMERS = range(1, 15)
 INACTIVE_CUSTOMER_NUMBER = 15
-TERMINALLY_DELETED_CUSTOMER_NUMBER = 97
+PENDING_DELETION_CUSTOMER_NUMBER = 97
 LATE_CUSTOMER_NUMBER = 98
 DELETED_CUSTOMER_NUMBER = 99
 DELETED_CUSTOMER_HISTORICAL_SSN_NUMBER = 199
@@ -112,11 +112,11 @@ def customer_rows() -> list[Row]:
     inactive_customer["is_active"] = False
     rows.append(inactive_customer)
 
-    terminal_delete: Row = {
+    pending_delete: Row = {
         "customer_change_id": "CCHG-0097-D",
-        "customer_pk": TERMINALLY_DELETED_CUSTOMER_NUMBER,
-        "customer_id": customer_id(TERMINALLY_DELETED_CUSTOMER_NUMBER),
-        "customer_ssn": ssn(TERMINALLY_DELETED_CUSTOMER_NUMBER),
+        "customer_pk": PENDING_DELETION_CUSTOMER_NUMBER,
+        "customer_id": customer_id(PENDING_DELETION_CUSTOMER_NUMBER),
+        "customer_ssn": ssn(PENDING_DELETION_CUSTOMER_NUMBER),
         "first_name": "",
         "last_name": "",
         "email": "",
@@ -132,15 +132,15 @@ def customer_rows() -> list[Row]:
         "source_operation": "DELETE",
         "source_updated_at": "2026-01-10T12:00:00",
     }
-    rows.append(terminal_delete)
+    rows.append(pending_delete)
 
-    post_delete_upsert = active_customer_row(TERMINALLY_DELETED_CUSTOMER_NUMBER)
+    post_delete_upsert = active_customer_row(PENDING_DELETION_CUSTOMER_NUMBER)
     post_delete_upsert.update(
         {
             "customer_change_id": "CCHG-0097-U",
-            "first_name": "Must",
-            "last_name": "RemainDeleted",
-            "email": "must.remain.deleted@example.invalid",
+            "first_name": "Pending",
+            "last_name": "Review",
+            "email": "pending.review@example.invalid",
             "source_updated_at": "2026-02-20T12:00:00",
         }
     )

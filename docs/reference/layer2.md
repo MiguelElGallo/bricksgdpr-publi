@@ -12,7 +12,8 @@ records, and materializes accepted tables.
 
 | Model | Materialization | Grain | Contract |
 | --- | --- | --- | --- |
-| `int_terminal_deleted_customer_keys` | Ephemeral | One key per historical SSN associated with a deleted customer ID | Expands terminal deletion before durable output |
+| `int_customer_deletion_plan` | Table | One row per authorized historical customer key and target relation | Auditable 17-target worklist |
+| `int_terminal_deleted_customer_keys` | Ephemeral | One key per historical identity in an authorized plan | Single execution gate before durable output |
 | `int_customer_events_keyed` | Ephemeral | One source event | Replaces SSN with `customer_key` |
 | `int_customer_event_resolution` | Ephemeral | One nondeleted source event | Assigns event resolution status |
 | `int_customer_events_resolved` | Table | One accepted event | Contains customer key and event measures |

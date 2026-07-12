@@ -42,6 +42,14 @@ seeds:
         is_active: varchar
         source_operation: varchar
         source_updated_at: varchar
+    customer_deletion_confirmations:
+      +column_types:
+        deletion_request_id: varchar
+        decision_status: varchar
+        decided_at: varchar
+        decided_by_role: varchar
+        decision_reason: varchar
+        legal_hold: varchar
     customer_services:
       +column_types:
         service_id: varchar

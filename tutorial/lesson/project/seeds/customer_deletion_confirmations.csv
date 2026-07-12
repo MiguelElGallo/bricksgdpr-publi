@@ -1,0 +1,3 @@
+deletion_request_id,decision_status,decided_at,decided_by_role,decision_reason,legal_hold
+CCHG-0097-D,PENDING,,,,False
+CCHG-0099-D,CONFIRMED,2026-02-16T08:00:00,privacy_admin,VERIFIED_SOURCE_DELETION,False

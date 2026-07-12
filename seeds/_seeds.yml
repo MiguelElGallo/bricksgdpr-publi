@@ -27,6 +27,20 @@ seeds:
         source_operation: string
         source_updated_at: string
 
+  - name: customer_deletion_confirmations
+    description: >
+      Synthetic privacy-control decisions keyed to detected source deletion requests. A
+      CONFIRMED decision without a legal hold is the only state that authorizes a downstream
+      deletion plan; PENDING and REJECTED decisions remain non-authorizing evidence.
+    config:
+      column_types:
+        deletion_request_id: string
+        decision_status: string
+        decided_at: string
+        decided_by_role: string
+        decision_reason: string
+        legal_hold: string
+
   - name: customer_events
     description: >
       Synthetic event extract with one row per measured customer interaction. SSN is the only

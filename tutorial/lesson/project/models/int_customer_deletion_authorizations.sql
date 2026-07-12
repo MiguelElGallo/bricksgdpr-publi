@@ -1,0 +1,19 @@
+{{ config(materialized='view') }}
+
+select
+    requests.deletion_request_id,
+    requests.customer_id,
+    requests.customer_ssn,
+    requests.source_deleted_at,
+    coalesce(decisions.decision_status, 'PENDING') as decision_status,
+    decisions.decided_at,
+    coalesce(decisions.legal_hold, false) as legal_hold,
+    case
+        when coalesce(decisions.legal_hold, false) then 'HELD'
+        when decisions.decision_status = 'CONFIRMED' then 'AUTHORIZED'
+        when decisions.decision_status = 'REJECTED' then 'REJECTED'
+        else 'PENDING'
+    end as authorization_status
+from {{ ref('int_customer_deletion_requests') }} as requests
+left join {{ ref('stg_customer_deletion_confirmations') }} as decisions
+    on requests.deletion_request_id = decisions.deletion_request_id

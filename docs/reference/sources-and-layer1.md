@@ -5,8 +5,9 @@ icon: lucide/layers-3
 
 # Sources and Layer1
 
-Layer1 consists of four deterministic seed tables, four typed staging views, and three raw
-quarantine tables. The project defines no dbt `source` resources.
+Layer1 consists of four deterministic source seeds, one independent confirmation seed, five typed
+staging views, three raw quarantine tables, and two deletion-control tables. The project defines no
+dbt `source` resources.
 
 ## Seeds
 
@@ -16,6 +17,7 @@ quarantine tables. The project defines no dbt `source` resources.
 | `customer_events` | 30 | One measured customer event | SSN |
 | `customer_services` | 20 | One service identifier and validity interval | SSN and installation address |
 | `invoices` | 37 | One invoice | SSN and source service reference |
+| `customer_deletion_confirmations` | 2 | One privacy decision per detected request | Request identifier and decision metadata |
 
 All seed columns are loaded as strings according to `seeds/_seeds.yml`. Staging models apply the
 warehouse types.
@@ -26,10 +28,10 @@ warehouse types.
 
 | Fixture | Identifier | Expected current behavior |
 | --- | --- | --- |
-| Active customers | `CUST-0001` through `CUST-0014` | Fourteen current customer-map rows |
+| Active customers | `CUST-0001` through `CUST-0014` | Fourteen ordinary current customer-map rows |
 | Inactive customer | `CUST-0015` | Excluded from the customer map |
-| Delete followed by later upsert | `CUST-0097` | Remains terminally deleted |
-| Changed SSN followed by delete | `CUST-0099` | Both current and historical SSN keys are deleted |
+| Pending delete followed by later upsert | `CUST-0097` | Request is detected; no plan is created; current upsert remains |
+| Confirmed delete after an SSN change | `CUST-0099` | Both current and historical SSN keys are planned and deleted |
 | Late customer references | SSN ending `0098` | Event, service, and invoice quarantine as `CUSTOMER_NOT_FOUND` |
 | Invalid service flag | `SVC-0013-B` | Quarantines as `INVALID_VALIDITY_FLAG` |
 | Invalid service period | `SVC-0014-A` | Quarantines as `INVALID_VALIDITY_PERIOD` |
@@ -92,10 +94,14 @@ when the same keyed source row becomes resolvable.
 
 ## Deletion scope
 
-Terminal deletion removes current rows from `priva_map`, Layer2, Layer3, quarantine, and case
-outputs. It does not remove the demonstration source records from seeds or ordinary staging views.
-`stg_customer` intentionally retains upserts and tombstones so the deletion contract is
-reproducible.
+A source tombstone is stored in `customer_deletion_requests`, but downstream deletion begins only
+after an independent confirmation without a legal hold. The authorized plan removes current rows
+from `priva_map`, Layer2, Layer3, quarantine, and case outputs. The source simulator, ordinary
+source-history staging views, and restricted control evidence remain outside that current-output
+absence claim.
+
+See [Customer deletion control](deletion-control.md) for the complete state machine, exact target
+inventory, and fixture behavior.
 
 For the difference between logical output deletion and physical erasure, see
 [Terminal deletion versus erasure](../explanation/terminal-deletion-vs-erasure.md).

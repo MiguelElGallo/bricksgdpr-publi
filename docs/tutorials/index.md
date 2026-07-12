@@ -57,7 +57,8 @@ Follow these in order the first time. Each tutorial assumes the result of the pr
 3. [Trace an invoice into quarantine](trace-an-invoice-into-quarantine.md)
    follows one invalid source record through the deterministic classifier.
 4. [Observe terminal deletion](observe-terminal-deletion.md)
-   shows why a later upsert cannot resurrect a deleted customer.
+   shows how detection and confirmation create an authorized plan, and why a later upsert cannot
+   resurrect an authorized customer key.
 5. [Prove a protected-layer invariant](prove-a-protected-layer-invariant.md)
    runs the metadata tests that reject forbidden names and readable-data tags in protected schemas.
 

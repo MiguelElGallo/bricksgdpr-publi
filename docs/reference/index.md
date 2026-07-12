@@ -15,14 +15,14 @@ for task-oriented instructions, and [Explanation](../explanation/index.md) for d
 
 | Resource type | Count | Notes |
 | --- | ---: | --- |
-| Models | 29 | 8 views, 14 tables, and 7 ephemeral models |
-| Seeds | 4 | Deterministic synthetic source extracts |
+| Models | 33 | 9 views, 16 tables, 1 incremental model, and 7 ephemeral models |
+| Seeds | 5 | Four source extracts and one independent deletion-confirmation control |
 | SQL functions | 3 | Created in the fixed `priva_internal` schema |
 | Local macros | 7 | Includes catalog, schema, key, case, and access-control macros |
-| Data tests | 251 | 214 generic tests and 37 singular tests |
+| Data tests | 288 | 249 generic tests and 39 singular tests |
 | Unit tests | 2 | Both target the service-resolution classifier |
 | Sources | 0 | Seeds are referenced directly with `ref()` |
-| Snapshots | 0 | Current-state relations use full replacement |
+| Snapshots | 0 | Current-state relations use replacement; the request ledger is incremental |
 | Exposures, metrics, semantic models | 0 | No semantic-layer resources are defined |
 | Named selectors | 0 | Selection uses resource names, graph operators, and tags |
 
@@ -38,6 +38,7 @@ checked-in synthetic seeds.
 | [Commands](commands.md) | Local, dbt, identity, acceptance, and bundle commands |
 | [Catalogs and schemas](catalogs-and-schemas.md) | Catalog placement, schema names, and default readers |
 | [Sources and Layer1](sources-and-layer1.md) | Seeds, typed staging views, and raw quarantine tables |
+| [Customer deletion control](deletion-control.md) | Detection, confirmation, authorization, target plan, and execution gate |
 | [`priva_map`](priva-map.md) | Raw-to-pseudonymous mapping relations, tags, and masks |
 | [Layer2](layer2.md) | Key boundaries, classifiers, accepted tables, and reason codes |
 | [Layer3 and case views](layer3-and-case.md) | Dimensions, facts, and controlled readable views |

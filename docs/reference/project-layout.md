@@ -22,10 +22,10 @@ The repository is a dbt project with Databricks deployment and identity helpers.
 | `.github/workflows/publication-safety.yml` | Redacted tree and Git-history privacy checks |
 | `.github/workflows/docs.yml` | Strict documentation build and public-only Pages deployment |
 | `models/` | Layer1, `priva_map`, Layer2, Layer3, and case models |
-| `seeds/` | Four deterministic CSV source simulators and seed metadata |
+| `seeds/` | Four deterministic CSV source simulators, one deletion-confirmation control, and metadata |
 | `functions/` | Three dbt-managed Databricks SQL functions |
 | `macros/` | Seven local Jinja macros |
-| `tests/` | Thirty-seven singular dbt data tests |
+| `tests/` | Thirty-nine singular dbt data tests |
 | `acceptance/personas/` | Three positive and six denial SQL file tasks |
 | `scripts/generate_seeds.py` | Deterministic CSV generator |
 | `scripts/provision_identities.sh` | Persona identity topology preflight and apply operation |
@@ -36,9 +36,9 @@ The repository is a dbt project with Databricks deployment and identity helpers.
 
 | Path | dbt resources | Default materialization |
 | --- | ---: | --- |
-| `models/layer1/` | 4 typed staging models, 3 quarantine models | Views; quarantine models override to tables |
+| `models/layer1/` | 5 typed staging models, 3 quarantine models, 2 deletion-control models | Views; quarantine/authorization models use tables and the request ledger is incremental |
 | `models/priva_map/` | 2 mapping models | Table |
-| `models/layer2/` | 7 ephemeral control models, 4 protected models | Table; boundary and classifier models override to ephemeral |
+| `models/layer2/` | 7 ephemeral control models, 4 protected models, 1 deletion-plan model | Table; boundary and classifier models override to ephemeral |
 | `models/layer3/` | 3 dimensions, 2 facts | Table |
 | `models/layer3_case/` | 4 controlled readable models | View |
 
@@ -46,14 +46,16 @@ The repository is a dbt project with Databricks deployment and identity helpers.
 
 | Path | Documented resources |
 | --- | --- |
-| `seeds/_seeds.yml` | Four seeds and their string input types |
+| `seeds/_seeds.yml` | Five seeds and their string input types |
 | `functions/_functions.yml` | Function signatures and fixed placement |
 | `models/layer1/_layer1.yml` | Staging and quarantine contracts |
+| `models/layer1/_deletion_control.yml` | Detection, confirmation, and authorization contracts |
 | `models/priva_map/_priva_map.yml` | Mapping columns, tags, masks, and generic tests |
 | `models/layer2/_layer2_customer.yml` | Protected customer model |
 | `models/layer2/_layer2_events.yml` | Event boundary, classifier, and accepted model |
 | `models/layer2/_layer2_services.yml` | Service boundary, classifier, accepted model, and two unit tests |
 | `models/layer2/_layer2_invoices.yml` | Invoice boundary, classifier, and accepted model |
+| `models/layer2/_deletion_control.yml` | Authorized relation-by-relation deletion-plan contract |
 | `models/layer3/_layer3_dimensions.yml` | Customer, service, and date dimensions |
 | `models/layer3/_layer3_facts.yml` | Event and invoice facts |
 | `models/layer3_case/_layer3_case.yml` | Four case-view contracts |

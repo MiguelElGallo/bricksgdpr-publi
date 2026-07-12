@@ -68,8 +68,8 @@ validation commands.
 
 | Area | Relations |
 | --- | --- |
-| Layer1 source | four deterministic dbt seeds with 19–37 rows |
-| Layer1 | four typed staging views and three raw quarantine tables |
+| Layer1 source | four deterministic source seeds plus one deletion-confirmation control |
+| Layer1 | five typed staging views, three raw quarantine tables, and request/authorization controls |
 | `priva_map` | customer and service-address mapping tables with 13 exact column masks |
 | Layer2 | protected customer, event, service, and invoice tables |
 | Layer3 | customer/service/date dimensions and event/invoice facts |
@@ -78,18 +78,22 @@ validation commands.
 
 Current control fixtures produce:
 
-- 14 protected customers;
+- 15 protected customers, including one detected-but-pending deletion fixture;
 - 28 accepted events and one late event in quarantine;
 - 16 accepted service periods and three quarantined service periods;
 - 25 accepted invoices and 11 quarantined invoices;
-- no current rows for terminally deleted customers in `priva_map`, Layer2, Layer3, or case views,
+- no current rows for confirmed and authorized deleted customers in `priva_map`, Layer2, Layer3,
+  or case views,
   including dependents carrying a historical SSN.
 
-This is executable logical current-state deletion in governed outputs downstream of Layer1. The
-synthetic seeds and source-shaped Layer1 staging intentionally retain reproducible source fixtures
-and deletion tombstones; they are outside that deletion claim. Production physical erasure still
+This is executable logical current-state deletion driven by a persisted request, independent
+confirmation, and an exact 17-target plan. The synthetic seeds, source-shaped staging views, and
+restricted control evidence intentionally retain reproducible fixtures; they are outside that
+current-output deletion claim. Production physical erasure still
 requires source purge, Delta retention, cache/export, and backup controls described in
 [Terminal deletion versus physical erasure](docs/explanation/terminal-deletion-vs-erasure.md).
+The exact state machine is in
+[Customer deletion control](docs/reference/deletion-control.md).
 
 ## Prerequisites
 

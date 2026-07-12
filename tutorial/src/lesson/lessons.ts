@@ -96,8 +96,13 @@ select
     (
         select count(*)
         from main.int_current_customers as current_customers
-        where current_customers.customer_id in ('CUST-0015', 'CUST-0097', 'CUST-0099')
-    ) as terminal_deleted_rows
+        where current_customers.customer_id = 'CUST-0097'
+    ) as pending_customer_rows,
+    (
+        select count(*)
+        from main.int_current_customers as current_customers
+        where current_customers.customer_id = 'CUST-0099'
+    ) as authorized_deleted_rows
 from main.int_current_customers
 where customer_id = 'CUST-0001'
 `;
@@ -225,26 +230,39 @@ const customerSteps: readonly LessonStepSpec[] = [
     buildsOn: "Step 1 · the typed staging change feed",
     why: "Staging contains source events, but analytical models need one current active row per customer.",
     change:
-      "Rank UPSERTs newest first, keep the latest active row, and exclude identities with terminal deletion history.",
+      "Store source deletions, join a separate privacy decision, plan every target only when authorized, then exclude planned identities.",
     observe:
-      "CUST-0001 appears exactly once; 19 staged changes reduce to 14 current customers and no deleted fixture survives.",
+      "CUST-0001 appears once; pending CUST-0097 remains, confirmed CUST-0099 is absent, and 15 current customers survive.",
     focusFilePath: "models/int_current_customers.sql",
     revealFilePaths: [
+      "models/stg_customer_deletion_confirmations.sql",
+      "models/int_customer_deletion_requests.sql",
+      "models/int_customer_deletion_authorizations.sql",
+      "models/int_customer_deletion_plan.sql",
       "models/int_terminal_deleted_customer_ssns.sql",
       "models/int_current_customers.sql",
     ],
-    visibleRelationNames: ["customer", "stg_customer", "int_current_customers"],
+    visibleRelationNames: [
+      "customer",
+      "customer_deletion_confirmations",
+      "stg_customer",
+      "int_customer_deletion_requests",
+      "int_customer_deletion_authorizations",
+      "int_customer_deletion_plan",
+      "int_current_customers",
+    ],
     command: "dbt build --select +int_current_customers --indirect-selection cautious",
     requiredSuccessfulResources: [
       "int_current_customers",
       "assert_current_customers_terminal_deletion",
+      "assert_deletion_confirmation_gate",
     ],
     proof: {
       sql: currentValidationSql,
       label: "Step 2 · current CUST-0001",
       selectedRelation: "int_current_customers",
       successMessage:
-        "Step 2 complete: CUST-0001 survives once in the 14-row current-customer view; deleted fixtures stay absent.",
+        "Step 2 complete: the 15-row view preserves pending CUST-0097 and removes only confirmed CUST-0099.",
       failureMessage: "The current-state build passed, but the current-customer checkpoint did not match.",
       validate(result) {
         const row = firstRowByColumn(result);
@@ -255,8 +273,9 @@ const customerSteps: readonly LessonStepSpec[] = [
           row.email === "customer01@example.invalid" &&
           row.customer_segment === "small_business" &&
           row.is_active === true &&
-          Number(row.current_customer_count) === 14 &&
-          Number(row.terminal_deleted_rows) === 0
+          Number(row.current_customer_count) === 15 &&
+          Number(row.pending_customer_rows) === 1 &&
+          Number(row.authorized_deleted_rows) === 0
         );
       },
     },
@@ -269,7 +288,7 @@ const customerSteps: readonly LessonStepSpec[] = [
     change:
       "Create public demo-v1 keys beside readable synthetic values inside the browser-only mapping boundary.",
     observe:
-      "CUST-0001 receives exact customer and email keys that are stable and different; the map contains 14 rows.",
+      "CUST-0001 receives exact customer and email keys that are stable and different; the map contains 15 rows.",
     focusFilePath: "models/demo_customer_map.sql",
     revealFilePaths: ["macros/demo_personal_data_key.sql", "models/demo_customer_map.sql"],
     visibleRelationNames: [
@@ -285,7 +304,7 @@ const customerSteps: readonly LessonStepSpec[] = [
       label: "Step 3 · mapped CUST-0001",
       selectedRelation: "demo_customer_map",
       successMessage:
-        "Step 3 complete: CUST-0001 has stable, distinct public demo keys in the 14-row teaching map.",
+        "Step 3 complete: CUST-0001 has stable, distinct public demo keys in the 15-row teaching map.",
       failureMessage: "The mapping build passed, but the demo-key checkpoint did not match.",
       validate(result) {
         const row = firstRowByColumn(result);
@@ -295,7 +314,7 @@ const customerSteps: readonly LessonStepSpec[] = [
           row.email_key === CUSTOMER_EMAIL_KEY &&
           row.customer_segment === "small_business" &&
           row.keys_differ === true &&
-          Number(row.mapped_customer_count) === 14
+          Number(row.mapped_customer_count) === 15
         );
       },
     },
@@ -308,7 +327,7 @@ const customerSteps: readonly LessonStepSpec[] = [
     change:
       "Project the ten key columns plus segment, lifecycle state, and update time; leave every *_value column behind.",
     observe:
-      "The same keys remain in 14 rows, and Layer2 has exactly 13 allowed columns with zero schema violations.",
+      "The same keys remain in 15 rows, and Layer2 has exactly 13 allowed columns with zero schema violations.",
     focusFilePath: "models/int_customer_protected.sql",
     revealFilePaths: ["models/int_customer_protected.sql"],
     visibleRelationNames: [
@@ -338,7 +357,7 @@ const customerSteps: readonly LessonStepSpec[] = [
           row.email_key === CUSTOMER_EMAIL_KEY &&
           row.customer_segment === "small_business" &&
           row.is_active === true &&
-          Number(row.protected_customer_count) === 14 &&
+          Number(row.protected_customer_count) === 15 &&
           Number(row.protected_column_count) === 13 &&
           Number(row.protected_schema_violations) === 0
         );
@@ -353,7 +372,7 @@ const customerSteps: readonly LessonStepSpec[] = [
     change:
       "Build dim_customer only from Layer2 and preserve one row per active customer key for downstream consumers.",
     observe:
-      "CUST-0001's keys and business facts are unchanged in the 14-row dimension, and the final flow assertion passes.",
+      "CUST-0001's keys and business facts are unchanged in the 15-row dimension, and the final flow assertion passes.",
     focusFilePath: "models/dim_customer.sql",
     revealFilePaths: ["models/dim_customer.sql"],
     visibleRelationNames: [
@@ -385,7 +404,7 @@ const customerSteps: readonly LessonStepSpec[] = [
           row.customer_segment === "small_business" &&
           row.is_active === true &&
           row.layer2_row_preserved === true &&
-          Number(row.dimension_customer_count) === 14
+          Number(row.dimension_customer_count) === 15
         );
       },
     },

@@ -77,7 +77,8 @@ identity space and break joins.
 ## One stable-identity assumption remains
 
 For active customers, the map keeps the latest row per customer ID and derives the customer key
-from its current SSN. Historical SSNs are expanded only for terminally deleted customer IDs. If a
+from its current SSN. Historical SSNs are expanded only for customer IDs with an authorized
+deletion plan. If a
 nondeleted customer's SSN changes, older-key events and services will not automatically relink to
 the new key. A production design needs an alias or identity-history strategy if that change is
 possible.

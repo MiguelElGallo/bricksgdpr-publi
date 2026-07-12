@@ -23,7 +23,7 @@ forbidden_customer_keys as (
     select distinct
         {{ personal_data_key('customer_ssn', 'customer.ssn', 'ssn') }} as customer_key
     from {{ ref('stg_customer') }}
-    where customer_id in ('CUST-0015', 'CUST-0097', 'CUST-0099')
+    where customer_id in ('CUST-0015', 'CUST-0099')
 ),
 
 forbidden_service_version_keys as (
@@ -64,7 +64,7 @@ from customer_metrics
 cross join service_metrics
 cross join exclusion_metrics
 where
-    customer_metrics.row_count != 14
+    customer_metrics.row_count != 15
     or service_metrics.row_count != 16
     or customer_metrics.invalid_version_count != 0
     or service_metrics.invalid_version_count != 0

@@ -105,16 +105,16 @@ With the checked-in fixtures, the result is:
 
 | protected customers | accepted events | quarantined events | accepted services | quarantined services | accepted invoices | quarantined invoices |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 14 | 28 | 1 | 16 | 3 | 25 | 11 |
+| 15 | 28 | 1 | 16 | 3 | 25 | 11 |
 
 The quarantine relations are intentional outputs. They keep unresolved or invalid source records
 observable instead of silently dropping them from the pipeline.
 
 ## What you have built
 
-You have built the synthetic source extracts, typed Layer1 views, raw quarantine tables, two
-`priva_map` tables, protected Layer2 models, Layer3 dimensions and facts, and controlled case
-views. You have also applied and tested the exact access contract.
+You have built the synthetic source extracts, deletion request/confirmation controls, typed Layer1
+views, raw quarantine tables, two `priva_map` tables, protected Layer2 models, Layer3 dimensions and
+facts, and controlled case views. You have also applied and tested the exact access contract.
 
 Next, [follow one customer through those layers](follow-a-customer-through-the-layers.md).
 

@@ -1,0 +1,136 @@
+version: 2
+
+models:
+  - name: stg_customer_deletion_confirmations
+    description: >
+      Typed privacy-review decisions at one row per detected deletion request. This relation is a
+      separate control input from the customer source feed so a source tombstone cannot authorize
+      its own deletion propagation.
+    config:
+      contract:
+        enforced: true
+      tags: [deletion_control, personal_data_control]
+    columns:
+      - name: deletion_request_id
+        data_type: string
+        description: Source change identifier of the deletion request being reviewed.
+        data_tests: [not_null, unique]
+      - name: decision_status
+        data_type: string
+        description: Privacy review outcome; only CONFIRMED can become authorized.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["PENDING", "CONFIRMED", "REJECTED"]
+      - name: decided_at
+        data_type: timestamp
+        description: Review timestamp; null while the decision remains pending.
+      - name: decided_by_role
+        data_type: string
+        description: Synthetic reviewer role, not a natural-person identifier.
+      - name: decision_reason
+        data_type: string
+        description: Stable reason code supporting the review outcome.
+      - name: legal_hold
+        data_type: boolean
+        description: When true, prevents authorization even if the decision is confirmed.
+        data_tests: [not_null]
+
+  - name: customer_deletion_requests
+    description: >
+      Persisted detection ledger at one row per source DELETE change. Incremental merge retains a
+      detected request across ordinary dbt runs even if the replay window later moves; a deliberate
+      full refresh rebuilds this demo ledger and is not equivalent to a production append-only case
+      system.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: deletion_request_id
+        data_type: string
+        description: Stable source change identifier and ledger primary key.
+        data_tests: [not_null, unique]
+      - name: customer_id
+        data_type: string
+        description: Stable source customer identifier used to expand every historical identity.
+        data_tests: [not_null]
+      - name: customer_ssn
+        data_type: string
+        description: Identifier supplied on the source tombstone; other historical SSNs are resolved later.
+        data_tests: [not_null]
+      - name: source_deleted_at
+        data_type: timestamp
+        description: Timestamp asserted by the source deletion change.
+        data_tests: [not_null]
+      - name: detected_at
+        data_type: timestamp
+        description: First dbt execution timestamp at which this ledger stored the request.
+        data_tests: [not_null]
+      - name: detection_status
+        data_type: string
+        description: Constant DETECTED state proving intake; it is not deletion authorization.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["DETECTED"]
+
+  - name: customer_deletion_authorizations
+    description: >
+      Privacy-control state at one row per detected request. It combines intake evidence with an
+      independent decision and legal-hold gate; only authorization_status AUTHORIZED can generate
+      a deletion plan.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: deletion_request_id
+        data_type: string
+        description: Deletion request primary key inherited from the detection ledger.
+        data_tests: [not_null, unique]
+      - name: customer_id
+        data_type: string
+        description: Stable source customer identifier used for historical identity expansion.
+        data_tests: [not_null]
+      - name: customer_ssn
+        data_type: string
+        description: Identifier carried by the detected source tombstone.
+        data_tests: [not_null]
+      - name: source_deleted_at
+        data_type: timestamp
+        description: Source deletion timestamp.
+        data_tests: [not_null]
+      - name: detected_at
+        data_type: timestamp
+        description: Timestamp at which the request first entered the detection ledger.
+        data_tests: [not_null]
+      - name: decision_status
+        data_type: string
+        description: Independent privacy-review status, defaulting to PENDING when no decision exists.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["PENDING", "CONFIRMED", "REJECTED"]
+      - name: decided_at
+        data_type: timestamp
+        description: Review timestamp when a decision was recorded.
+      - name: decided_by_role
+        data_type: string
+        description: Synthetic role that made the decision.
+      - name: decision_reason
+        data_type: string
+        description: Stable review reason code.
+      - name: legal_hold
+        data_type: boolean
+        description: Explicit exception gate that blocks authorization when true.
+        data_tests: [not_null]
+      - name: authorization_status
+        data_type: string
+        description: "Effective gate: AUTHORIZED, PENDING, REJECTED, or HELD."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["AUTHORIZED", "PENDING", "REJECTED", "HELD"]

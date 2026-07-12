@@ -5,20 +5,20 @@ icon: lucide/test-tube-2
 
 # Tests and selectors
 
-The project contains 251 data tests and 2 unit tests.
+The project contains 288 data tests and 2 unit tests.
 
 ## Test counts
 
 | Test class | Count | Definition location |
 | --- | ---: | --- |
-| `not_null` generic data tests | 166 | Model YAML files |
-| `unique` generic data tests | 23 | Model YAML files |
+| `not_null` generic data tests | 191 | Model YAML files |
+| `unique` generic data tests | 26 | Model YAML files |
 | `relationships` generic data tests | 14 | Model YAML files |
-| `accepted_values` generic data tests | 11 | Model YAML files |
-| Singular data tests | 37 | `tests/*.sql` |
+| `accepted_values` generic data tests | 18 | Model YAML files |
+| Singular data tests | 39 | `tests/*.sql` |
 | Unit tests | 2 | `models/layer2/_layer2_services.yml` |
-| **Total data tests** | **251** | Generic plus singular |
-| **Total including unit tests** | **253** | Data tests plus unit tests |
+| **Total data tests** | **288** | Generic plus singular |
+| **Total including unit tests** | **290** | Data tests plus unit tests |
 
 The count does not include positive/negative persona SQL tasks under `acceptance/personas/`; those
 are external acceptance checks, not dbt test nodes.
@@ -29,8 +29,10 @@ are external acceptance checks, not dbt test nodes.
 
 | Test | Contract |
 | --- | --- |
-| `assert_seed_row_bounds` | Each seed contains 10 through 100 rows |
+| `assert_seed_row_bounds` | Each of the four source-extract seeds contains 10 through 100 rows |
 | `assert_customer_deletion_fixture` | Delete, post-delete upsert, historical SSN, and inactive controls have exact shapes |
+| `assert_customer_deletion_control` | Two requests produce one pending state and one 34-row authorized plan with exact 17-target coverage |
+| `assert_unconfirmed_deletion_not_authorized` | Pending deletion is detected but has no plan and remains in mapping, Layer2, and Layer3 |
 | `assert_layer1_control_fixtures` | Late, invalid, inconsistent-payment, and deleted-dependent source controls exist exactly once |
 | `assert_unique_customer_service_periods` | `service_id + valid_from` is unique in staged services |
 
@@ -38,7 +40,7 @@ are external acceptance checks, not dbt test nodes.
 
 | Test | Contract |
 | --- | --- |
-| `assert_priva_map_contract` | Default 14/16 counts, v1 prefixes, domain separation, and fixture exclusions |
+| `assert_priva_map_contract` | Default 15/16 counts, v1 prefixes, domain separation, and fixture exclusions |
 | `assert_priva_map_masks_attached` | Exact 13 raw-column masks and `USING COLUMNS` mappings |
 | `assert_priva_map_tags_attached` | Exact map table tags and Personal Data column category/state tags |
 | `assert_personal_data_udfs` | Determinism, domain separation, null behavior, prefix, canonical equivalence, and core/wrapper equivalence |
@@ -114,7 +116,7 @@ seed-specific singular data tests.
 | No-raw tests | Inspect column names and selected tags, not arbitrary data payloads |
 | Map tag/mask tests | Exact for the two current mapping tables; new mapping relations require allowlist updates |
 | Access metadata | Measures direct grants visible to the executing caller, not every transitive/effective entitlement |
-| Case grain/deletion tests | Result depends on executing session; the deletion test also expands an owner-level ephemeral UDF dependency |
+| Case grain/deletion tests | Result depends on executing session; the deletion test expands an owner-level plan/UDF dependency |
 | Persona uniqueness assertions | Synthetic case SQL assumes readable names, emails, and addresses are unique |
 
 For the role of executable metadata checks, see
@@ -137,7 +139,7 @@ For the role of executable metadata checks, see
 | `layer3_facts` | Fact resources and controls |
 | `case_views` | Four case views and case controls |
 | `access_control` | Four live access metadata tests |
-| `deletion_control` | Terminal-deletion control model and tests |
+| `deletion_control` | Detection ledger, confirmation gate, authorized plan, execution gate, and tests |
 | `personal_data_control` | Key, tag, mask, schema, and access invariants |
 | `control_fixture` | Exact synthetic fixture assertions |
 

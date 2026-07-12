@@ -1,10 +1,4 @@
-with deleted_customers as (
-    select distinct customer_id, customer_ssn
-    from {{ ref('stg_customer') }}
-    where source_operation = 'DELETE'
-),
-
-ranked_upserts as (
+with ranked_upserts as (
     select
         *,
         row_number() over (
@@ -18,9 +12,9 @@ ranked_upserts as (
 current_customers as (
     select upserts.*
     from ranked_upserts as upserts
-    left anti join deleted_customers as deletions
-        on upserts.customer_id = deletions.customer_id
-        or upserts.customer_ssn = deletions.customer_ssn
+    left anti join {{ ref('int_terminal_deleted_customer_keys') }} as deletions
+        on {{ personal_data_key('upserts.customer_ssn', 'customer.ssn', 'ssn') }}
+            = deletions.customer_key
     where upserts.change_rank = 1 and upserts.is_active
 ),
 

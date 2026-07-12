@@ -3,7 +3,7 @@
 -- STEP 3 — Create the browser-only readable-to-key mapping boundary.
 -- Build: dbt build --select +demo_customer_map --indirect-selection cautious
 -- Intent: preserve readable synthetic values here while deriving domain-separated demo-v1 keys.
--- Check: CUST-0001 has stable, different customer and email keys; the map has 14 rows.
+-- Check: CUST-0001 has stable, different customer and email keys; the map has 15 rows.
 
 with raw_values as (
     select

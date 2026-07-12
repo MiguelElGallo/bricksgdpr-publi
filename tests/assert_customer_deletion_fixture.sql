@@ -10,7 +10,7 @@ with latest_deletion_subject as (
     where customer_id = 'CUST-0099'
 ),
 
-terminal_deletion_subject as (
+pending_deletion_subject as (
     select
         count_if(source_operation = 'UPSERT') as upsert_count,
         count_if(source_operation = 'DELETE') as delete_count,
@@ -29,21 +29,21 @@ inactive_subject as (
 
 select
     latest_deletion_subject.*,
-    terminal_deletion_subject.upsert_count as terminal_upsert_count,
-    terminal_deletion_subject.delete_count as terminal_delete_count,
-    terminal_deletion_subject.latest_operation as terminal_latest_operation,
+    pending_deletion_subject.upsert_count as pending_upsert_count,
+    pending_deletion_subject.delete_count as pending_delete_count,
+    pending_deletion_subject.latest_operation as pending_latest_operation,
     inactive_subject.row_count as inactive_row_count,
     inactive_subject.inactive_upsert_count
 from latest_deletion_subject
-cross join terminal_deletion_subject
+cross join pending_deletion_subject
 cross join inactive_subject
 where
     latest_deletion_subject.upsert_count != 1
     or latest_deletion_subject.delete_count != 1
     or latest_deletion_subject.latest_operation != 'DELETE'
     or latest_deletion_subject.historical_ssn_count != 2
-    or terminal_deletion_subject.upsert_count != 1
-    or terminal_deletion_subject.delete_count != 1
-    or terminal_deletion_subject.latest_operation != 'UPSERT'
+    or pending_deletion_subject.upsert_count != 1
+    or pending_deletion_subject.delete_count != 1
+    or pending_deletion_subject.latest_operation != 'UPSERT'
     or inactive_subject.row_count != 1
     or inactive_subject.inactive_upsert_count != 1

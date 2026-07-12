@@ -3,7 +3,7 @@
 -- STEP 4 — Cross into the protected Layer2 teaching projection.
 -- Build: dbt build --select +int_customer_protected --indirect-selection cautious
 -- Intent: select keys and analytical attributes explicitly; no readable *_value column crosses.
--- Check: CUST-0001 keeps its demo keys in an exact 13-column, 14-row Layer2 table.
+-- Check: CUST-0001 keeps its demo keys in an exact 13-column, 15-row Layer2 table.
 
 select
     customer_key,

@@ -22,8 +22,8 @@ The deployment identity remains the privileged producer/owner and is not a consu
 
 | Schema | Relations | Grantees |
 | --- | --- | --- |
-| `layer1_source` | Four seeds | `privacy_admins` |
-| `layer1` | Four staging views, three quarantine tables | `privacy_admins` |
+| `layer1_source` | Five seeds | `privacy_admins` |
+| `layer1` | Five staging views, three quarantine tables, two deletion-control tables | `privacy_admins` |
 | `priva_map` | Two mapping tables | `privacy_admins`, `restricted_users` |
 | `layer2` | Four protected tables | `privacy_admins`, `restricted_users` |
 | `layer3` | Three dimensions, two facts | All three groups |

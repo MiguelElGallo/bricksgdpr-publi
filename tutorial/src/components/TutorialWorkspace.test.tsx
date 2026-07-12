@@ -24,7 +24,7 @@ const guideSteps: LessonGuideStep[] = [
     buildsOn: "The typed Layer1 customer feed.",
     why: "Deletion tombstones must win over later upserts.",
     change: "Rank upserts and remove terminally deleted identities.",
-    observe: "Fourteen current customers and zero deleted fixtures.",
+    observe: "Fifteen current customers; only confirmed deletion fixtures are absent.",
     command: "dbt build --select +int_current_customers --indirect-selection cautious",
     status: "active",
   },
