@@ -53,7 +53,8 @@ Exact IDs and counts are demonstration fixtures, not production data-quality thr
 Staging preserves source grain and does not resolve customer or service relationships.
 
 **Sources:** `models/layer1/stg_customer.sql`, `stg_customer_events.sql`,
-`stg_customer_services.sql`, `stg_invoices.sql`.
+`stg_customer_services.sql`, `stg_invoices.sql`, and
+`stg_customer_deletion_confirmations.sql`.
 
 ## Staging columns
 

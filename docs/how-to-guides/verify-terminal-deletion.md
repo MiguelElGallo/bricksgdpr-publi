@@ -155,11 +155,19 @@ invariants, and Layer3 outcomes.
 
 Before merging a new table:
 
-1. Run `generate_customer_deletion_scaffold` with its type, grain, source, and explicit columns.
-2. Copy the generated `generate_customer_deletion_model()` call into the model.
-3. Append the generated declarative registration; do not hand-write action strings.
-4. Add the generated YAML contract and a model-specific unit test when business logic requires it.
-5. Update the fixed target counts and Layer3 walkthrough if the governed inventory changes.
+1. Run the layer-specific generator with its kind, grain, source, explicit columns, and deletion
+   specification. Use `generate_customer_deletion_scaffold` only when adding the deletion contract
+   to an already-handwritten model. Set `deletion.register_target: true` when the generated
+   physical model or CASE_VIEW must join the governed deletion inventory.
+2. For `priva_map`, declare column tags and masks for every readable Personal Data column and keep
+   the model materialized as a table or incremental relation.
+3. Copy the generated SQL and schema YAML into the correct model directory.
+4. If the operation logged a declarative registration, append it; do not hand-write action strings.
+   Registration is valid only for a physical table/incremental model or CASE_VIEW.
+5. Compile the pasted model and run its generated schema tests. The layer scaffold does not emit
+   `customer_deletion_generated_contract`; add deletion-outcome and model-specific tests when the
+   business logic requires them.
+6. Update the fixed target counts and Layer3 walkthrough if the governed inventory changes.
 
 Use the [Macro API reference](../reference/macro-api.md) for the scaffold command, generated
 artifacts, and every public model-generation parameter.

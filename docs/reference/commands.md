@@ -20,7 +20,7 @@ define an execution sequence.
 | `databricks current-user me --profile "$DATABRICKS_CONFIG_PROFILE" >/dev/null` | Proves the local OAuth session can call the workspace API without printing identity | None |
 | `uv run dbt debug --profiles-dir .` | Verifies local dbt configuration and live connectivity | None |
 | `uv run dbt ls --select <selection>` | Lists selected graph nodes | Local artifacts/logs only |
-| `scripts/check_publication_safety.sh --tree` | Scans tracked and non-ignored files for account identifiers, PII, and credential patterns with redacted output | None |
+| `scripts/check_publication_safety.sh --tree` | Scans tracked and non-ignored files for account identifiers, Personal Data, and credential patterns with redacted output | None |
 | `scripts/check_publication_safety.sh --history` | Scans commits reachable from publishable Git refs with redacted output | None |
 
 **Sources:** `README.md`, `pyproject.toml`, `scripts/generate_seeds.py`.

@@ -22,10 +22,11 @@ as resources are materialized.
 
 | Logical schema | Default physical name | Contents | Default persona readers |
 | --- | --- | --- | --- |
-| Layer1 source | `layer1_source` | Four seed tables | `privacy_admins` |
-| Layer1 | `layer1` | Four staging views and three quarantine tables | `privacy_admins` |
+| Layer1 source | `layer1_source` | Five seed tables: four source extracts and the deletion-confirmation control | `privacy_admins` |
+| Layer1 | `layer1` | Five staging views, three quarantine tables, and three deletion-control models | `privacy_admins` |
 | Mapping | `priva_map` | Two raw-to-pseudonymous mapping tables | `privacy_admins`, `restricted_users` through masks |
-| Layer2 | `layer2` | Four protected accepted tables | `privacy_admins`, `restricted_users` |
+| Layer2 protected | `layer2` | Four protected accepted tables | `privacy_admins`, `restricted_users` |
+| Layer2 control | `layer2` | Deletion plan and terminal execution ledger | `privacy_admins` |
 | Layer3 | `layer3` | Three dimensions and two facts | `privacy_admins`, `restricted_users` |
 | Layer3 case | `layer3_case` | Four standard controlled readable views | `privacy_admins`, `case_users` |
 | Internal | `priva_internal` | Three SQL functions | Deployment identity only |

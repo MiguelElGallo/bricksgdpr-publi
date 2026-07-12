@@ -24,12 +24,22 @@
   end
 {%- endmacro %}
 
+{% macro _validate_personal_data_kind(kind, argument_name='kind') -%}
+  {%- if kind is not string or kind | lower not in ['text', 'ssn', 'phone', 'date'] -%}
+    {{ exceptions.raise_compiler_error(
+      argument_name ~ " must be one of text, ssn, phone, or date; received: " ~ kind
+    ) }}
+  {%- endif -%}
+  {{ return(kind | lower) }}
+{%- endmacro %}
+
 {% macro canonicalize_personal_data(value_expression, kind='text') -%}
-  {%- if kind == 'ssn' -%}
+  {%- set normalized_kind = _validate_personal_data_kind(kind) -%}
+  {%- if normalized_kind == 'ssn' -%}
     nullif(regexp_replace(trim(cast({{ value_expression }} as string)), '[^0-9]', ''), '')
-  {%- elif kind == 'phone' -%}
+  {%- elif normalized_kind == 'phone' -%}
     nullif(regexp_replace(trim(cast({{ value_expression }} as string)), '[^0-9]', ''), '')
-  {%- elif kind == 'date' -%}
+  {%- elif normalized_kind == 'date' -%}
     date_format(cast({{ value_expression }} as date), 'yyyy-MM-dd')
   {%- else -%}
     nullif(lower(regexp_replace(trim(cast({{ value_expression }} as string)), '\\s+', ' ')), '')

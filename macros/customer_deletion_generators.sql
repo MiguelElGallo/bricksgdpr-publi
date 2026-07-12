@@ -59,6 +59,9 @@
     {% if customer_key_column is not none %}
         {% do _validate_deletion_policy_identifier(customer_key_column, 'customer_key_column') %}
     {% endif %}
+    {% if erased_flag_column is not none %}
+        {% do _validate_deletion_policy_identifier(erased_flag_column, 'erased_flag_column') %}
+    {% endif %}
     {% do _validate_deletion_policy_identifier(deletion_mode_column, 'deletion_mode_column') %}
     {% if source_is_mode_annotated and source_is_policy_applied %}
         {{ exceptions.raise_compiler_error(
@@ -350,6 +353,12 @@ from values
         {% endif %}
     {% endfor %}
     {% do _validate_deletion_policy_identifier(customer_key_column, 'customer_key_column') %}
+    {% if normalized_type == 'CASE_VIEW' and customer_key_column not in output_columns %}
+        {{ exceptions.raise_compiler_error(
+            model_name ~ ': CASE_VIEW scaffold requires customer_key_column in output_columns '
+            ~ 'so the generated contract can verify erased-member exclusion'
+        ) }}
+    {% endif %}
     {% if customer_key_expression is not none and customer_key_domain is not none %}
         {{ exceptions.raise_compiler_error(
             'scaffold accepts customer_key_expression or customer_key_domain, not both'
@@ -359,9 +368,9 @@ from values
         {% if customer_key_domain is not string or customer_key_domain | trim == '' %}
             {{ exceptions.raise_compiler_error('customer_key_domain must be non-empty') }}
         {% endif %}
-        {% if customer_key_kind is not string or customer_key_kind | trim == '' %}
-            {{ exceptions.raise_compiler_error('customer_key_kind must be non-empty') }}
-        {% endif %}
+        {% set customer_key_kind = _validate_personal_data_kind(
+            customer_key_kind, 'customer_key_kind'
+        ) %}
         {% set model_customer_key_expression = "personal_data_key('source_rows."
             ~ customer_key_column ~ "', '" ~ customer_key_domain | replace("'", "''")
             ~ "', '" ~ customer_key_kind | replace("'", "''") ~ "')" %}

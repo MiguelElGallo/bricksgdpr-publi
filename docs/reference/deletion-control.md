@@ -92,8 +92,8 @@ For every historical customer key, the plan contains exactly 17 target rows.
 
 ## Macro contract
 
-Developers use one generator call. The model type derives the policy; developers do not select
-FULL/SPECIAL action strings themselves.
+Developers can generate the complete layer scaffold or call the deletion generator directly. The
+model type derives the policy; developers do not select FULL/SPECIAL action strings themselves.
 
 ```jinja
 {{ generate_customer_deletion_model(
@@ -128,6 +128,12 @@ classify business rules between mode attachment and final policy application.
 Run `generate_customer_deletion_scaffold` through `dbt run-operation` to print the complete model
 call, declarative target registration, derived action row, schema documentation, and tests. See the
 [Macro API reference](macro-api.md) for the complete developer surface.
+
+For a complete layer-native model, use `generate_layer1_model`, `generate_priva_map_model`,
+`generate_layer2_model`, `generate_layer3_model`, or `generate_layer3_case_model`. Fixed policy
+kinds fail closed when their deletion type disagrees with the model kind. Mapping scaffolds emit
+the column tags and masks declared for readable Personal Data, and registered targets must resolve
+to a physical table/incremental model or a CASE_VIEW view.
 
 dbt recommends macros for reusable SQL and documents their arguments; it also cautions that
 readability matters. This split keeps the reusable policy small while each model explicitly lists
@@ -170,6 +176,8 @@ copies, or recipient systems. Those require separate retention and purge control
 - `macros/customer_deletion_policy.yml`
 - `macros/customer_deletion_generators.sql`
 - `macros/customer_deletion_generators.yml`
+- `macros/layer_model_generators.sql`
+- `macros/layer_model_generators.yml`
 - `macros/deletion_control.sql`
 - `models/layer1/customer_deletion_authorization_history.sql`
 - `models/layer1/customer_deletion_authorizations.sql`

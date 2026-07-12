@@ -15,7 +15,7 @@ macros:
       - {name: customer_key_column, type: "optional[string]", description: Customer key column used for ledger matching and CASE_VIEW exclusion.}
       - {name: customer_key_expression, type: "optional[string]", description: Advanced SQL expression used instead of customer_key_column for ledger matching.}
       - {name: special_replacement_columns, type: "optional[list[string]]", description: FACT key columns rewritten to the erased member.}
-      - {name: erased_flag_column, type: "optional[string]", description: FACT output flag or CASE_VIEW input flag.}
+      - {name: erased_flag_column, type: "optional[string]", description: Simple identifier for a FACT output flag or CASE_VIEW input flag.}
       - {name: deletion_relation, type: "optional[relation]", description: Effective terminal ledger; defaults to int_terminal_deleted_customer_keys.}
       - {name: source_is_mode_annotated, type: bool, description: Skip ledger attachment when the input already carries deletion_mode.}
       - {name: source_is_policy_applied, type: bool, description: FACT-only downstream projection whose source already contains erased keys and the erased flag; original ledger keys are still rejected.}
@@ -51,7 +51,7 @@ macros:
       - {name: customer_key_column, type: string, description: Customer key column.}
       - {name: customer_key_expression, type: "optional[string]", description: Raw SQL expression for advanced raw-key models; must reference source_rows.}
       - {name: customer_key_domain, type: "optional[string]", description: Domain used to generate personal_data_key for raw-key models such as quarantine.}
-      - {name: customer_key_kind, type: string, description: Canonicalization kind used with customer_key_domain.}
+      - {name: customer_key_kind, type: string, description: "Strict text, ssn, phone, or date canonicalization kind used with customer_key_domain."}
       - {name: special_replacement_columns, type: "optional[list[string]]", description: FACT keys to replace with the erased member.}
       - {name: erased_flag_column, type: "optional[string]", description: FACT erased-row flag; CASE_VIEW null selects customer-key fallback.}
       - {name: source_is_policy_applied, type: bool, description: Generate a downstream FACT projection from an already enforced source.}

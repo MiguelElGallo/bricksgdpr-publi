@@ -26,6 +26,7 @@ The canonical design pages include:
 
 - [Architecture and trust boundaries](docs/explanation/architecture-and-trust-boundaries.md);
 - [Access control](docs/reference/access-control.md);
+- [Macro API reference](docs/reference/macro-api.md);
 - [Terminal deletion versus physical erasure](docs/explanation/terminal-deletion-vs-erasure.md).
 
 Preview the complete site locally:
@@ -243,11 +244,15 @@ databricks bundle validate --strict --profile "$DATABRICKS_CONFIG_PROFILE" \
   --var="warehouse_id=<warehouse-id>"
 ```
 
-The routine job builds all four seeds and every governed layer, applies access controls, runs the
+The routine job builds all five seeds and every governed layer, applies access controls, runs the
 access-control tests, and finishes with the complete dbt build. Account-level identity provisioning
 and temporary-persona acceptance remain separate, explicitly invoked controls.
 
 ## Development loop
+
+Generate complete reviewed Layer1, `priva_map`, Layer2, Layer3, or case-view scaffolds through the
+[Macro API](docs/reference/macro-api.md#layer-model-scaffold-api). The operations print source code
+and schema YAML; they do not write files or mutate the warehouse.
 
 Generate the exact synthetic fixtures and validate local code:
 

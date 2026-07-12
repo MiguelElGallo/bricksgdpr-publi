@@ -24,8 +24,8 @@ The repository is a dbt project with Databricks deployment and identity helpers.
 | `models/` | Layer1, `priva_map`, Layer2, Layer3, and case models |
 | `seeds/` | Four deterministic CSV source simulators, one deletion-confirmation control, and metadata |
 | `functions/` | Three dbt-managed Databricks SQL functions |
-| `macros/` | Jinja implementations for keys, deletion generation, access, schema, and catalog controls |
-| `tests/` | Forty-two singular dbt data tests |
+| `macros/` | Jinja implementations for layer-model scaffolds, keys, deletion generation, access, schema, and catalog controls |
+| `tests/` | Forty-three singular dbt data tests |
 | `acceptance/personas/` | Three positive and six denial SQL file tasks |
 | `scripts/generate_seeds.py` | Deterministic CSV generator |
 | `scripts/provision_identities.sh` | Persona identity topology preflight and apply operation |
@@ -59,6 +59,8 @@ The repository is a dbt project with Databricks deployment and identity helpers.
 | `models/layer3/_layer3_dimensions.yml` | Customer, service, and date dimensions |
 | `models/layer3/_layer3_facts.yml` | Event and invoice facts |
 | `models/layer3_case/_layer3_case.yml` | Four case-view contracts |
+| `macros/layer_model_generators.yml` | Seven public layer-model scaffold operations |
+| `macros/customer_deletion_generators.yml` | Four public deletion-model generation operations and their arguments |
 
 ## Generated and local-only paths
 

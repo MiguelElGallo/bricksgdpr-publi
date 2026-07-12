@@ -14,6 +14,7 @@ If this is your first encounter with the project, begin with the
 
 - [Configure a development environment](configure-a-development-environment.md)
 - [Configure GitHub Actions validation](configure-github-actions.md)
+- [Generate a layer-model scaffold](../reference/macro-api.md#layer-model-scaffold-api)
 - [Run a focused build](run-a-focused-build.md)
 - [Use an isolated development schema](use-an-isolated-development-schema.md)
 

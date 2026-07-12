@@ -5,7 +5,7 @@ icon: lucide/test-tube-2
 
 # Tests and selectors
 
-The project contains 335 data tests and 7 unit tests.
+The project contains 336 data tests and 7 unit tests.
 
 ## Test counts
 
@@ -16,10 +16,10 @@ The project contains 335 data tests and 7 unit tests.
 | `relationships` generic data tests | 14 | Model YAML files |
 | `accepted_values` generic data tests | 22 | Model YAML files |
 | Generated deletion-contract data tests | 5 | Model YAML files and generator macro |
-| Singular data tests | 42 | `tests/*.sql` |
+| Singular data tests | 43 | `tests/*.sql` |
 | Unit tests | 7 | Deletion-control, erased-fact, invoice-quality, and service-resolution model YAML files |
-| **Total data tests** | **335** | Generic plus singular |
-| **Total including unit tests** | **342** | Data tests plus unit tests |
+| **Total data tests** | **336** | Generic plus singular |
+| **Total including unit tests** | **343** | Data tests plus unit tests |
 
 The count does not include positive/negative persona SQL tasks under `acceptance/personas/`; those
 are external acceptance checks, not dbt test nodes.
@@ -36,6 +36,7 @@ are external acceptance checks, not dbt test nodes.
 | `assert_layer3_deletion_walkthrough_fixture` | Before, SPECIAL-only, and final mixed-mode states have exact Layer3 totals and plan coverage |
 | `assert_erased_member_invariants` | Special members and every fact flag/key tuple remain globally consistent |
 | `assert_customer_deletion_generators` | Generated FACT, policy-applied FACT, delete-style, CASE_VIEW, and all target-type actions match the canonical matrix |
+| `assert_layer_model_generators` | All twelve layer-kind combinations emit required configuration, lineage, mapping masks/tags, policy, fresh-FACT flag, and governed erased-member fragments |
 | `assert_unconfirmed_deletion_not_authorized` | Pending deletion is detected but has no plan and remains in mapping, Layer2, and Layer3 |
 | `assert_layer1_control_fixtures` | Late, invalid, inconsistent-payment, and deleted-dependent source controls exist exactly once |
 | `assert_unique_customer_service_periods` | `service_id + valid_from` is unique in staged services |

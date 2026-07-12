@@ -1,0 +1,66 @@
+version: 2
+
+macros:
+  - name: generate_layer_model_scaffold
+    description: >
+      Primary developer operation for generating readable model SQL and schema YAML from a
+      validated layer-model specification. The layer and model kind select the repository-native
+      configuration, persistence, and deletion-control behavior.
+    arguments:
+      - name: spec
+        type: dict[string, any]
+        description: Complete validated model specification including layer, kind, grain, source, governed columns, joins, CTEs, deletion contract, or erased member.
+
+  - name: generate_layer1_model
+    description: >
+      Layer1 convenience operation for STAGING, QUARANTINE, and CONTROL scaffolds. It supplies the
+      layer boundary and rejects model kinds belonging to other paths.
+    arguments:
+      - name: spec
+        type: dict[string, any]
+        description: Layer1 model specification; layer is optional and must be layer1 when supplied.
+
+  - name: generate_priva_map_model
+    description: >
+      priva_map convenience operation for deletion-aware MAPPING scaffolds that preserve readable
+      values only inside the restricted mapping boundary.
+    arguments:
+      - name: spec
+        type: dict[string, any]
+        description: priva_map MAPPING specification, including tags and masks for readable Personal Data columns; layer is optional and must be priva_map when supplied.
+
+  - name: generate_layer2_model
+    description: >
+      Layer2 convenience operation for KEYED, RESOLUTION, PUBLISHED, and CONTROL scaffolds,
+      including ephemeral defaults and optional generated deletion-policy calls.
+    arguments:
+      - name: spec
+        type: dict[string, any]
+        description: Layer2 model specification; layer is optional and must be layer2 when supplied.
+
+  - name: generate_layer3_model
+    description: >
+      Layer3 convenience operation for DIMENSION, DATE_DIMENSION, and FACT scaffolds, including
+      erased-member unions and policy-applied fact projections.
+    arguments:
+      - name: spec
+        type: dict[string, any]
+        description: Layer3 model specification; layer is optional and must be layer3 when supplied.
+
+  - name: generate_layer3_case_model
+    description: >
+      Layer3-case convenience operation for controlled CASE_VIEW scaffolds with mapping joins,
+      authorization predicates, and erased-row exclusion.
+    arguments:
+      - name: spec
+        type: dict[string, any]
+        description: Layer3 CASE_VIEW specification; layer is optional and must be layer3_case when supplied.
+
+  - name: generate_all_layer_models
+    description: >
+      Batch operation that validates and logs model SQL and schema YAML for multiple specifications
+      in their declared order. It performs no filesystem or warehouse mutation.
+    arguments:
+      - name: specs
+        type: list[dict[string, any]]
+        description: Nonempty ordered list of complete specifications, each including its layer.
