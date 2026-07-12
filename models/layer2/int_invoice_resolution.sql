@@ -119,18 +119,20 @@ quality_classified_invoices as (
         on invoices.customer_key = customers.customer_key
 )
 
-{{ apply_customer_deletion_policy(
+{{ generate_customer_deletion_model(
+    model_name='int_invoice_resolution',
+    model_type='FACT',
     source_relation='quality_classified_invoices',
+    primary_key='invoice_id',
     output_columns=[
         'invoice_id', 'customer_key', 'service_key', 'resolved_service_version_key',
         'amount', 'currency_code', 'issued_date', 'due_date', 'is_paid', 'paid_at',
         'source_is_due', 'source_updated_at', 'resolution_status'
     ],
-    special_behavior='REPLACE',
-    special_replacements={
-        'customer_key': erased_member_key(),
-        'service_key': erased_member_key(),
-        'resolved_service_version_key': erased_member_key()
-    },
-    erased_flag_column='is_erased_customer'
+    customer_key_column='customer_key',
+    special_replacement_columns=[
+        'customer_key', 'service_key', 'resolved_service_version_key'
+    ],
+    erased_flag_column='is_erased_customer',
+    source_is_mode_annotated=true
 ) }}

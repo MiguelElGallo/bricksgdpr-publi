@@ -1,0 +1,73 @@
+version: 2
+
+macros:
+  - name: generate_customer_deletion_model
+    description: >
+      Developer-facing SQL generator for a complete customer-deletion integration. It validates
+      the declared grain, attaches the confirmed mode when required, derives behavior from the
+      model type, removes FULL rows, and either removes or reassigns SPECIAL rows.
+    arguments:
+      - {name: model_name, type: string, description: dbt model name used in validation errors.}
+      - {name: model_type, type: string, description: "FACT, DIMENSION, MAPPING, SERVICE, QUARANTINE, IDENTITY, DEPENDENT, or CASE_VIEW."}
+      - {name: source_relation, type: relation, description: Relation or CTE containing the business-ready source rows.}
+      - {name: primary_key, type: any, description: Declared string or list output grain; every key must be in output_columns.}
+      - {name: output_columns, type: "list[string]", description: Ordered columns generated into the governed output.}
+      - {name: customer_key_column, type: "optional[string]", description: Customer key column used for ledger matching and CASE_VIEW exclusion.}
+      - {name: customer_key_expression, type: "optional[string]", description: Advanced SQL expression used instead of customer_key_column for ledger matching.}
+      - {name: special_replacement_columns, type: "optional[list[string]]", description: FACT key columns rewritten to the erased member.}
+      - {name: erased_flag_column, type: "optional[string]", description: FACT output flag or CASE_VIEW input flag.}
+      - {name: deletion_relation, type: "optional[relation]", description: Effective terminal ledger; defaults to int_terminal_deleted_customer_keys.}
+      - {name: source_is_mode_annotated, type: bool, description: Skip ledger attachment when the input already carries deletion_mode.}
+      - {name: source_is_policy_applied, type: bool, description: FACT-only downstream projection whose source already contains erased keys and the erased flag; original ledger keys are still rejected.}
+      - {name: deletion_mode_column, type: string, description: Existing or generated mode column name.}
+      - {name: additional_predicate, type: "optional[string]", description: CASE_VIEW-only authorization predicate applied with erased-row exclusion.}
+
+  - name: generate_customer_deletion_target_row
+    description: >
+      Generates one deletion-plan registry row and derives FULL/SPECIAL actions from model_type,
+      preventing developers from hand-writing contradictory action strings.
+    arguments:
+      - {name: target_layer, type: string, description: Logical governed layer.}
+      - {name: model_name, type: string, description: Target model name.}
+      - {name: model_type, type: string, description: Model behavior type used to derive actions.}
+      - {name: target_kind, type: "optional[string]", description: TABLE or VIEW; inferred for CASE_VIEW.}
+
+  - name: generate_customer_deletion_target_relations
+    description: Generates the complete deletion target relation from declarative model mappings.
+    arguments:
+      - {name: targets, type: "list[dict[string, any]]", description: "Model registrations containing target_layer, model_name, model_type, and optional target_kind."}
+
+  - name: generate_customer_deletion_scaffold
+    description: >
+      Developer run-operation that prints ready-to-paste model SQL, the derived target registry
+      row, schema documentation, primary-key tests, and the generated deletion-contract test.
+    arguments:
+      - {name: model_name, type: string, description: New or migrated model name.}
+      - {name: model_type, type: string, description: Model behavior type.}
+      - {name: target_layer, type: string, description: Logical governed layer.}
+      - {name: source_model, type: string, description: Upstream dbt model passed through ref().}
+      - {name: primary_key, type: any, description: Model primary key string or composite-grain list.}
+      - {name: output_columns, type: "list[string]", description: Ordered output columns.}
+      - {name: customer_key_column, type: string, description: Customer key column.}
+      - {name: customer_key_expression, type: "optional[string]", description: Raw SQL expression for advanced raw-key models; must reference source_rows.}
+      - {name: customer_key_domain, type: "optional[string]", description: Domain used to generate personal_data_key for raw-key models such as quarantine.}
+      - {name: customer_key_kind, type: string, description: Canonicalization kind used with customer_key_domain.}
+      - {name: special_replacement_columns, type: "optional[list[string]]", description: FACT keys to replace with the erased member.}
+      - {name: erased_flag_column, type: "optional[string]", description: FACT erased-row flag; CASE_VIEW null selects customer-key fallback.}
+      - {name: source_is_policy_applied, type: bool, description: Generate a downstream FACT projection from an already enforced source.}
+      - {name: target_kind, type: "optional[string]", description: TABLE or VIEW.}
+
+  - name: test_customer_deletion_generated_contract
+    description: >
+      Generic generated-model invariant test covering the declared primary key, FACT erased-member
+      replacements, CASE_VIEW erased-member exclusion, or ledger absence for delete-style models.
+    arguments:
+      - {name: model, type: relation, description: Tested model.}
+      - {name: model_type, type: string, description: Generated model behavior type.}
+      - {name: primary_key, type: any, description: Expected primary key string or composite-grain list.}
+      - {name: customer_key_columns, type: "list[string]", description: Customer-dependent keys checked by the contract.}
+      - {name: customer_key_column, type: string, description: Output customer key used for terminal-ledger absence checks.}
+      - {name: customer_key_expression, type: "optional[string]", description: SQL expression used to calculate a ledger key from raw delete-style output.}
+      - {name: customer_key_domain, type: "optional[string]", description: personal_data_key domain for raw delete-style output.}
+      - {name: customer_key_kind, type: string, description: Canonicalization kind paired with customer_key_domain.}
+      - {name: erased_flag_column, type: "optional[string]", description: FACT erased flag.}

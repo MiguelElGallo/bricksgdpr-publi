@@ -182,6 +182,13 @@ models:
     description: >
       Controlled invoice fact view with protected lineage plus approved readable customer name,
       email, service ID, and installation address for authorized case workflows.
+    data_tests:
+      - customer_deletion_generated_contract:
+          arguments:
+            model_type: CASE_VIEW
+            primary_key: invoice_key
+            customer_key_columns: [customer_key, service_key, service_version_key]
+            customer_key_column: customer_key
     config:
       contract:
         enforced: true

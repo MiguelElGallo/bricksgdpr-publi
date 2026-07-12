@@ -92,40 +92,42 @@ For every historical customer key, the plan contains exactly 17 target rows.
 
 ## Macro contract
 
-Every customer-dependent model first attaches the effective mode, then applies its local policy.
+Developers use one generator call. The model type derives the policy; developers do not select
+FULL/SPECIAL action strings themselves.
 
 ```jinja
-with mode_annotated as (
-    {{ attach_customer_deletion_mode(
-        source_relation=ref('int_customer_events_keyed'),
-        customer_key_expression='source_rows.customer_key',
-        output_columns=[
-            'event_id', 'customer_key', 'event_type', 'occurred_at',
-            'measure_value', 'measure_unit', 'source_updated_at'
-        ],
-        deletion_relation=ref('int_terminal_deleted_customer_keys'),
-        source_alias='source_rows'
-    ) }}
-)
-
-{{ apply_customer_deletion_policy(
-    source_relation='mode_annotated',
+{{ generate_customer_deletion_model(
+    model_name='int_customer_event_resolution',
+    model_type='FACT',
+    source_relation=ref('int_customer_events_keyed'),
+    primary_key='event_id',
     output_columns=[
         'event_id', 'customer_key', 'event_type', 'occurred_at',
         'measure_value', 'measure_unit', 'source_updated_at'
     ],
-    special_behavior='REPLACE',
-    special_replacements={'customer_key': erased_member_key()},
-    erased_flag_column='is_erased_customer',
-    deletion_mode_column='deletion_mode',
-    source_alias='policy_rows'
+    customer_key_column='customer_key',
+    special_replacement_columns=['customer_key'],
+    erased_flag_column='is_erased_customer'
 ) }}
 ```
 
-Use `special_behavior='DELETE'` for identity, mapping, service, and quarantine models. Use
-`special_behavior='REPLACE'` only for facts that are allowed to retain their grain. FULL rows are
-always removed. The macro rejects duplicate/invalid output columns, unknown replacement columns,
-DELETE calls with replacements, and REPLACE calls without an erased flag.
+`FACT` generates SPECIAL replacement and FULL removal. Dimension, mapping, service, quarantine,
+identity, and dependent types generate removal for both modes. `CASE_VIEW` generates erased-row
+exclusion. The generator validates the primary key, explicit projection, replacement keys, erased
+flag, model type, and allowed option combinations.
+
+For a downstream Layer3 fact whose Layer2 source already contains erased keys and the erased flag,
+`source_is_policy_applied=true` generates a validating projection instead of attempting to join the
+original-key ledger through `-99999`. It still anti-joins the ledger on any surviving original
+customer key, so a leaked FULL row cannot pass merely by carrying a false erased flag.
+
+The lower-level `attach_customer_deletion_mode()` and `apply_customer_deletion_policy()` macros are
+the runtime engine used by the generator. They remain available for advanced models that must
+classify business rules between mode attachment and final policy application.
+
+Run `generate_customer_deletion_scaffold` through `dbt run-operation` to print the complete model
+call, declarative target registration, derived action row, schema documentation, and tests. See
+[Generate a customer-deletion model](../how-to-guides/generate-customer-deletion-model.md).
 
 dbt recommends macros for reusable SQL and documents their arguments; it also cautions that
 readability matters. This split keeps the reusable policy small while each model explicitly lists
@@ -166,6 +168,8 @@ copies, or recipient systems. Those require separate retention and purge control
 
 - `macros/customer_deletion_policy.sql`
 - `macros/customer_deletion_policy.yml`
+- `macros/customer_deletion_generators.sql`
+- `macros/customer_deletion_generators.yml`
 - `macros/deletion_control.sql`
 - `models/layer1/customer_deletion_authorization_history.sql`
 - `models/layer1/customer_deletion_authorizations.sql`

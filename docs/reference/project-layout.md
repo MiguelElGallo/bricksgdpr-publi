@@ -24,8 +24,8 @@ The repository is a dbt project with Databricks deployment and identity helpers.
 | `models/` | Layer1, `priva_map`, Layer2, Layer3, and case models |
 | `seeds/` | Four deterministic CSV source simulators, one deletion-confirmation control, and metadata |
 | `functions/` | Three dbt-managed Databricks SQL functions |
-| `macros/` | Eleven public Jinja macros plus two private validation helpers |
-| `tests/` | Forty-one singular dbt data tests |
+| `macros/` | Documented Jinja API for keys, deletion generation, access, schema, and catalog controls |
+| `tests/` | Forty-two singular dbt data tests |
 | `acceptance/personas/` | Three positive and six denial SQL file tasks |
 | `scripts/generate_seeds.py` | Deterministic CSV generator |
 | `scripts/provision_identities.sh` | Persona identity topology preflight and apply operation |

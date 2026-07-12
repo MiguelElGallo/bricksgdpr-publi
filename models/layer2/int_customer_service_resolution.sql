@@ -1,27 +1,18 @@
 {{ config(materialized='ephemeral', tags=['layer2_services']) }}
 
-with mode_annotated_services as (
-    {{ attach_customer_deletion_mode(
+with nondeleted_services as (
+    {{ generate_customer_deletion_model(
+        model_name='int_customer_service_resolution',
+        model_type='SERVICE',
         source_relation=ref('int_customer_services_keyed'),
-        customer_key_expression='source_rows.customer_key',
+        primary_key='service_version_key',
         output_columns=[
             'service_id', 'customer_key', 'service_key', 'service_version_key',
             'installation_address_key', 'service_type', 'is_valid', 'valid_from',
             'valid_to', 'source_updated_at'
         ],
+        customer_key_column='customer_key',
         deletion_relation=ref('int_terminal_deleted_customer_keys')
-    ) }}
-),
-
-nondeleted_services as (
-    {{ apply_customer_deletion_policy(
-        source_relation='mode_annotated_services',
-        output_columns=[
-            'service_id', 'customer_key', 'service_key', 'service_version_key',
-            'installation_address_key', 'service_type', 'is_valid', 'valid_from',
-            'valid_to', 'source_updated_at'
-        ],
-        special_behavior='DELETE'
     ) }}
 )
 

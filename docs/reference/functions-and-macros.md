@@ -5,7 +5,8 @@ icon: lucide/braces
 
 # Functions and macros
 
-The project defines three dbt-managed Databricks SQL functions and eleven public local Jinja macros.
+The project defines three dbt-managed Databricks SQL functions and a documented local Jinja macro
+API.
 
 ## SQL functions
 
@@ -79,6 +80,61 @@ stored key supplied through column-mask `USING COLUMNS` metadata.
 **Sources:** `functions/mask_priva_map_value.sql`, `functions/_functions.yml:47-63`.
 
 ## Jinja macros
+
+### `generate_customer_deletion_model`
+
+```jinja
+generate_customer_deletion_model(
+    model_name,
+    model_type,
+    source_relation,
+    primary_key,
+    output_columns,
+    customer_key_column='customer_key',
+    customer_key_expression=none,
+    special_replacement_columns=none,
+    erased_flag_column='is_erased_customer',
+    deletion_relation=none,
+    source_is_mode_annotated=false,
+    source_is_policy_applied=false,
+    deletion_mode_column='deletion_mode',
+    additional_predicate=none
+)
+```
+
+This is the primary developer API. It generates the ledger join and final policy-aware projection.
+`model_type` determines behavior: FACT reassigns SPECIAL keys and removes FULL rows; delete-style
+types remove both; CASE_VIEW excludes erased rows. `primary_key` may be one column or a composite
+list and is compile-validated against the output projection.
+
+Set `source_is_policy_applied=true` only for a downstream FACT projection whose upstream relation
+already contains erased keys and `is_erased_customer`. The generator then preserves the policy
+result instead of incorrectly trying to match the erased `-99999` key back to the original ledger.
+
+### `generate_customer_deletion_target_row` and `generate_customer_deletion_target_relations`
+
+These macros turn declarative `{target_layer, model_name, model_type}` mappings into the complete
+target relation. FACT, delete-style, and CASE_VIEW actions are derived centrally instead of being
+repeated as hand-written strings.
+
+### `generate_customer_deletion_scaffold`
+
+```bash
+dbt run-operation generate_customer_deletion_scaffold --args '{...}'
+```
+
+Prints ready-to-paste model SQL, target registration, the derived action row, schema documentation,
+primary-key tests, and `customer_deletion_generated_contract`. It is preview-only and performs no
+filesystem or warehouse mutation.
+
+### `customer_deletion_generated_contract`
+
+Generic generated-model test for null/duplicate grain, null or incomplete FACT erased-member
+replacement, terminal ledger keys visible in FACT/delete-style outputs, and erased rows visible
+through CASE_VIEW. Raw-key delete outputs can supply a calculated ledger-key expression.
+
+**Source:** `macros/customer_deletion_generators.sql`; argument metadata is in
+`macros/customer_deletion_generators.yml`.
 
 ### `hash_personal_data_expression`
 

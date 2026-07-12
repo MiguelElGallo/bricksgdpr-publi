@@ -26,6 +26,13 @@ models:
       Protected Layer2 invoices at one row per accepted invoice. It contains pseudonymous customer
       and service keys or erased-member sentinels, monetary measures, dates, and an as-of-date
       due-state calculation.
+    data_tests:
+      - customer_deletion_generated_contract:
+          arguments:
+            model_type: FACT
+            primary_key: invoice_id
+            customer_key_columns: [customer_key, service_key, service_version_key]
+            erased_flag_column: is_erased_customer
     config:
       contract:
         enforced: true

@@ -35,6 +35,7 @@ nav = [
       { "Reconcile access controls" = "how-to-guides/reconcile-access-controls.md" },
       { "Provision persona identities" = "how-to-guides/provision-persona-identities.md" },
       { "Validate persona access" = "how-to-guides/validate-persona-access.md" },
+      { "Generate a deletion-aware model" = "how-to-guides/generate-customer-deletion-model.md" },
       { "Verify customer deletion" = "how-to-guides/verify-terminal-deletion.md" },
   ]},
   { "Reference" = [

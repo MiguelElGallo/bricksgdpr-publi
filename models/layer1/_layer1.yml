@@ -372,6 +372,15 @@ models:
     description: >
       Raw Layer1 quarantine at one row per unresolved or invalid nondeleted invoice. It preserves
       source values and a deterministic reason for controlled remediation.
+    data_tests:
+      - customer_deletion_generated_contract:
+          arguments:
+            model_type: QUARANTINE
+            primary_key: invoice_id
+            customer_key_columns: [customer_ssn]
+            customer_key_column: customer_ssn
+            customer_key_domain: customer.ssn
+            customer_key_kind: ssn
     config:
       contract:
         enforced: true

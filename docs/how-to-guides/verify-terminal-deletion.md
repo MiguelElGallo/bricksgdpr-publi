@@ -155,15 +155,14 @@ invariants, and Layer3 outcomes.
 
 Before merging a new table:
 
-1. Add it to `customer_deletion_target_relations()` with both FULL and SPECIAL actions.
-2. Call `attach_customer_deletion_mode()` with its relation, customer-key expression, and explicit
-   output columns.
-3. Call `apply_customer_deletion_policy()` with `special_behavior='DELETE'` or `REPLACE`.
-4. For REPLACE, provide every replacement expression and `erased_flag_column`.
-5. Add a unit test containing an ordinary row, a SPECIAL row, and a FULL row.
-6. Update the fixed target counts and Layer3 walkthrough if the governed inventory changes.
+1. Run `generate_customer_deletion_scaffold` with its type, grain, source, and explicit columns.
+2. Copy the generated `generate_customer_deletion_model()` call into the model.
+3. Append the generated declarative registration; do not hand-write action strings.
+4. Add the generated YAML contract and a model-specific unit test when business logic requires it.
+5. Update the fixed target counts and Layer3 walkthrough if the governed inventory changes.
 
-See [Functions and macros](../reference/functions-and-macros.md) for every parameter.
+Follow [Generate a customer-deletion model](generate-customer-deletion-model.md) for the exact
+command and [Functions and macros](../reference/functions-and-macros.md) for every parameter.
 
 ## 9. Record the evidence boundary
 

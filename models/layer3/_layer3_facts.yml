@@ -72,6 +72,13 @@ models:
       Invoice fact at one row per accepted invoice. It links to customer, service-period, and
       conformed date dimensions while retaining monetary and validated payment measures. Erased
       subjects use special customer and service members instead of their original relationships.
+    data_tests:
+      - customer_deletion_generated_contract:
+          arguments:
+            model_type: FACT
+            primary_key: invoice_key
+            customer_key_columns: [customer_key, service_key, service_version_key]
+            erased_flag_column: is_erased_customer
     config:
       contract:
         enforced: true

@@ -21,6 +21,12 @@ models:
     description: >
       Protected Layer2 services at one row per accepted validity period. Customer, service, and
       installation address are represented only by versioned pseudonymous keys.
+    data_tests:
+      - customer_deletion_generated_contract:
+          arguments:
+            model_type: SERVICE
+            primary_key: service_version_key
+            customer_key_columns: [customer_key]
     config:
       contract:
         enforced: true

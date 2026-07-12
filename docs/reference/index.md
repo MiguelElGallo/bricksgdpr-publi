@@ -18,8 +18,8 @@ for task-oriented instructions, and [Explanation](../explanation/index.md) for d
 | Models | 34 | 9 views, 16 tables, 3 incremental models, and 6 ephemeral models |
 | Seeds | 5 | Four source extracts and one independent deletion-confirmation control |
 | SQL functions | 3 | Created in the fixed `priva_internal` schema |
-| Local public macros | 11 | Includes catalog, schema, key, deletion policy, case, and access-control macros |
-| Data tests | 329 | 288 generic tests and 41 singular tests |
+| Local macro API | Documented | Includes catalog, schema, key, deletion generators, case, and access-control macros |
+| Data tests | 335 | 293 generic tests and 42 singular tests |
 | Unit tests | 7 | Authorization, mode policy, service resolution, and invoice quality |
 | Sources | 0 | Seeds are referenced directly with `ref()` |
 | Snapshots | 0 | Current-state outputs use replacement; deletion request, plan, and execution ledgers are incremental |
