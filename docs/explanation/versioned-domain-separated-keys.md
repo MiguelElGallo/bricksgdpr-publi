@@ -83,4 +83,5 @@ nondeleted customer's SSN changes, older-key events and services will not automa
 the new key. A production design needs an alias or identity-history strategy if that change is
 possible.
 
-See [SQL functions and macros](../reference/functions-and-macros.md) for the exact signatures.
+The exact key-function and expression-helper signatures are declared in `functions/_functions.yml`
+and `macros/personal_data.sql`.

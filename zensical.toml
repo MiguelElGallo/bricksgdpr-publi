@@ -35,7 +35,6 @@ nav = [
       { "Reconcile access controls" = "how-to-guides/reconcile-access-controls.md" },
       { "Provision persona identities" = "how-to-guides/provision-persona-identities.md" },
       { "Validate persona access" = "how-to-guides/validate-persona-access.md" },
-      { "Generate a deletion-aware model" = "how-to-guides/generate-customer-deletion-model.md" },
       { "Verify customer deletion" = "how-to-guides/verify-terminal-deletion.md" },
   ]},
   { "Reference" = [
@@ -49,7 +48,7 @@ nav = [
       { "priva_map" = "reference/priva-map.md" },
       { "Layer2" = "reference/layer2.md" },
       { "Layer3 and case views" = "reference/layer3-and-case.md" },
-      { "Functions and macros" = "reference/functions-and-macros.md" },
+      { "Macro API reference" = "reference/macro-api.md" },
       { "Tests and selectors" = "reference/tests-and-selectors.md" },
       { "Access control" = "reference/access-control.md" },
       { "Identity and acceptance" = "reference/identity-and-acceptance.md" },

@@ -18,7 +18,7 @@ for task-oriented instructions, and [Explanation](../explanation/index.md) for d
 | Models | 34 | 9 views, 16 tables, 3 incremental models, and 6 ephemeral models |
 | Seeds | 5 | Four source extracts and one independent deletion-confirmation control |
 | SQL functions | 3 | Created in the fixed `priva_internal` schema |
-| Local macro API | Documented | Includes catalog, schema, key, deletion generators, case, and access-control macros |
+| Model-generation macro API | 4 | Scaffold, governed model SQL, complete target relation, and individual target row |
 | Data tests | 335 | 293 generic tests and 42 singular tests |
 | Unit tests | 7 | Authorization, mode policy, service resolution, and invoice quality |
 | Sources | 0 | Seeds are referenced directly with `ref()` |
@@ -42,7 +42,7 @@ checked-in synthetic seeds.
 | [`priva_map`](priva-map.md) | Raw-to-pseudonymous mapping relations, tags, and masks |
 | [Layer2](layer2.md) | Key boundaries, classifiers, accepted tables, and reason codes |
 | [Layer3 and case views](layer3-and-case.md) | Dimensions, facts, and controlled readable views |
-| [Functions and macros](functions-and-macros.md) | SQL function and Jinja macro signatures |
+| [Macro API reference](macro-api.md) | Complete developer-facing model-generation macro contract |
 | [Tests and selectors](tests-and-selectors.md) | Test counts, enforced invariants, tags, and selection forms |
 | [Access control](access-control.md) | Persona matrix, grants, masks, and trusted boundaries |
 | [Identity and acceptance](identity-and-acceptance.md) | Identity modes, required variables, and task-state contract |

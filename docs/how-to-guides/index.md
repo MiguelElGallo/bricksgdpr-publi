@@ -27,7 +27,6 @@ If this is your first encounter with the project, begin with the
 - [Reconcile access controls](reconcile-access-controls.md)
 - [Provision persona identities](provision-persona-identities.md)
 - [Validate persona access](validate-persona-access.md)
-- [Generate a deletion-aware model](generate-customer-deletion-model.md)
 - [Verify customer deletion](verify-terminal-deletion.md)
 
 !!! note

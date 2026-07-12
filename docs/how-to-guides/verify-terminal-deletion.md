@@ -161,8 +161,8 @@ Before merging a new table:
 4. Add the generated YAML contract and a model-specific unit test when business logic requires it.
 5. Update the fixed target counts and Layer3 walkthrough if the governed inventory changes.
 
-Follow [Generate a customer-deletion model](generate-customer-deletion-model.md) for the exact
-command and [Functions and macros](../reference/functions-and-macros.md) for every parameter.
+Use the [Macro API reference](../reference/macro-api.md) for the scaffold command, generated
+artifacts, and every public model-generation parameter.
 
 ## 9. Record the evidence boundary
 

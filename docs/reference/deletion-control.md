@@ -126,8 +126,8 @@ the runtime engine used by the generator. They remain available for advanced mod
 classify business rules between mode attachment and final policy application.
 
 Run `generate_customer_deletion_scaffold` through `dbt run-operation` to print the complete model
-call, declarative target registration, derived action row, schema documentation, and tests. See
-[Generate a customer-deletion model](../how-to-guides/generate-customer-deletion-model.md).
+call, declarative target registration, derived action row, schema documentation, and tests. See the
+[Macro API reference](macro-api.md) for the complete developer surface.
 
 dbt recommends macros for reusable SQL and documents their arguments; it also cautions that
 readability matters. This split keeps the reusable policy small while each model explicitly lists
