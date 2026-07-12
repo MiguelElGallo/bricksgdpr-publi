@@ -1,109 +1,108 @@
 ---
+title: "Customer deletion: before and after"
 icon: lucide/trash-2
 ---
 
-# Observe terminal deletion
+# Customer deletion: before and after
 
-In this tutorial, we will compare pending `CUST-0097` with confirmed `CUST-0099`. Both have a source
-deletion tombstone, but only the confirmed request creates a plan and suppresses every historical
-identity associated with its stable customer ID.
+This tutorial shows every Layer3 table before and after the confirmed deletion of synthetic
+customer `CUST-0099`. You will build both states, inspect the exact rows, confirm the deletion
+plan, and prove the final result.
 
-This is a lesson about logical current-state deletion. It is not proof that old bytes have been
-removed from Delta history, caches, exports, or backups.
+The short version is:
 
-## Inspect the source history
+| Layer3 table | Before total | Before subject rows | After total | After subject rows | Change |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `dim_customer` | 16 | 1 | 15 | 0 | -1 |
+| `dim_service` | 17 | 1 | 16 | 0 | -1 |
+| `dim_date` | 1,461 | 0 | 1,461 | 0 | 0 |
+| `fct_customer_event` | 29 | 1 | 28 | 0 | -1 |
+| `fct_invoice` | 26 | 1 | 25 | 0 | -1 |
 
-Build from the checked-in fixtures, replacing current governed relations:
+`dim_date` does not identify a customer, so deletion deliberately leaves it unchanged.
+
+!!! warning "Current-state deletion, not physical erasure"
+    dbt replaces governed current outputs from anti-joined inputs, while incremental control
+    ledgers retain the plan and suppression-admitted keys. It does not issue `DELETE FROM` against
+    every relation, and this tutorial does not prove that old bytes disappeared from Delta history,
+    caches, exports, object versions, or backups. Read
+    [Terminal deletion versus physical erasure](../explanation/terminal-deletion-vs-erasure.md).
+
+## Understand the example
+
+The customer source contains two changes for one stable customer ID:
+
+| Change | Request/change ID | Customer ID | SSN carried by the row | Time |
+| --- | --- | --- | --- | --- |
+| Active upsert | `CCHG-0099-U` | `CUST-0099` | `900-00-0199` | `2026-01-05 09:00:00` |
+| Deletion tombstone | `CCHG-0099-D` | `CUST-0099` | `900-00-0099` | `2026-02-15 12:00:00` |
+
+The SSNs differ. The plan expands the stable `customer_id` to both historical customer keys. Only
+the key derived from `900-00-0199` has current Layer3 fixture rows, but both keys are suppressed.
+
+The dependent source rows are:
+
+| Source relation | Record | Important values |
+| --- | --- | --- |
+| Customer | `CCHG-0099-U` | `household`, active |
+| Service | `SVC-0099-A` | `INTERNET`, valid `2025-04-10` through `2027-12-31` |
+| Event | `EVT-0099` | `USAGE`, `9.50 GB`, occurred `2026-02-20 08:00:00` |
+| Invoice | `INV-0099` | `99.00 EUR`, issued `2026-02-01`, due `2026-03-03`, unpaid |
+
+The confirmation is separate from the customer source. It is recorded at
+`2026-02-16 08:00:00`, after the tombstone.
+
+For the exact state machine and all 17 governed targets, see
+[Customer deletion control](../reference/deletion-control.md).
+
+## Build the real before state
+
+Use an isolated schema prefix. The `deletion_decision_as_of` variable hides decisions recorded
+after its value; it does not alter the source tombstone or the persisted request.
 
 ```bash
-uv run dbt build --full-refresh --exclude tag:access_control
-uv run dbt run-operation apply_access_controls
-uv run dbt test --select tag:access_control
+export DBT_SCHEMA_PREFIX=deletion_walkthrough
+
+uv run dbt seed --full-refresh \
+  --vars '{deletion_decision_as_of: "2026-02-16 07:59:59"}'
+uv run dbt run --full-refresh \
+  --vars '{deletion_decision_as_of: "2026-02-16 07:59:59"}'
 ```
 
-Now inspect the two source changes for `CUST-0099`:
+This is one second before the independent confirmation. The request is detected, its effective
+authorization is `PENDING`, no plan exists, and the subject remains in Layer3.
+
+See that control state directly:
 
 ```bash
 uv run dbt show --inline "
 select
-    customer_change_id,
-    customer_id,
-    customer_ssn,
-    source_operation,
-    source_updated_at
-from {{ ref('stg_customer') }}
-where customer_id = 'CUST-0099'
-order by source_updated_at
-" --limit 10
+    requests.deletion_request_id,
+    requests.detection_status,
+    authorizations.decision_status,
+    authorizations.authorization_status,
+    count(plan.target_relation) as plan_rows
+from {{ ref('customer_deletion_requests') }} as requests
+inner join {{ ref('customer_deletion_authorizations') }} as authorizations
+    on requests.deletion_request_id = authorizations.deletion_request_id
+left join {{ ref('int_customer_deletion_plan') }} as plan
+    on requests.deletion_request_id = plan.deletion_request_id
+where requests.deletion_request_id = 'CCHG-0099-D'
+group by all
+" --limit 10 --vars '{deletion_decision_as_of: "2026-02-16 07:59:59"}'
 ```
 
-You should see:
+| `deletion_request_id` | `detection_status` | `decision_status` | `authorization_status` | `plan_rows` |
+| --- | --- | --- | --- | ---: |
+| `CCHG-0099-D` | `DETECTED` | `PENDING` | `PENDING` | 0 |
 
-- an earlier `UPSERT` using `900-00-0199`; and
-- a later `DELETE` tombstone using `900-00-0099`.
+!!! tip
+    Keep the prefix. The final build later in this tutorial changes only these isolated schemas.
+    Do not use a production schema to simulate an earlier decision state.
 
-The SSNs differ. The stable `customer_id` is what later lets the authorized plan expand to both
-historical identities.
+## Count all five tables before deletion
 
-## Observe detection and confirmation
-
-Inspect the stored request and its independent decision:
-
-```bash
-uv run dbt show --inline "
-select
-    deletion_request_id,
-    decision_status,
-    legal_hold,
-    authorization_status
-from {{ ref('customer_deletion_authorizations') }}
-order by deletion_request_id
-" --limit 10
-```
-
-`CCHG-0097-D` is `PENDING`; `CCHG-0099-D` is `AUTHORIZED`. Now inspect the plan:
-
-```bash
-uv run dbt show --inline "
-select
-    deletion_request_id,
-    count(distinct customer_key) as historical_keys,
-    count(distinct concat(target_layer, '.', target_relation)) as targets,
-    count(*) as plan_rows
-from {{ ref('int_customer_deletion_plan') }}
-group by deletion_request_id
-" --limit 10
-```
-
-Only `CCHG-0099-D` appears, with two historical keys, 17 targets, and 34 plan rows. Detection alone
-did not create work for `CCHG-0097-D`.
-
-## Observe the expanded deletion keys
-
-The ephemeral `int_terminal_deleted_customer_keys` model contains both `v1` customer keys for
-this subject:
-
-```bash
-uv run dbt show --inline "
-with subject_ssns as (
-    select distinct customer_ssn
-    from {{ ref('stg_customer') }}
-    where customer_id = 'CUST-0099'
-)
-select deleted.customer_key
-from {{ ref('int_terminal_deleted_customer_keys') }} as deleted
-inner join subject_ssns as source
-    on deleted.customer_key =
-        {{ personal_data_key('source.customer_ssn', 'customer.ssn', 'ssn') }}
-" --limit 10
-```
-
-The result contains two keys. The ephemeral gate is derived from the persisted plan, so those keys
-can guide every downstream model without duplicating confirmation logic.
-
-## Check the governed outputs
-
-Count matching rows in the main mapping and protected customer relations:
+Run one query for the complete Layer3 summary:
 
 ```bash
 uv run dbt show --inline "
@@ -112,51 +111,326 @@ with subject_keys as (
         {{ personal_data_key('customer_ssn', 'customer.ssn', 'ssn') }} as customer_key
     from {{ ref('stg_customer') }}
     where customer_id = 'CUST-0099'
+),
+results as (
+    select 'dim_customer' as relation_name, count(*) as total_rows,
+        count(keys.customer_key) as subject_rows
+    from {{ ref('dim_customer') }} as rows
+    left join subject_keys as keys on rows.customer_key = keys.customer_key
+    union all
+    select 'dim_service', count(*), count(keys.customer_key)
+    from {{ ref('dim_service') }} as rows
+    left join subject_keys as keys on rows.customer_key = keys.customer_key
+    union all
+    select 'dim_date', count(*), cast(0 as bigint)
+    from {{ ref('dim_date') }}
+    union all
+    select 'fct_customer_event', count(*), count(keys.customer_key)
+    from {{ ref('fct_customer_event') }} as rows
+    left join subject_keys as keys on rows.customer_key = keys.customer_key
+    union all
+    select 'fct_invoice', count(*), count(keys.customer_key)
+    from {{ ref('fct_invoice') }} as rows
+    left join subject_keys as keys on rows.customer_key = keys.customer_key
 )
-select 'fa_pd_customer' as relation_name, count(*) as remaining_rows
-from {{ ref('fa_pd_customer') }}
-where customer_key in (select customer_key from subject_keys)
-union all
-select 'int_customer_protected', count(*)
-from {{ ref('int_customer_protected') }}
-where customer_key in (select customer_key from subject_keys)
-union all
-select 'dim_customer', count(*)
-from {{ ref('dim_customer') }}
-where customer_key in (select customer_key from subject_keys)
+select * from results order by relation_name
 " --limit 10
 ```
 
-Every `remaining_rows` value should be `0`.
+Expected result:
 
-Run the same map query for `CUST-0097`; its pending request has no plan, so its latest active upsert
-remains present. This is the fixture that proves a tombstone cannot authorize itself.
+| `relation_name` | `total_rows` | `subject_rows` |
+| --- | ---: | ---: |
+| `dim_customer` | 16 | 1 |
+| `dim_date` | 1,461 | 0 |
+| `dim_service` | 17 | 1 |
+| `fct_customer_event` | 29 | 1 |
+| `fct_invoice` | 26 | 1 |
 
-The same anti-join is applied to events, services, invoices, and raw quarantine outputs before
-they are materialized.
-
-## Run the deletion-control tests
+Prove that these are materialized Layer3 rows, not inferred source candidates:
 
 ```bash
+uv run dbt test --select assert_layer3_deletion_walkthrough_fixture \
+  --vars '{deletion_decision_as_of: "2026-02-16 07:59:59"}'
+```
+
+## Look at every table before deletion
+
+Secret-derived pseudonymous keys differ between deployments. The placeholders below describe
+their purpose without publishing or hardcoding a deployed hash.
+
+### `dim_customer` before
+
+There is one active customer row at grain `customer_key`:
+
+| Column | Value for `CUST-0099` |
+| --- | --- |
+| `customer_key` | `<v1 key for historical SSN 900-00-0199>` |
+| `customer_pk_key` | `<v1 source customer-PK key>` |
+| `customer_id_key` | `<v1 key for CUST-0099>` |
+| `first_name_key` | `<v1 first-name key>` |
+| `last_name_key` | `<v1 last-name key>` |
+| `full_name_key` | `<v1 full-name key>` |
+| `email_key` | `<v1 email key>` |
+| `phone_key` | `<v1 phone key>` |
+| `birth_date_key` | `<v1 birth-date key>` |
+| `address_key` | `<v1 address key>` |
+| `customer_segment` | `household` |
+| `is_active` | `true` |
+| `source_updated_at` | `2026-01-05 09:00:00` |
+
+There is no second customer row for the tombstone SSN. Its historical key is nevertheless in the
+future plan so data under either identity cannot survive.
+
+### `dim_service` before
+
+There is one accepted service-version row at grain `service_version_key`:
+
+| Column | Value for `SVC-0099-A` |
+| --- | --- |
+| `customer_key` | `<same historical customer key>` |
+| `service_key` | `<v1 key for SVC-0099-A>` |
+| `service_version_key` | `<v1 key for SVC-0099-A + 2025-04-10>` |
+| `installation_address_key` | `<v1 installation-address key>` |
+| `service_type` | `INTERNET` |
+| `is_valid` | `true` |
+| `valid_from` | `2025-04-10` |
+| `valid_to` | `2027-12-31` |
+| `source_updated_at` | `2026-02-01 10:00:00` |
+
+### `dim_date` before
+
+`dim_date` has 1,461 rows, one for each day from `2025-01-01` through `2028-12-31`. It has no
+`customer_key`. For example, the event date is represented as:
+
+| Column | Value |
+| --- | --- |
+| `date_key` | `20260220` |
+| `date_day` | `2026-02-20` |
+| `calendar_year` | `2026` |
+| `calendar_quarter` | `1` |
+| `month_number` | `2` |
+| `month_name` | `February` |
+| `day_of_month` | `20` |
+| `day_of_week` | `6` |
+| `day_name` | `Friday` |
+| `iso_week_number` | `8` |
+| `is_weekend` | `false` |
+
+The invoice issue date `20260201` and due date `20260303` are separate rows in the same unchanged
+dimension.
+
+### `fct_customer_event` before
+
+There is one event row at grain `event_key`:
+
+| Column | Value |
+| --- | --- |
+| `event_key` | `EVT-0099` |
+| `customer_key` | `<same historical customer key>` |
+| `event_date_key` | `20260220` |
+| `occurred_at` | `2026-02-20 08:00:00` |
+| `event_type` | `USAGE` |
+| `measure_value` | `9.50` |
+| `measure_unit` | `GB` |
+| `source_updated_at` | `2026-02-20 09:00:00` |
+
+### `fct_invoice` before
+
+There is one invoice row at grain `invoice_key`:
+
+| Column | Value |
+| --- | --- |
+| `invoice_key` | `INV-0099` |
+| `customer_key` | `<same historical customer key>` |
+| `service_key` | `<v1 key for SVC-0099-A>` |
+| `service_version_key` | `<matching accepted service-version key>` |
+| `issue_date_key` | `20260201` |
+| `due_date_key` | `20260303` |
+| `paid_date_key` | `null` |
+| `amount` | `99.00` |
+| `currency_code` | `EUR` |
+| `is_paid` | `false` |
+| `source_is_due` | `false` |
+| `is_due` | `false` at project `as_of_date` `2026-03-01` |
+| `source_updated_at` | `2026-02-28 18:00:00` |
+
+For the complete grain, column, and relationship contracts, see
+[Layer3 and case views](../reference/layer3-and-case.md).
+
+## Detect, confirm, and plan
+
+Now move through the control states:
+
+```mermaid
+flowchart LR
+    A["Source DELETE"] --> B["DETECTED request"]
+    B --> C["CONFIRMED decision"]
+    C --> D["AUTHORIZED"]
+    D --> E["Complete 17-target plan"]
+    E --> F["Execution gate"]
+```
+
+The meanings are deliberately separate:
+
+| State | What it proves | What it does not prove |
+| --- | --- | --- |
+| `DETECTED` | The source tombstone was persisted | The request may delete data |
+| `CONFIRMED` | An independent review approved this request | The plan is complete |
+| `AUTHORIZED` | Required review metadata exists and no legal hold applies | Current outputs were rebuilt |
+| Plan row | One historical key and one governed target are authorized | A physical row existed in that target |
+
+The suppression gate fails closed. A `CONFIRMED` row with missing decision time, reviewer role,
+reason, or legal-hold value becomes `INVALID`. A key reaches the gate only when its plan contains
+all 17 required targets.
+
+## Apply the confirmed deletion
+
+Run the same isolated project without the earlier decision cutoff:
+
+```bash
+uv run dbt run
+```
+
+The default cutoff includes the confirmation. The incremental plan now retains 34 rows:
+
+- two historical customer keys;
+- 17 governed targets per key; and
+- eight Layer3 plan rows: two keys times four customer-bearing Layer3 tables.
+
+`dim_date` is not a deletion target because it contains no customer identity.
+
+Check the control result:
+
+```bash
+uv run dbt show --inline "
+select
+    plan.deletion_request_id,
+    max(authorizations.decision_status) as decision_status,
+    max(authorizations.authorization_status) as authorization_status,
+    count(distinct customer_key) as historical_keys,
+    count(distinct concat(target_layer, '.', target_relation)) as targets,
+    count(*) as plan_rows
+from {{ ref('int_customer_deletion_plan') }} as plan
+inner join {{ ref('customer_deletion_authorizations') }} as authorizations
+    on plan.deletion_request_id = authorizations.deletion_request_id
+where plan.deletion_request_id = 'CCHG-0099-D'
+group by plan.deletion_request_id
+" --limit 10
+```
+
+Expected result:
+
+| `deletion_request_id` | `decision_status` | `authorization_status` | `historical_keys` | `targets` | `plan_rows` |
+| --- | --- | --- | ---: | ---: | ---: |
+| `CCHG-0099-D` | `CONFIRMED` | `AUTHORIZED` | 2 | 17 | 34 |
+
+The plan and suppression-admission ledger are durable across ordinary incremental runs. Admission
+is recorded before downstream models finish; it is not an atomic all-target completion event. In
+this reproducible demo, an
+intentional `--full-refresh` can rebuild the ledger and plan from the checked-in fixtures. A
+production system needs append-only control and execution evidence outside a disposable dbt
+rebuild boundary.
+
+## Look at every table after deletion
+
+Run the five-table query again:
+
+```bash
+uv run dbt show --inline "
+with subject_keys as (
+    select distinct
+        {{ personal_data_key('customer_ssn', 'customer.ssn', 'ssn') }} as customer_key
+    from {{ ref('stg_customer') }}
+    where customer_id = 'CUST-0099'
+),
+results as (
+    select 'dim_customer' as relation_name, count(*) as total_rows,
+        count(keys.customer_key) as subject_rows
+    from {{ ref('dim_customer') }} as rows
+    left join subject_keys as keys on rows.customer_key = keys.customer_key
+    union all
+    select 'dim_service', count(*), count(keys.customer_key)
+    from {{ ref('dim_service') }} as rows
+    left join subject_keys as keys on rows.customer_key = keys.customer_key
+    union all
+    select 'dim_date', count(*), cast(0 as bigint)
+    from {{ ref('dim_date') }}
+    union all
+    select 'fct_customer_event', count(*), count(keys.customer_key)
+    from {{ ref('fct_customer_event') }} as rows
+    left join subject_keys as keys on rows.customer_key = keys.customer_key
+    union all
+    select 'fct_invoice', count(*), count(keys.customer_key)
+    from {{ ref('fct_invoice') }} as rows
+    left join subject_keys as keys on rows.customer_key = keys.customer_key
+)
+select * from results order by relation_name
+" --limit 10
+```
+
+| `relation_name` | `total_rows` | `subject_rows` |
+| --- | ---: | ---: |
+| `dim_customer` | 15 | 0 |
+| `dim_date` | 1,461 | 0 |
+| `dim_service` | 16 | 0 |
+| `fct_customer_event` | 28 | 0 |
+| `fct_invoice` | 25 | 0 |
+
+Here is what changed, table by table:
+
+| Table | After deletion |
+| --- | --- |
+| `dim_customer` | No row matches either historical customer key. The total falls from 16 to 15. |
+| `dim_service` | The `SVC-0099-A` service-version row is absent. The total falls from 17 to 16. |
+| `dim_date` | All 1,461 calendar rows remain, including `20260201`, `20260220`, and `20260303`. |
+| `fct_customer_event` | `EVT-0099` is absent. The total falls from 29 to 28. |
+| `fct_invoice` | `INV-0099` is absent. The total falls from 26 to 25. |
+
+The four protected tables do not contain readable SSNs, names, or email addresses. Deletion is
+matched using the secret-derived historical `customer_key` values.
+
+## What happens to the case views?
+
+The four `layer3_case` views preserve the grain of their protected parents. For an authorized case
+or privacy identity, the `CUST-0099`, `SVC-0099-A`, `EVT-0099`, and `INV-0099` rows disappear with
+those parents.
+
+An unaffiliated identity sees zero rows both before and after because the views fail closed. That is
+access denial, not deletion evidence. Follow
+[Verify terminal deletion](../how-to-guides/verify-terminal-deletion.md) for the separate authorized
+case-view aggregate check.
+
+## Prove the walkthrough contract
+
+Run the focused executable checks:
+
+```bash
+uv run dbt test --select assert_layer3_deletion_walkthrough_fixture
 uv run dbt test --select tag:deletion_control
 ```
 
-In the trusted deployment or owner session, the passing map, Layer2, Layer3, and quarantine tests
-return no violating rows. They do not by themselves prove what an authorized case user can see.
+The walkthrough fixture test protects all documented numbers. It verifies one valid upstream
+customer, service, event, and invoice; two historical keys; eight Layer3 plan rows; the exact final
+totals; and zero remaining subject rows in all four customer-bearing tables.
 
-!!! warning
-    An unaffiliated session sees zero case-view rows because the views fail closed. That zero-row
-    result alone does not prove case-view deletion. Complete the separate aggregate check from an
-    authorized case or privacy SQL session; follow
-    [Verify terminal deletion](../how-to-guides/verify-terminal-deletion.md).
+You have now proved that:
 
-## What you have observed
+- the source deletion was detected and stored;
+- a separate, complete confirmation authorized it;
+- the complete plan existed before the suppression gate opened;
+- all four customer-bearing Layer3 tables removed the subject;
+- `dim_date` remained unchanged;
+- control evidence remained deliberately retained; and
+- no unsupported physical-erasure claim was made.
 
-An independently confirmed deletion wins over later or earlier upserts for the same stable customer
-ID. A pending deletion remains detected but produces no plan. Rebuilding the demo removes only the
-authorized subject from current mapping, protected, quarantine, and case outputs.
+That is the complete Layer3 before-and-after path.
 
-Next, [prove a protected-layer invariant](prove-a-protected-layer-invariant.md).
+Clear the walkthrough prefix before returning to ordinary dbt work:
 
-Read [Terminal deletion versus physical erasure](../explanation/terminal-deletion-vs-erasure.md)
-before applying this pattern to production retention claims.
+```bash
+unset DBT_SCHEMA_PREFIX
+```
+
+This stops later commands from silently targeting the walkthrough schemas. It does not drop them;
+schema retention and cleanup remain an operator decision.

@@ -33,7 +33,8 @@ The ordering is mandatory:
    `customer_id` to every historical SSN, derives every customer key, and creates a row for every
    governed target.
 5. `int_terminal_deleted_customer_keys` reads only authorized `DELETE_CURRENT_ROWS` plan rows.
-   Existing mapping, Layer2, quarantine, Layer3, and case models consume that execution gate.
+   It admits a key only when all 17 required targets are present. Existing mapping, Layer2,
+   quarantine, Layer3, and case models consume that execution gate.
 
 There is no direct path from source tombstone to downstream anti-join.
 
@@ -44,13 +45,22 @@ There is no direct path from source tombstone to downstream anti-join.
 | `stg_customer_deletion_confirmations` | View | One row per reviewed request | Types the independent decision input |
 | `customer_deletion_requests` | Incremental table | One row per source `DELETE` change | Persists detection evidence |
 | `customer_deletion_authorizations` | Table | One row per detected request | Applies confirmation and legal-hold gates |
-| `int_customer_deletion_plan` | Table | One row per authorized historical customer key and target | Records exact planned coverage |
-| `int_terminal_deleted_customer_keys` | Ephemeral | One row per authorized historical customer key | Feeds every downstream deletion anti-join |
+| `int_customer_deletion_plan` | Incremental table | One row per authorized historical customer key and target | Retains exact planned coverage across ordinary runs |
+| `int_terminal_deleted_customer_keys` | Incremental table | One row per admitted historical customer key | Durably records suppression admission and feeds every downstream anti-join |
 
 The checked-in confirmation seed is a deterministic demo input. A production system should use a
 separately authorized case-management or privacy-control source and an append-only audit trail.
 A dbt `--full-refresh` can rebuild this demo's incremental ledger, so the ledger is not presented as
 a production records-management system.
+
+The authorization gate fails closed. A `CONFIRMED` decision becomes `INVALID`, not `AUTHORIZED`,
+when its decision timestamp, reviewer role, reason, or legal-hold value is missing. The shared
+target inventory drives plan creation, completeness checking, and the coverage test.
+
+Suppression admission happens before downstream models run. dbt does not provide one atomic
+transaction across all 17 targets, so the admission timestamp is not proof that every target
+finished successfully. A successful build and post-build tests provide completion evidence for
+this demo; production orchestration needs a separate completion/audit event.
 
 ## Decision and authorization values
 
@@ -60,6 +70,8 @@ a production records-management system.
 | `REJECTED` | `false` | `REJECTED` | No |
 | `CONFIRMED` | `true` | `HELD` | No |
 | `CONFIRMED` | `false` | `AUTHORIZED` | Yes |
+
+Incomplete `CONFIRMED` input has effective status `INVALID` and creates no plan.
 
 `CONFIRMED` means the privacy workflow has verified that this exact detected source request may
 proceed. The demo does not decide whether Article 17 applies, verify a natural person's identity,
@@ -80,6 +92,9 @@ For every historical customer key, the plan contains these 17 current-state targ
 `assert_customer_deletion_control` fails if any target is missing or unexpected. The fixture
 `CUST-0099` has two historical SSNs, so its confirmed request produces 34 plan rows: two keys times
 17 targets.
+
+Follow [Customer deletion: before and after](../tutorials/observe-terminal-deletion.md) to build the
+real pre-confirmation and post-confirmation states and inspect every Layer3 table.
 
 ## Deliberately retained evidence
 

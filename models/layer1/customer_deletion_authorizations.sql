@@ -17,10 +17,18 @@ select
     decisions.decided_at,
     decisions.decided_by_role,
     decisions.decision_reason,
-    coalesce(decisions.legal_hold, false) as legal_hold,
+    decisions.legal_hold,
     case
-        when coalesce(decisions.legal_hold, false) then 'HELD'
-        when decisions.decision_status = 'CONFIRMED' then 'AUTHORIZED'
+        when decisions.decision_status is null then 'PENDING'
+        when decisions.legal_hold is null then 'INVALID'
+        when decisions.legal_hold then 'HELD'
+        when
+            decisions.decision_status = 'CONFIRMED'
+            and decisions.decided_at is not null
+            and decisions.decided_by_role is not null
+            and decisions.decision_reason is not null
+            then 'AUTHORIZED'
+        when decisions.decision_status = 'CONFIRMED' then 'INVALID'
         when decisions.decision_status = 'REJECTED' then 'REJECTED'
         else 'PENDING'
     end as authorization_status

@@ -5,20 +5,20 @@ icon: lucide/test-tube-2
 
 # Tests and selectors
 
-The project contains 288 data tests and 2 unit tests.
+The project contains 293 data tests and 3 unit tests.
 
 ## Test counts
 
 | Test class | Count | Definition location |
 | --- | ---: | --- |
-| `not_null` generic data tests | 191 | Model YAML files |
-| `unique` generic data tests | 26 | Model YAML files |
+| `not_null` generic data tests | 194 | Model YAML files |
+| `unique` generic data tests | 27 | Model YAML files |
 | `relationships` generic data tests | 14 | Model YAML files |
 | `accepted_values` generic data tests | 18 | Model YAML files |
-| Singular data tests | 39 | `tests/*.sql` |
-| Unit tests | 2 | `models/layer2/_layer2_services.yml` |
-| **Total data tests** | **288** | Generic plus singular |
-| **Total including unit tests** | **290** | Data tests plus unit tests |
+| Singular data tests | 40 | `tests/*.sql` |
+| Unit tests | 3 | Deletion-control and service-resolution model YAML files |
+| **Total data tests** | **293** | Generic plus singular |
+| **Total including unit tests** | **296** | Data tests plus unit tests |
 
 The count does not include positive/negative persona SQL tasks under `acceptance/personas/`; those
 are external acceptance checks, not dbt test nodes.
@@ -32,6 +32,7 @@ are external acceptance checks, not dbt test nodes.
 | `assert_seed_row_bounds` | Each of the four source-extract seeds contains 10 through 100 rows |
 | `assert_customer_deletion_fixture` | Delete, post-delete upsert, historical SSN, and inactive controls have exact shapes |
 | `assert_customer_deletion_control` | Two requests produce one pending state and one 34-row authorized plan with exact 17-target coverage |
+| `assert_layer3_deletion_walkthrough_fixture` | Both decision-time states have exact Layer3 totals, subject counts, and Layer3 plan coverage |
 | `assert_unconfirmed_deletion_not_authorized` | Pending deletion is detected but has no plan and remains in mapping, Layer2, and Layer3 |
 | `assert_layer1_control_fixtures` | Late, invalid, inconsistent-payment, and deleted-dependent source controls exist exactly once |
 | `assert_unique_customer_service_periods` | `service_id + valid_from` is unique in staged services |
@@ -89,7 +90,7 @@ are external acceptance checks, not dbt test nodes.
 
 | Test | Contract |
 | --- | --- |
-| `assert_access_relation_grants` | Direct relation privileges equal the exact persona `SELECT` allowlist and contain no other privilege type |
+| `assert_access_relation_grants` | Direct relation privileges in the selected canonical or prefixed schemas equal the exact persona `SELECT` allowlist and contain no other privilege type |
 | `assert_access_parent_privileges` | Direct catalog/schema privileges equal the `USE_CATALOG`/`USE_SCHEMA` allowlist |
 | `assert_access_no_consumer_function_privileges` | Persona groups have no routine privilege in the project catalog |
 | `assert_access_no_ambient_grants` | No unexpected direct grantee appears in catalog, schema, relation, or routine metadata |

@@ -38,7 +38,7 @@ The repository is a dbt project with Databricks deployment and identity helpers.
 | --- | ---: | --- |
 | `models/layer1/` | 5 typed staging models, 3 quarantine models, 2 deletion-control models | Views; quarantine/authorization models use tables and the request ledger is incremental |
 | `models/priva_map/` | 2 mapping models | Table |
-| `models/layer2/` | 7 ephemeral control models, 4 protected models, 1 deletion-plan model | Table; boundary and classifier models override to ephemeral |
+| `models/layer2/` | 6 ephemeral boundary/classifier models, 4 protected models, 2 deletion-control models | Table; the plan and execution ledger are incremental |
 | `models/layer3/` | 3 dimensions, 2 facts | Table |
 | `models/layer3_case/` | 4 controlled readable models | View |
 

@@ -5,7 +5,8 @@ models:
     description: >
       Typed privacy-review decisions at one row per detected deletion request. This relation is a
       separate control input from the customer source feed so a source tombstone cannot authorize
-      its own deletion propagation.
+      its own deletion propagation. The demo-only deletion_decision_as_of variable can hide later
+      decisions to reproduce an earlier control state in an isolated schema.
     config:
       contract:
         enforced: true
@@ -124,13 +125,51 @@ models:
         description: Stable review reason code.
       - name: legal_hold
         data_type: boolean
-        description: Explicit exception gate that blocks authorization when true.
-        data_tests: [not_null]
+        description: >
+          Explicit exception gate that blocks authorization when true. Null preserves missing
+          review evidence and always produces a fail-closed status.
       - name: authorization_status
         data_type: string
-        description: "Effective gate: AUTHORIZED, PENDING, REJECTED, or HELD."
+        description: "Effective fail-closed gate: AUTHORIZED, PENDING, REJECTED, HELD, or INVALID."
         data_tests:
           - not_null
           - accepted_values:
               arguments:
-                values: ["AUTHORIZED", "PENDING", "REJECTED", "HELD"]
+                values: ["AUTHORIZED", "PENDING", "REJECTED", "HELD", "INVALID"]
+
+unit_tests:
+  - name: incomplete_confirmations_fail_closed
+    description: A CONFIRMED decision cannot authorize deletion when required review evidence is missing.
+    model: customer_deletion_authorizations
+    given:
+      - input: ref('customer_deletion_requests')
+        format: sql
+        rows: |
+          select
+            request_id as deletion_request_id,
+            concat('CUST-', request_id) as customer_id,
+            '900-00-0001' as customer_ssn,
+            cast('2026-02-15 12:00:00' as timestamp) as source_deleted_at,
+            cast('2026-02-15 12:01:00' as timestamp) as detected_at
+          from values ('NO-TIME'), ('NO-ROLE'), ('NO-REASON'), ('NO-HOLD') as requests(request_id)
+      - input: ref('stg_customer_deletion_confirmations')
+        format: sql
+        rows: |
+          select
+            request_id as deletion_request_id,
+            'CONFIRMED' as decision_status,
+            case when request_id = 'NO-TIME' then cast(null as timestamp)
+                else cast('2026-02-16 08:00:00' as timestamp) end as decided_at,
+            case when request_id = 'NO-ROLE' then cast(null as string)
+                else 'privacy_admin' end as decided_by_role,
+            case when request_id = 'NO-REASON' then cast(null as string)
+                else 'VERIFIED_SOURCE_DELETION' end as decision_reason,
+            case when request_id = 'NO-HOLD' then cast(null as boolean)
+                else false end as legal_hold
+          from values ('NO-TIME'), ('NO-ROLE'), ('NO-REASON'), ('NO-HOLD') as decisions(request_id)
+    expect:
+      rows:
+        - {deletion_request_id: NO-TIME, authorization_status: INVALID}
+        - {deletion_request_id: NO-ROLE, authorization_status: INVALID}
+        - {deletion_request_id: NO-REASON, authorization_status: INVALID}
+        - {deletion_request_id: NO-HOLD, authorization_status: INVALID}

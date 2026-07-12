@@ -5,7 +5,10 @@ models:
     description: >
       Authorized deletion worklist at one row per historical customer key and governed target
       relation. It is created only for confirmed requests without a legal hold and enumerates all
-      current-state tables and case views that must exclude the subject.
+      current-state tables and case views that must exclude the subject. Incremental merge retains
+      authorized plan rows across ordinary runs so a later missing decision cannot silently
+      resurrect retained source history; full-refresh remains a demo rebuild, not a production
+      records-management workflow.
     config:
       contract:
         enforced: true

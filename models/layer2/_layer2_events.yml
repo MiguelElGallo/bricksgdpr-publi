@@ -3,12 +3,33 @@ version: 2
 models:
   - name: int_terminal_deleted_customer_keys
     description: >
-      Ephemeral execution gate containing distinct customer keys from authorized plan rows. Every
-      downstream anti-join depends on this relation, so detection without confirmation cannot
-      trigger current-state deletion.
+      Incremental suppression-admission ledger and anti-join gate at one row per historical
+      customer key.
+      A row is first recorded only after an independently confirmed plan contains every required
+      target, and ordinary runs never remove it. The row authorizes and preserves suppression; it
+      is not evidence that every downstream relation completed successfully.
+    config:
+      contract:
+        enforced: true
+      grants:
+        select: [privacy_admins]
     columns:
+      - name: deletion_request_id
+        data_type: string
+        description: First complete authorized request that admitted this key to suppression.
+        data_tests: [not_null]
       - name: customer_key
+        data_type: string
         description: Authorized historical customer key used to anti-join deleted subjects.
+        data_tests: [not_null, unique]
+      - name: authorized_at
+        data_type: timestamp
+        description: Timestamp of the independent decision that authorized suppression.
+        data_tests: [not_null]
+      - name: suppression_recorded_at
+        data_type: timestamp
+        description: Timestamp when this durable suppression-admission row was first written.
+        data_tests: [not_null]
 
   - name: int_customer_events_keyed
     description: >

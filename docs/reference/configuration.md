@@ -27,13 +27,16 @@ repository secret.
 | --- | --- | --- | --- |
 | `schema_prefix` | Value of `DBT_SCHEMA_PREFIX`, otherwise empty | Schema-name macro and metadata tests | Prefixes the six data schemas; does not prefix `priva_internal` |
 | `as_of_date` | `2026-03-01` | `int_invoices_resolved` and due-state test | An unpaid invoice is due when `due_date <= as_of_date` |
+| `deletion_decision_as_of` | `9999-12-31 23:59:59` | Deletion-confirmation staging | Demo-only cutoff for reproducing an earlier decision state in an isolated schema |
 | `date_dimension_start` | `2025-01-01` | `dim_date` and dimension-count test | Inclusive first calendar date |
 | `date_dimension_end` | `2028-12-31` | `dim_date` and dimension-count test | Inclusive last calendar date |
 | `personal_data_hash_version` | `v1` | Versioned pseudonymization function | Fixed invariant; any other value raises a compiler error |
 | `personal_data_secret_scope` | `bricksgdpr` | Versioned pseudonymization function | Fixed invariant; any other value raises a compiler error |
 | `personal_data_secret_key` | `pepper_v1` | Versioned pseudonymization function | Fixed invariant; any other value raises a compiler error |
 
-The three `personal_data_*` entries are compile-time pins, not supported customization points.
+The `deletion_decision_as_of` cutoff is for deterministic walkthroughs and tests. It must not be
+used to rewrite or bypass a production privacy decision history. The three `personal_data_*`
+entries are compile-time pins, not supported customization points.
 
 **Source:** `dbt_project.yml:20-27`, `functions/pseudonymize_personal_data_v1.sql`.
 

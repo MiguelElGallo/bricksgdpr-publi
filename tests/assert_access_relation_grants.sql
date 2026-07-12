@@ -1,10 +1,13 @@
 {{ config(tags=['access_control', 'personal_data_control']) }}
 
 {% for relation_name in [
-  'customer', 'customer_events', 'customer_services', 'invoices',
-  'stg_customer', 'stg_customer_events', 'stg_customer_services', 'stg_invoices',
+  'customer', 'customer_deletion_confirmations', 'customer_events', 'customer_services', 'invoices',
+  'stg_customer', 'stg_customer_deletion_confirmations', 'stg_customer_events',
+  'stg_customer_services', 'stg_invoices',
+  'customer_deletion_requests', 'customer_deletion_authorizations',
   'quarantine_customer_events', 'quarantine_customer_services', 'quarantine_invoices',
   'fa_pd_customer', 'fa_pd_service_address',
+  'int_customer_deletion_plan', 'int_terminal_deleted_customer_keys',
   'int_customer_protected', 'int_customer_events_resolved',
   'int_customer_services_resolved', 'int_invoices_resolved',
   'dim_customer', 'dim_service', 'dim_date', 'fct_customer_event', 'fct_invoice',
@@ -19,9 +22,12 @@
 {% set case_users = 'case_users' %}
 {% set relation_sets = [
   ((prefix ~ '_layer1_source') if prefix else 'layer1_source',
-   ['customer', 'customer_events', 'customer_services', 'invoices'], [privacy]),
+   ['customer', 'customer_deletion_confirmations', 'customer_events', 'customer_services',
+    'invoices'], [privacy]),
   ((prefix ~ '_layer1') if prefix else 'layer1',
-   ['stg_customer', 'stg_customer_events', 'stg_customer_services', 'stg_invoices',
+   ['stg_customer', 'stg_customer_deletion_confirmations', 'stg_customer_events',
+    'stg_customer_services', 'stg_invoices', 'customer_deletion_requests',
+    'customer_deletion_authorizations',
     'quarantine_customer_events', 'quarantine_customer_services', 'quarantine_invoices'],
    [privacy]),
   ((prefix ~ '_priva_map') if prefix else 'priva_map',
@@ -29,6 +35,8 @@
   ((prefix ~ '_layer2') if prefix else 'layer2',
    ['int_customer_protected', 'int_customer_events_resolved',
     'int_customer_services_resolved', 'int_invoices_resolved'], [privacy, restricted]),
+  ((prefix ~ '_layer2') if prefix else 'layer2',
+   ['int_customer_deletion_plan', 'int_terminal_deleted_customer_keys'], [privacy]),
   ((prefix ~ '_layer3') if prefix else 'layer3',
    ['dim_customer', 'dim_service', 'dim_date', 'fct_customer_event', 'fct_invoice'],
    [privacy, restricted, case_users]),
@@ -59,6 +67,11 @@ actual_grants as (
         table_catalog = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
         and privilege_type = 'SELECT'
         and grantee in ('{{ privacy }}', '{{ restricted }}', '{{ case_users }}')
+        and table_schema in (
+            {% for schema_name, relation_names, grantees in relation_sets %}
+            '{{ schema_name }}'{% if not loop.last %},{% endif %}
+            {% endfor %}
+        )
 ),
 
 grant_differences as (
@@ -88,6 +101,11 @@ unexpected_relation_privileges as (
         table_catalog = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
         and grantee in ('{{ privacy }}', '{{ restricted }}', '{{ case_users }}')
         and privilege_type != 'SELECT'
+        and table_schema in (
+            {% for schema_name, relation_names, grantees in relation_sets %}
+            '{{ schema_name }}'{% if not loop.last %},{% endif %}
+            {% endfor %}
+        )
 )
 
 select *

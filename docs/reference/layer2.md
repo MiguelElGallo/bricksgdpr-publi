@@ -12,8 +12,8 @@ records, and materializes accepted tables.
 
 | Model | Materialization | Grain | Contract |
 | --- | --- | --- | --- |
-| `int_customer_deletion_plan` | Table | One row per authorized historical customer key and target relation | Auditable 17-target worklist |
-| `int_terminal_deleted_customer_keys` | Ephemeral | One key per historical identity in an authorized plan | Single execution gate before durable output |
+| `int_customer_deletion_plan` | Incremental table | One row per authorized historical customer key and target relation | Auditable 17-target worklist retained across ordinary runs |
+| `int_terminal_deleted_customer_keys` | Incremental table | One key per historical identity admitted by a complete authorized plan | Durable fail-closed suppression-admission ledger and anti-join gate |
 | `int_customer_events_keyed` | Ephemeral | One source event | Replaces SSN with `customer_key` |
 | `int_customer_event_resolution` | Ephemeral | One nondeleted source event | Assigns event resolution status |
 | `int_customer_events_resolved` | Table | One accepted event | Contains customer key and event measures |
@@ -29,12 +29,19 @@ records, and materializes accepted tables.
 
 ## Terminal-deletion key set
 
-`int_terminal_deleted_customer_keys` uses every `stg_customer` row whose `customer_id` matches a
-customer ID with at least one `DELETE`. Each historical SSN is canonicalized and pseudonymized in
-the `customer.ssn` domain. Later upserts do not remove a customer from this set.
+`int_terminal_deleted_customer_keys` contains every historical key for a detected request only
+after its independent decision is authorized and its plan contains all 17 required targets. The
+stable `customer_id` expands the request to every historical SSN, which is canonicalized and
+pseudonymized in the `customer.ssn` domain. A source `DELETE` alone never enters this set, and later
+upserts cannot restore a key retained by the incremental authorized plan.
 
-The model is ephemeral. Deleted keys are expanded into classifier queries and are not persisted as
-a standalone relation.
+The table retains the first admitting request and authorization/admission timestamps. Ordinary
+incremental runs never remove an admitted key, even if later control input disappears or the target
+inventory evolves. A deliberate `--full-refresh` can still rebuild this demo ledger.
+
+Admission is not atomic completion evidence: downstream relations build afterward, and one may
+fail while others succeed. The full build result and post-build tests are the demo's completion
+evidence.
 
 ## Event classifier
 

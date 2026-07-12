@@ -13,4 +13,8 @@ typed as (
     from source
 )
 
-select * from typed
+select *
+from typed
+where
+    decided_at is null
+    or decided_at <= cast('{{ var("deletion_decision_as_of") }}' as timestamp)

@@ -21,7 +21,7 @@ nav = [
       { "Build and explore the demo" = "tutorials/build-and-explore-the-demo.md" },
       { "Follow a customer through the layers" = "tutorials/follow-a-customer-through-the-layers.md" },
       { "Trace an invoice into quarantine" = "tutorials/trace-an-invoice-into-quarantine.md" },
-      { "Observe terminal deletion" = "tutorials/observe-terminal-deletion.md" },
+      { "Customer deletion: before and after" = "tutorials/observe-terminal-deletion.md" },
       { "Prove a protected-layer invariant" = "tutorials/prove-a-protected-layer-invariant.md" },
   ]},
   { "How-to guides" = [

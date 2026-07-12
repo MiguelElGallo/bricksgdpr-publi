@@ -26,6 +26,7 @@ The deployment identity remains the privileged producer/owner and is not a consu
 | `layer1` | Five staging views, three quarantine tables, two deletion-control tables | `privacy_admins` |
 | `priva_map` | Two mapping tables | `privacy_admins`, `restricted_users` |
 | `layer2` | Four protected tables | `privacy_admins`, `restricted_users` |
+| `layer2` | Deletion plan and suppression-admission ledger | `privacy_admins` |
 | `layer3` | Three dimensions, two facts | All three groups |
 | `layer3_case` | Four case views | `privacy_admins`, `case_users` |
 

@@ -1,26 +1,8 @@
 {{ config(tags=['deletion_control', 'control_fixture']) }}
 
 with expected_targets as (
-    select *
-    from values
-        ('layer1', 'quarantine_customer_events'),
-        ('layer1', 'quarantine_customer_services'),
-        ('layer1', 'quarantine_invoices'),
-        ('priva_map', 'fa_pd_customer'),
-        ('priva_map', 'fa_pd_service_address'),
-        ('layer2', 'int_customer_protected'),
-        ('layer2', 'int_customer_events_resolved'),
-        ('layer2', 'int_customer_services_resolved'),
-        ('layer2', 'int_invoices_resolved'),
-        ('layer3', 'dim_customer'),
-        ('layer3', 'dim_service'),
-        ('layer3', 'fct_customer_event'),
-        ('layer3', 'fct_invoice'),
-        ('layer3_case', 'case_dim_customer'),
-        ('layer3_case', 'case_dim_service'),
-        ('layer3_case', 'case_fct_customer_event'),
-        ('layer3_case', 'case_fct_invoice')
-        as targets(target_layer, target_relation)
+    select target_layer, target_relation
+    from ({{ customer_deletion_target_relations() }})
 ),
 
 expected_keys as (
@@ -80,12 +62,42 @@ metrics as (
             where deletion_request_id = 'CCHG-0099-D'
         ) as historical_key_count,
         (select count(*) from {{ ref('int_customer_deletion_plan') }}) as plan_row_count,
+        (
+            select count(distinct concat(target_layer, '.', target_relation))
+            from {{ ref('int_customer_deletion_plan') }}
+            where target_kind = 'TABLE'
+        ) as table_target_count,
+        (
+            select count(distinct concat(target_layer, '.', target_relation))
+            from {{ ref('int_customer_deletion_plan') }}
+            where target_kind = 'VIEW'
+        ) as view_target_count,
         (select count(*) from missing_plan) as missing_plan_count,
         (select count(*) from unexpected_plan) as unexpected_plan_count,
         (
             select count(*) from {{ ref('int_customer_deletion_plan') }}
             where deletion_request_id = 'CCHG-0097-D'
-        ) as pending_plan_count
+        ) as pending_plan_count,
+        (
+            select count(*) from {{ ref('int_terminal_deleted_customer_keys') }}
+        ) as suppression_key_count,
+        (
+            select count(distinct deletion_request_id)
+            from {{ ref('int_terminal_deleted_customer_keys') }}
+            where deletion_request_id = 'CCHG-0099-D'
+        ) as suppression_request_count,
+        (
+            select count(*)
+            from expected_keys
+            where customer_key not in (
+                select customer_key from {{ ref('int_terminal_deleted_customer_keys') }}
+            )
+        ) as missing_suppression_key_count,
+        (
+            select count(*)
+            from {{ ref('int_terminal_deleted_customer_keys') }}
+            where authorized_at is null or suppression_recorded_at is null
+        ) as incomplete_suppression_evidence_count
 )
 
 select *
@@ -96,6 +108,12 @@ where
     or authorized_count != 1
     or historical_key_count != 2
     or plan_row_count != 34
+    or table_target_count != 13
+    or view_target_count != 4
     or missing_plan_count != 0
     or unexpected_plan_count != 0
     or pending_plan_count != 0
+    or suppression_key_count != 2
+    or suppression_request_count != 1
+    or missing_suppression_key_count != 0
+    or incomplete_suppression_evidence_count != 0

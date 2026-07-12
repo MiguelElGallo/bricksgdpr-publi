@@ -106,8 +106,10 @@ Deleted customer keys are absent from the four customer-bearing Layer3 relations
 `dim_service`, `fct_customer_event`, and `fct_invoice`—and from all four case views. `dim_date` has
 no customer key.
 
-The case-view deletion dbt test references an ephemeral execution gate whose authorized plan was
-derived from restricted Layer1 control evidence and calls
+The guided [Layer3 before-and-after deletion tutorial](../tutorials/observe-terminal-deletion.md)
+shows the exact fixture rows and totals in all five tables on both sides of authorization.
+
+The case-view deletion dbt test reads the restricted incremental execution ledger and calls
 the protected pseudonymization function. Ordinary case and privacy persona identities cannot
 execute that complete singular-test query. Deletion evidence therefore combines owner-side dbt
 tests for the protected outputs with a separate aggregate query, executed as an authorized case or
