@@ -12,6 +12,7 @@ select
     paid_at,
     source_is_due,
     not is_paid and due_date <= date '2026-03-01' as is_due,
-    source_updated_at
+    source_updated_at,
+    is_erased_customer
 from {{ ref('int_invoice_resolution') }}
 where resolution_status = 'ACCEPTED'

@@ -96,12 +96,12 @@ select
     (
         select count(*)
         from main.int_current_customers as current_customers
-        where current_customers.customer_id = 'CUST-0097'
+        where current_customers.customer_id = 'CUST-0095'
     ) as pending_customer_rows,
     (
         select count(*)
         from main.int_current_customers as current_customers
-        where current_customers.customer_id = 'CUST-0099'
+        where current_customers.customer_id in ('CUST-0097', 'CUST-0099')
     ) as authorized_deleted_rows
 from main.int_current_customers
 where customer_id = 'CUST-0001'
@@ -196,7 +196,7 @@ const customerSteps: readonly LessonStepSpec[] = [
     change:
       "Trim and cast the source fields while keeping the readable synthetic identifiers at the Layer1 boundary.",
     observe:
-      "CUST-0001 is one readable UPSERT, and the staged change feed contains 19 rows.",
+      "CUST-0001 is one readable UPSERT, and the staged change feed contains 21 rows.",
     focusFilePath: "models/stg_customer.sql",
     revealFilePaths: ["models/stg_customer.sql"],
     visibleRelationNames: ["customer", "stg_customer"],
@@ -207,7 +207,7 @@ const customerSteps: readonly LessonStepSpec[] = [
       label: "Step 1 · staged CUST-0001",
       selectedRelation: "stg_customer",
       successMessage:
-        "Step 1 complete: CUST-0001 is a typed, readable UPSERT in the 19-row staging change feed.",
+        "Step 1 complete: CUST-0001 is a typed, readable UPSERT in the 21-row staging change feed.",
       failureMessage: "The staging build passed, but the CUST-0001 checkpoint did not match.",
       validate(result) {
         const row = firstRowByColumn(result);
@@ -219,7 +219,7 @@ const customerSteps: readonly LessonStepSpec[] = [
           row.customer_segment === "small_business" &&
           row.is_active === true &&
           row.source_operation === "UPSERT" &&
-          Number(row.staged_change_count) === 19
+          Number(row.staged_change_count) === 21
         );
       },
     },
@@ -232,7 +232,7 @@ const customerSteps: readonly LessonStepSpec[] = [
     change:
       "Store source deletions, join a separate privacy decision, plan every target only when authorized, then exclude planned identities.",
     observe:
-      "CUST-0001 appears once; pending CUST-0097 remains, confirmed CUST-0099 is absent, and 15 current customers survive.",
+      "CUST-0001 and unconfirmed CUST-0095 remain; SPECIAL CUST-0097 and FULL CUST-0099 are absent; 15 current customers survive.",
     focusFilePath: "models/int_current_customers.sql",
     revealFilePaths: [
       "models/stg_customer_deletion_confirmations.sql",
@@ -262,7 +262,7 @@ const customerSteps: readonly LessonStepSpec[] = [
       label: "Step 2 · current CUST-0001",
       selectedRelation: "int_current_customers",
       successMessage:
-        "Step 2 complete: the 15-row view preserves pending CUST-0097 and removes only confirmed CUST-0099.",
+        "Step 2 complete: the 15-row view preserves unconfirmed CUST-0095 and removes SPECIAL/FULL subjects.",
       failureMessage: "The current-state build passed, but the current-customer checkpoint did not match.",
       validate(result) {
         const row = firstRowByColumn(result);

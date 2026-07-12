@@ -45,7 +45,7 @@ const customerProofs = {
       "small_business",
       true,
       "UPSERT",
-      19,
+      21,
     ],
   ),
   current: proofResult(

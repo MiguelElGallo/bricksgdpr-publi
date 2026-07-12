@@ -51,12 +51,13 @@ models:
         data_tests:
           - accepted_values:
               arguments:
-                values: ["AUTHORIZED", "PENDING", "REJECTED", "HELD"]
+                values: ["AUTHORIZED", "PENDING", "REJECTED", "HELD", "INVALID"]
 
   - name: int_customer_deletion_plan
     description: >
       Authorized browser worklist at one row per historical SSN and tutorial target relation.
-      Pending or rejected requests produce no plan rows.
+      Pending or rejected requests produce no plan rows. Actions are mode-specific: invoice facts
+      are removed for FULL and reassigned to the erased member for SPECIAL.
 
   - name: demo_customer_map
     description: >
@@ -170,10 +171,16 @@ models:
         data_tests: [not_null, unique]
 
   - name: int_invoices_resolved
-    description: Accepted synthetic invoices after the portable teaching classifier.
+    description: >
+      Accepted synthetic invoices after the portable teaching classifier. SPECIAL deletion facts
+      remain with customer and service identifiers set to the string teaching member -99999; FULL
+      deletion facts are absent.
     columns:
       - name: invoice_id
         data_tests: [not_null, unique]
+      - name: is_erased_customer
+        description: True only when SPECIAL deletion retained the fact under the erased member.
+        data_tests: [not_null]
 
   - name: quarantine_invoices
     description: Rejected synthetic invoices with stable remediation reason codes.

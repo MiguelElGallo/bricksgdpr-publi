@@ -17,8 +17,9 @@ runs a focused dbt command, and shows the exact result to inspect. A completed c
 view until the learner chooses **Next**:
 
 1. inspect the readable `stg_customer` change for `CUST-0001`;
-2. detect and confirm deletion requests, then reduce 19 changes to 15 current customers, including
-   pending `CUST-0097` and one current row for `CUST-0001`;
+2. detect deletion requests, require a valid decision, then reduce 21 changes to 15 current
+   customers: unconfirmed `CUST-0095` remains while SPECIAL `CUST-0097` and FULL `CUST-0099` leave
+   customer outputs;
 3. create distinct, domain-separated keys in `demo_customer_map`;
 4. leave readable mapping values behind in protected `int_customer_protected`;
 5. preserve the protected key and customer grain in `dim_customer` and run the final fixture proof.
@@ -29,7 +30,9 @@ view until the learner chooses **Next**:
 - Pyodide starts Python in a Web Worker so dbt execution does not block the interface.
 - The worker runs the versions pinned in `wheelhouse-lock.json`: dbt Core 1.10.8 and dbt-duckdb
   1.9.6, with DuckDB provided by Pyodide.
-- The lessons use only the copied synthetic fixtures under `lesson/project/seeds`.
+- The lessons use only the copied synthetic fixtures under `lesson/project/seeds`. The deletion
+  policy version is intentionally fixed to `CUSTOMER_DELETION_V1` in this compact teaching project;
+  the canonical Databricks project also supports a staged decision-time cutoff for replay tests.
 - Processing stays in the browser tab. There is no tutorial backend and no Databricks
   authentication.
 
@@ -38,6 +41,11 @@ propagation, testing, and quarantine behavior only. The customer lesson's determ
 `demo-v1:` keys are a teaching convention, not the canonical secret-backed Databricks `v1:`
 pseudonymization implementation. The lab does not implement or prove Unity Catalog grants, tags,
 column masks, secrets, identity topology, or case-view authorization.
+
+The invoice models do demonstrate the canonical mode distinction with string keys: SPECIAL keeps
+`INV-0097` under customer and service member `-99999` with `is_erased_customer = true`; FULL removes
+`INV-0099` from governed current invoice outputs. Production uses the reusable parameterized macro
+documented in the main deletion reference and applies the erased member to every modeled fact key.
 
 ## Run locally
 

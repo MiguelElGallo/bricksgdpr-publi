@@ -3,7 +3,7 @@
 -- STEP 2 — Resolve one current active row per customer.
 -- Build: dbt build --select +int_current_customers --indirect-selection cautious
 -- Intent: rank UPSERTs newest-first, then exclude inactive and authorized deletion identities.
--- Check: CUST-0001 and pending CUST-0097 survive; the current-state view has 15 customers.
+-- Check: CUST-0001 and unconfirmed CUST-0095 survive; SPECIAL/FULL subjects do not.
 
 with ranked_upserts as (
     select

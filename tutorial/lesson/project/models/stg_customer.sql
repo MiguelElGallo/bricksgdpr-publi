@@ -1,7 +1,7 @@
 -- STEP 1 — Stage the synthetic customer change feed.
 -- Build: dbt build --select +stg_customer --indirect-selection cautious
 -- Intent: trim and type the string seed while keeping readable values inside Layer1.
--- Check: CUST-0001 is the active CCHG-0001-U UPSERT; the staged feed has 19 changes.
+-- Check: CUST-0001 is the active CCHG-0001-U UPSERT; the staged feed has 21 changes.
 
 with source as (
     select * from {{ ref('customer') }}

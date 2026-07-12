@@ -1,28 +1,38 @@
 with expected as (
-    select invoices.invoice_id
+    select
+        invoices.invoice_id,
+        case
+            when deleted.deletion_mode = 'FULL_GOVERNED_OUTPUT_DELETION' then 0
+            else 1
+        end as expected_rows
     from {{ ref('stg_invoices') }} as invoices
     left join {{ ref('int_terminal_deleted_customer_ssns') }} as deleted
         on invoices.customer_ssn = deleted.customer_ssn
-    where deleted.customer_ssn is null
 ),
 
 partitioned as (
     select invoice_id from {{ ref('int_invoices_resolved') }}
     union all
     select invoice_id from {{ ref('quarantine_invoices') }}
+    union all
+    select invoice_id
+    from {{ ref('int_invoice_resolution') }}
+    where is_erased_customer and resolution_status != 'ACCEPTED'
 ),
 
-differences as (
-    select
-        coalesce(expected.invoice_id, partitioned.invoice_id) as invoice_id,
-        count(expected.invoice_id) as expected_rows,
-        count(partitioned.invoice_id) as actual_rows
-    from expected
-    full outer join partitioned
-        on expected.invoice_id = partitioned.invoice_id
-    group by coalesce(expected.invoice_id, partitioned.invoice_id)
+actual as (
+    select invoice_id, count(*) as actual_rows
+    from partitioned
+    group by invoice_id
 )
 
-select *
-from differences
-where expected_rows != 1 or actual_rows != 1
+select
+    coalesce(expected.invoice_id, actual.invoice_id) as invoice_id,
+    expected.expected_rows,
+    coalesce(actual.actual_rows, 0) as actual_rows
+from expected
+full outer join actual
+    on expected.invoice_id = actual.invoice_id
+where
+    expected.invoice_id is null
+    or coalesce(actual.actual_rows, 0) != expected.expected_rows

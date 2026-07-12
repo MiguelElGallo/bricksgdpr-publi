@@ -44,8 +44,12 @@ seeds:
         source_updated_at: varchar
     customer_deletion_confirmations:
       +column_types:
+        decision_revision_id: varchar
         deletion_request_id: varchar
         decision_status: varchar
+        deletion_mode: varchar
+        deletion_policy_version: varchar
+        recorded_at: varchar
         decided_at: varchar
         decided_by_role: varchar
         decision_reason: varchar
