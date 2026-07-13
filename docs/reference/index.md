@@ -38,7 +38,7 @@ checked-in synthetic seeds.
 | [Commands](commands.md) | Local, dbt, identity, acceptance, and bundle commands |
 | [Catalogs and schemas](catalogs-and-schemas.md) | Catalog placement, schema names, and default readers |
 | [Sources and Layer1](sources-and-layer1.md) | Seeds, typed staging views, and raw quarantine tables |
-| [Customer deletion control](deletion-control.md) | Detection, confirmation, authorization, target plan, and execution gate |
+| [Customer deletion tombstone and macros](deletion-control.md) | Source and terminal tombstones, authorization, target planning, ledger admission, and every related macro |
 | [`priva_map`](priva-map.md) | Raw-to-pseudonymous mapping relations, tags, and masks |
 | [Layer2](layer2.md) | Key boundaries, classifiers, accepted tables, and reason codes |
 | [Layer3 and case views](layer3-and-case.md) | Dimensions, facts, and controlled readable views |
