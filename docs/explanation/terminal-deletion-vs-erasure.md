@@ -28,7 +28,7 @@ expands through the stable customer ID first. A later upsert cannot resurrect an
 pending, rejected, or held request creates no plan and cannot enter the suppression gate.
 
 The exact models, states, and 17 planned targets are listed in
-[Customer deletion control](../reference/deletion-control.md).
+[Customer deletion tombstone and macros](../reference/deletion-control.md).
 
 ## What remains on purpose
 
