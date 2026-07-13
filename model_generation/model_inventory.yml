@@ -1,0 +1,43 @@
+version: 1
+
+# Every checked-in dbt SQL model must appear exactly once. The regeneration harness verifies this
+# inventory against target/manifest.json before running any generator command.
+models:
+  - {path: models/layer1/customer_deletion_authorization_history.sql, generator: generate_layer1_model, kind: CONTROL, primary_key: decision_revision_id, policy: none}
+  - {path: models/layer1/customer_deletion_authorizations.sql, generator: generate_layer1_model, kind: CONTROL, primary_key: deletion_request_id, policy: none}
+  - {path: models/layer1/customer_deletion_requests.sql, generator: generate_layer1_model, kind: CONTROL, primary_key: deletion_request_id, policy: none}
+  - {path: models/layer1/quarantine_customer_events.sql, generator: generate_layer1_model, kind: QUARANTINE, primary_key: event_id, policy: raw_customer_ssn}
+  - {path: models/layer1/quarantine_customer_services.sql, generator: generate_layer1_model, kind: QUARANTINE, primary_key: [service_id, valid_from], policy: raw_customer_ssn}
+  - {path: models/layer1/quarantine_invoices.sql, generator: generate_layer1_model, kind: QUARANTINE, primary_key: invoice_id, policy: raw_customer_ssn}
+  - {path: models/layer1/stg_customer.sql, generator: generate_layer1_model, kind: STAGING, primary_key: customer_change_id, policy: none}
+  - {path: models/layer1/stg_customer_deletion_confirmations.sql, generator: generate_layer1_model, kind: STAGING, primary_key: decision_revision_id, policy: none}
+  - {path: models/layer1/stg_customer_events.sql, generator: generate_layer1_model, kind: STAGING, primary_key: event_id, policy: none}
+  - {path: models/layer1/stg_customer_services.sql, generator: generate_layer1_model, kind: STAGING, primary_key: [service_id, valid_from], policy: none}
+  - {path: models/layer1/stg_invoices.sql, generator: generate_layer1_model, kind: STAGING, primary_key: invoice_id, policy: none}
+
+  - {path: models/priva_map/fa_pd_customer.sql, generator: generate_priva_map_model, kind: MAPPING, primary_key: customer_key, policy: customer_key}
+  - {path: models/priva_map/fa_pd_service_address.sql, generator: generate_priva_map_model, kind: MAPPING, primary_key: service_version_key, policy: customer_key}
+
+  - {path: models/layer2/int_customer_deletion_plan.sql, generator: generate_layer2_model, kind: CONTROL, primary_key: [decision_revision_id, customer_key, target_layer, target_relation, deletion_mode, deletion_policy_version], policy: none}
+  - {path: models/layer2/int_customer_event_resolution.sql, generator: generate_layer2_model, kind: RESOLUTION, primary_key: event_id, policy: fact_applied_customer}
+  - {path: models/layer2/int_customer_events_keyed.sql, generator: generate_layer2_model, kind: KEYED, primary_key: event_id, policy: none}
+  - {path: models/layer2/int_customer_events_resolved.sql, generator: generate_layer2_model, kind: PUBLISHED, primary_key: event_id, policy: fact_applied_customer}
+  - {path: models/layer2/int_customer_protected.sql, generator: generate_layer2_model, kind: PUBLISHED, primary_key: customer_key, policy: identity_key}
+  - {path: models/layer2/int_customer_service_resolution.sql, generator: generate_layer2_model, kind: RESOLUTION, primary_key: service_version_key, policy: service_key}
+  - {path: models/layer2/int_customer_services_keyed.sql, generator: generate_layer2_model, kind: KEYED, primary_key: service_version_key, policy: none}
+  - {path: models/layer2/int_customer_services_resolved.sql, generator: generate_layer2_model, kind: PUBLISHED, primary_key: service_version_key, policy: service_key}
+  - {path: models/layer2/int_invoice_resolution.sql, generator: generate_layer2_model, kind: RESOLUTION, primary_key: invoice_id, policy: fact_applied_invoice_resolution}
+  - {path: models/layer2/int_invoices_keyed.sql, generator: generate_layer2_model, kind: KEYED, primary_key: invoice_id, policy: none}
+  - {path: models/layer2/int_invoices_resolved.sql, generator: generate_layer2_model, kind: PUBLISHED, primary_key: invoice_id, policy: fact_applied_invoice}
+  - {path: models/layer2/int_terminal_deleted_customer_keys.sql, generator: generate_layer2_model, kind: CONTROL, primary_key: customer_key, policy: none}
+
+  - {path: models/layer3/dim_customer.sql, generator: generate_layer3_model, kind: DIMENSION, primary_key: customer_key, policy: dimension_key}
+  - {path: models/layer3/dim_date.sql, generator: generate_layer3_model, kind: DATE_DIMENSION, primary_key: date_key, policy: none, mode: native}
+  - {path: models/layer3/dim_service.sql, generator: generate_layer3_model, kind: DIMENSION, primary_key: service_version_key, policy: dimension_key}
+  - {path: models/layer3/fct_customer_event.sql, generator: generate_layer3_model, kind: FACT, primary_key: event_key, policy: fact_applied_customer}
+  - {path: models/layer3/fct_invoice.sql, generator: generate_layer3_model, kind: FACT, primary_key: invoice_key, policy: fact_applied_invoice}
+
+  - {path: models/layer3_case/case_dim_customer.sql, generator: generate_layer3_case_model, kind: CASE_VIEW, primary_key: customer_key, policy: case_customer_key}
+  - {path: models/layer3_case/case_dim_service.sql, generator: generate_layer3_case_model, kind: CASE_VIEW, primary_key: service_version_key, policy: case_customer_key}
+  - {path: models/layer3_case/case_fct_customer_event.sql, generator: generate_layer3_case_model, kind: CASE_VIEW, primary_key: event_key, policy: case_customer_key}
+  - {path: models/layer3_case/case_fct_invoice.sql, generator: generate_layer3_case_model, kind: CASE_VIEW, primary_key: invoice_key, policy: case_customer_key}

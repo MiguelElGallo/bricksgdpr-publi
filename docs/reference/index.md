@@ -43,6 +43,7 @@ checked-in synthetic seeds.
 | [Layer2](layer2.md) | Key boundaries, classifiers, accepted tables, and reason codes |
 | [Layer3 and case views](layer3-and-case.md) | Dimensions, facts, and controlled readable views |
 | [Macro API reference](macro-api.md) | Complete developer-facing model-generation macro contract |
+| [Model generation log](model-generation-log.md) | Exact per-model generation commands, artifact hashes, and diff counts |
 | [Tests and selectors](tests-and-selectors.md) | Test counts, enforced invariants, tags, and selection forms |
 | [Access control](access-control.md) | Persona matrix, grants, masks, and trusted boundaries |
 | [Identity and acceptance](identity-and-acceptance.md) | Identity modes, required variables, and task-state contract |

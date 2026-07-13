@@ -49,6 +49,7 @@ nav = [
       { "Layer2" = "reference/layer2.md" },
       { "Layer3 and case views" = "reference/layer3-and-case.md" },
       { "Macro API reference" = "reference/macro-api.md" },
+      { "Model generation log" = "reference/model-generation-log.md" },
       { "Tests and selectors" = "reference/tests-and-selectors.md" },
       { "Access control" = "reference/access-control.md" },
       { "Identity and acceptance" = "reference/identity-and-acceptance.md" },

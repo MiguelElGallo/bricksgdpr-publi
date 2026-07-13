@@ -1,0 +1,78 @@
+version: 1
+
+# Ephemeral models intentionally have minimal dbt YAML because no physical contract is enforced.
+# The regeneration API still requires complete output metadata, so this file supplies it.
+models:
+  int_customer_events_keyed:
+    - {name: event_id, data_type: string, description: Stable source event identifier.}
+    - {name: customer_key, data_type: string, description: Versioned pseudonymous customer key.}
+    - {name: event_type, data_type: string, description: Normalized event category.}
+    - {name: occurred_at, data_type: timestamp, description: Event occurrence timestamp.}
+    - {name: measure_value, data_type: "decimal(18,2)", description: Numeric event measure.}
+    - {name: measure_unit, data_type: string, description: Unit for the event measure.}
+    - {name: source_updated_at, data_type: timestamp, description: Source update timestamp.}
+
+  int_customer_event_resolution:
+    - {name: event_id, data_type: string, description: Stable source event identifier.}
+    - {name: customer_key, data_type: string, description: Pseudonymous or erased-member customer key.}
+    - {name: event_type, data_type: string, description: Normalized event category.}
+    - {name: occurred_at, data_type: timestamp, description: Event occurrence timestamp.}
+    - {name: measure_value, data_type: "decimal(18,2)", description: Numeric event measure.}
+    - {name: measure_unit, data_type: string, description: Unit for the event measure.}
+    - {name: source_updated_at, data_type: timestamp, description: Source update timestamp.}
+    - {name: resolution_status, data_type: string, description: Deterministic acceptance or quarantine status.}
+    - {name: is_erased_customer, data_type: boolean, description: Whether SPECIAL retained the event under the erased member.}
+
+  int_customer_services_keyed:
+    - {name: service_id, data_type: string, description: Stable source service identifier.}
+    - {name: customer_key, data_type: string, description: Versioned pseudonymous customer key.}
+    - {name: service_key, data_type: string, description: Versioned pseudonymous service key.}
+    - {name: service_version_key, data_type: string, description: Versioned service-period key.}
+    - {name: installation_address_key, data_type: string, description: Pseudonymous installation-address key.}
+    - {name: service_type, data_type: string, description: Normalized service category.}
+    - {name: is_valid, data_type: boolean, description: Source validity flag.}
+    - {name: valid_from, data_type: date, description: First date in the service period.}
+    - {name: valid_to, data_type: date, description: Last date in the service period.}
+    - {name: source_updated_at, data_type: timestamp, description: Source update timestamp.}
+
+  int_customer_service_resolution:
+    - {name: service_id, data_type: string, description: Stable source service identifier.}
+    - {name: customer_key, data_type: string, description: Versioned pseudonymous customer key.}
+    - {name: service_key, data_type: string, description: Versioned pseudonymous service key.}
+    - {name: service_version_key, data_type: string, description: Versioned service-period key.}
+    - {name: installation_address_key, data_type: string, description: Pseudonymous installation-address key.}
+    - {name: service_type, data_type: string, description: Normalized service category.}
+    - {name: is_valid, data_type: boolean, description: Source validity flag.}
+    - {name: valid_from, data_type: date, description: First date in the service period.}
+    - {name: valid_to, data_type: date, description: Last date in the service period.}
+    - {name: source_updated_at, data_type: timestamp, description: Source update timestamp.}
+    - {name: resolution_status, data_type: string, description: Deterministic service resolution status.}
+
+  int_invoices_keyed:
+    - {name: invoice_id, data_type: string, description: Stable source invoice identifier.}
+    - {name: customer_key, data_type: string, description: Versioned pseudonymous customer key.}
+    - {name: service_key, data_type: string, description: Versioned pseudonymous service key.}
+    - {name: amount, data_type: "decimal(18,2)", description: Gross invoice amount.}
+    - {name: currency_code, data_type: string, description: Billing currency code.}
+    - {name: issued_date, data_type: date, description: Invoice issue date.}
+    - {name: due_date, data_type: date, description: Invoice due date.}
+    - {name: is_paid, data_type: boolean, description: Source paid flag.}
+    - {name: paid_at, data_type: timestamp, description: Payment timestamp.}
+    - {name: source_is_due, data_type: boolean, description: Source-derived due flag.}
+    - {name: source_updated_at, data_type: timestamp, description: Source update timestamp.}
+
+  int_invoice_resolution:
+    - {name: invoice_id, data_type: string, description: Stable source invoice identifier.}
+    - {name: customer_key, data_type: string, description: Pseudonymous or erased-member customer key.}
+    - {name: service_key, data_type: string, description: Pseudonymous or erased-member service key.}
+    - {name: resolved_service_version_key, data_type: string, description: Resolved or erased service-period key.}
+    - {name: amount, data_type: "decimal(18,2)", description: Gross invoice amount.}
+    - {name: currency_code, data_type: string, description: Billing currency code.}
+    - {name: issued_date, data_type: date, description: Invoice issue date.}
+    - {name: due_date, data_type: date, description: Invoice due date.}
+    - {name: is_paid, data_type: boolean, description: Source paid flag.}
+    - {name: paid_at, data_type: timestamp, description: Payment timestamp.}
+    - {name: source_is_due, data_type: boolean, description: Source-derived due flag.}
+    - {name: source_updated_at, data_type: timestamp, description: Source update timestamp.}
+    - {name: resolution_status, data_type: string, description: Deterministic invoice resolution status.}
+    - {name: is_erased_customer, data_type: boolean, description: Whether SPECIAL retained the invoice under erased members.}
