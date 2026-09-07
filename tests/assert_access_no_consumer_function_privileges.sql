@@ -7,5 +7,5 @@
 select grantee, specific_schema, specific_name, privilege_type, inherited_from
 from system.information_schema.routine_privileges
 where
-    specific_catalog = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
+    specific_catalog = '{{ var("project_catalog", env_var("DBT_PROJECT_CATALOG", "bricksgdpr")) }}'
     and grantee in ('{{ privacy }}', '{{ restricted }}', '{{ case_users }}')

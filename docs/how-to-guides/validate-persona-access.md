@@ -20,9 +20,8 @@ Before running the validator:
 4. ensure `databricks`, `jq`, and `uuidgen` are available.
 
 !!! warning
-    The checked-in persona SQL files use the canonical `bricksgdpr` catalog and unprefixed schema
-    names directly. This validator is unsupported when `DBT_PROJECT_CATALOG` differs from
-    `bricksgdpr` or `DBT_SCHEMA_PREFIX` is non-empty.
+    The runner renders catalog-qualified SQL from the templates using `DBT_PROJECT_CATALOG`.
+    The catalog must match `[a-z][a-z0-9_]*` and `DBT_SCHEMA_PREFIX` must be empty.
 
 Load the variables:
 
@@ -32,10 +31,10 @@ source .env
 set +a
 ```
 
-Confirm the canonical target before continuing:
+Confirm the reviewed catalog and unprefixed schema layout before continuing:
 
 ```bash
-test "$DBT_PROJECT_CATALOG" = "bricksgdpr"
+test -n "$DBT_PROJECT_CATALOG"
 test -z "$DBT_SCHEMA_PREFIX"
 ```
 

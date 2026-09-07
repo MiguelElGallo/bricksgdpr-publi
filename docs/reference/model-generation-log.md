@@ -5,6 +5,11 @@ icon: lucide/file-clock
 
 # Model generation log
 
+This page records a historical generation/validation run. Its hashes and execution results predate
+the operational changes. Current projects retain full-refresh guards and archive hooks through
+`dbt_project.yml`; rerun the harness for fresh generation evidence before a release.
+
+
 - Baseline commit: `46bed375a21c90d765a5e65010c9f87ae8919b1a`
 - Generation-input SHA-256: `eb1cedb83791df5477d3c9f2435fd503bf468b76e0f763ea3ced8c1d4bca1d75`
 - Generated at: `2026-07-13T04:25:01+00:00`

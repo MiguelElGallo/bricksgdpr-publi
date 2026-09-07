@@ -36,3 +36,6 @@ If this is your first encounter with the project, begin with the
 
 For exact names, defaults, and selectors, use the [reference](../reference/index.md). For design
 reasons and trade-offs, use the [explanation](../explanation/index.md).
+
+See [Deletion operations and recovery](../reference/deletion-operations.md) for durable control archives, execution states,
+isolated private validation, and recovery rehearsal.

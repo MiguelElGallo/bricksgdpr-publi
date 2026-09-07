@@ -6,8 +6,9 @@ icon: lucide/workflow
 
 This guide validates, plans, deploys, and runs the repository's `bricksgdpr_dbt_workflow` job.
 
-The default `dev` bundle target has no schedule. It writes the canonical demo catalog and is
-intended for one deployer.
+The default `dev` target is unscheduled and writes `bricksgdpr_dev` plus a separate evidence
+catalog. `validation` and `prod` use separate catalog defaults and an explicit service-principal
+Run As identity. Select a unique catalog pair for each concurrent deployer.
 
 ## Prerequisites
 
@@ -15,6 +16,17 @@ Complete the [first deployment](deploy-the-demo-for-the-first-time.md), includin
 persona groups, and access controls. Authenticate the CLI profile named in the reviewed `.env`
 and source that file; this supplies `DATABRICKS_CONFIG_PROFILE` and the required
 `BUNDLE_VAR_warehouse_id`.
+
+## Select the target and notification settings
+
+Set `BUNDLE_VAR_control_catalog` to an existing catalog when `workspace` is unavailable. For a
+shared target, set `BUNDLE_VAR_run_as_service_principal` to the pre-provisioned application ID.
+Set `BUNDLE_VAR_failure_recipients` to a JSON array of reviewed email addresses to enable failure
+notifications. No notifications are sent with the default empty array.
+
+Use the same `--target validation` or `--target prod` on validate, plan, deploy, summary, and run.
+The commands below use `dev`. Review the catalog pair and permissions for the chosen Run As
+identity; deploying a bundle does not provision that identity or create the pepper.
 
 ## Validate the bundle
 
@@ -54,16 +66,17 @@ databricks bundle run bricksgdpr_dbt_workflow \
   --profile "$DATABRICKS_CONFIG_PROFILE"
 ```
 
-The job's `build_and_validate` task performs this sequence:
-
-1. bootstrap the project catalog;
-2. build every governed relation except the live access-control tests;
-3. apply access controls;
-4. run the access-control tests; and
-5. run the complete dbt build.
+The job prepares controls and pending evidence, builds outputs, applies access controls, and
+verifies all tests in four dependent tasks. A fifth task records a failed workflow if any stage
+fails. The final verification does not rebuild the outputs. See
+[Deletion operations and recovery](../reference/deletion-operations.md) for status and repair semantics.
 
 Serverless Jobs compute runs the pinned dbt environment. The configured SQL warehouse executes
 the generated SQL.
+
+All five tasks disable automatic retries, timeout retries, and serverless auto-optimization
+retries. Investigate a failed run before repairing it from `prepare_controls`; see the
+[bundle runtime settings](../reference/bundle-job.md#runtime-settings).
 
 ## Use another compatible warehouse
 

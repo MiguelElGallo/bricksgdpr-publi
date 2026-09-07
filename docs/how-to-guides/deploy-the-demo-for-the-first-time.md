@@ -35,7 +35,9 @@ set +a
 uv run dbt run-operation bootstrap_project_catalog
 ```
 
-The operation executes `create catalog if not exists` for `DBT_PROJECT_CATALOG`.
+The operation creates the analytical catalog and a distinct evidence catalog with append-only
+control-history and execution-event tables. Set `DBT_EVIDENCE_CATALOG` explicitly when needed.
+New evidence objects have no persona grants; later access reconciliation enforces that boundary.
 
 ## Check for an existing `v1` pepper
 

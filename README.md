@@ -116,7 +116,8 @@ boundaries:
 - GitHub Actions stores only `DATABRICKS_HOST` and `DATABRICKS_HTTP_PATH` as encrypted repository
   secrets for trusted offline parsing.
 
-OAuth sessions stay in CLI-managed user configuration outside the repository. Live connectivity,
+OAuth sessions stay outside the repository. The private integration runner uses the existing CLI
+session; direct dbt OAuth can require its own browser login. Live connectivity,
 deployment, identity, grant, and persona checks run locally, not in public CI. See
 [Configure GitHub Actions validation](docs/how-to-guides/configure-github-actions.md).
 
@@ -205,8 +206,8 @@ confirming the explicit target variables:
 scripts/validate_personas.sh --apply
 ```
 
-The checked-in acceptance SQL supports only the canonical `bricksgdpr` catalog with an empty
-`DBT_SCHEMA_PREFIX`; it does not substitute customized catalog or schema names.
+The persona runner renders the checked-in SQL for the reviewed `DBT_PROJECT_CATALOG`.
+Catalog names must match `[a-z][a-z0-9_]*`; `DBT_SCHEMA_PREFIX` must be empty.
 
 The runner creates no credential. It uploads aggregate-only SQL files, creates one short-lived
 service principal per persona, validates the exact task-state matrix, deactivates and deletes the
@@ -217,9 +218,9 @@ principals, removes its workspace files, and reruns the identity preflight.
 The default `dev` target deploys one UI-locked Databricks job beneath the deployer's private
 bundle workspace path. The job has no schedule: it runs only when explicitly started. Serverless
 Jobs compute runs the pinned dbt CLI environment, while the configured SQL warehouse executes the
-generated SQL. This target intentionally writes the canonical demo catalog and is therefore for a
-single deployer; a shared production target must use an explicit service principal and either one
-centrally owned job or isolated catalogs.
+generated SQL. Bundle targets `dev`, `validation`, and `prod` use separate analytical and evidence
+catalogs. The latter two require an explicit pre-provisioned service-principal Run As identity.
+Use a distinct catalog pair for each concurrent deployer; see [Bundle job](docs/reference/bundle-job.md).
 
 Validate and inspect every planned workspace change before deployment, then deploy and run the
 workflow with the authenticated CLI profile named in `.env`:
@@ -244,9 +245,19 @@ databricks bundle validate --strict --profile "$DATABRICKS_CONFIG_PROFILE" \
   --var="warehouse_id=<warehouse-id>"
 ```
 
-The routine job builds all five seeds and every governed layer, applies access controls, runs the
-access-control tests, and finishes with the complete dbt build. Account-level identity provisioning
+The routine job prepares controls, records pending targets, builds governed outputs, applies access
+controls, and verifies all tests in separate tasks. A failure task records failed execution evidence. Account-level identity provisioning
 and temporary-persona acceptance remain separate, explicitly invoked controls.
+
+## Durable deletion operations
+
+Requests, plans, and terminal controls resist full refresh. Post-hooks archive their evidence and
+privacy decisions to a separate append-only catalog. A tracked run distinguishes pending targets,
+completed builds, failures, and verified outcomes.
+
+Use the [operations and recovery guide](docs/reference/deletion-operations.md) for isolated private
+validation, sanitized per-stage reports, synthetic recovery rehearsals, and missing-table recovery.
+Key rotation and physical-erasure tracking remain outside this implementation.
 
 ## Development loop
 

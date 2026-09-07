@@ -70,14 +70,14 @@ Source service periods must satisfy all of the following:
 
 | Key | Input | Domain | Canonicalization |
 | --- | --- | --- | --- |
-| `customer_key` | SSN | `customer.ssn` | Digits only |
+| `customer_key` | Synthetic SSN | `customer.ssn` | Validate nine digits or `XXX-XX-XXXX`; remove hyphens |
 | `customer_pk_key` | Source numeric PK string | `customer.source_pk` | Lowercase, trim, collapse whitespace |
 | `customer_id_key` | Source customer ID | `customer.id` | Lowercase, trim, collapse whitespace |
 | `first_name_key` | First name | `customer.first_name` | Lowercase, trim, collapse whitespace |
 | `last_name_key` | Last name | `customer.last_name` | Lowercase, trim, collapse whitespace |
 | `full_name_key` | Composed full name | `customer.full_name` | Lowercase, trim, collapse whitespace |
 | `email_key` | Email | `customer.email` | Lowercase, trim, collapse whitespace |
-| `phone_key` | Phone | `customer.phone` | Digits only |
+| `phone_key` | Phone | `customer.phone` | Require international `+` and 7–15 digits; remove display separators |
 | `birth_date_key` | Birth date | `customer.birth_date` | ISO `YYYY-MM-DD` |
 | `address_key` | Composed customer address | `customer.address` | Lowercase, trim, collapse whitespace |
 | `service_key` | Source service ID | `service.id` | Lowercase, trim, collapse whitespace |

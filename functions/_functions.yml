@@ -6,7 +6,7 @@ functions:
       Internal four-argument SHA-256 function. It length-delimits the purpose, version, domain,
       canonical value, and pepper so matching is stable while unrelated domains remain separate.
     config:
-      database: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}"
+      database: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}"
       schema: priva_internal
       tags: [gdpr, personal_data_control]
     arguments:
@@ -31,7 +31,7 @@ functions:
       and fixed Databricks secret reference. The secret call remains directly inside SHA-256 so
       Databricks permits protected DML. Only the scope/key names are compiled; the value is not.
     config:
-      database: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}"
+      database: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}"
       schema: priva_internal
       tags: [gdpr, personal_data_control]
     arguments:
@@ -49,7 +49,7 @@ functions:
       Column-mask function that returns the raw value only to privacy administrators or case
       users. Other callers receive the already-stored pseudonymous equivalent.
     config:
-      database: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}"
+      database: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}"
       schema: priva_internal
       tags: [gdpr, personal_data_control]
     arguments:

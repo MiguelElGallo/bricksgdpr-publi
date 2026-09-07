@@ -10,9 +10,9 @@ icon: lucide/book-a
 | Term | Meaning in this project |
 | --- | --- |
 | Accepted record | An ordinary valid record or an erased fact whose classifier returns `ACCEPTED` |
-| Canonical value | Input normalized before pseudonymization: digits-only SSN/phone, ISO date, or lowercase trimmed whitespace-collapsed text |
+| Canonical value | Input normalized before pseudonymization: validated synthetic SSN/international phone digits, ISO date, or lowercase trimmed whitespace-collapsed text |
 | Case view | Standard `layer3_case` view that preserves protected keys and resolves a fixed readable subset for `case_users` or `privacy_admins` |
-| Control catalog/schema | The connection-default `workspace.default` context, distinct from governed output placement |
+| Control catalog/schema | The configured connection-default context, distinct from analytical and evidence catalog placement |
 | Controlled readable | Column metadata state used for readable values exposed by case views |
 | Data schema | One of the six prefixable schemas from `layer1_source` through `layer3_case` |
 | Deployment identity | Privileged dbt producer/owner that creates the catalog, functions, relations, and grants |

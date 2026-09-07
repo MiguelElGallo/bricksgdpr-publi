@@ -1,0 +1,36 @@
+models:
+- columns:
+  - data_type: string
+    name: deletion_request_id
+  - data_type: string
+    name: customer_id
+  - data_type: string
+    name: customer_ssn
+  - data_type: timestamp
+    name: source_deleted_at
+  - data_type: timestamp
+    name: detected_at
+  - data_type: string
+    name: detection_status
+  name: customer_deletion_requests
+- columns:
+  - data_type: string
+    name: decision_revision_id
+  - data_type: string
+    name: customer_key
+  - data_type: string
+    name: target_relation
+  - data_type: string
+    name: deletion_mode
+  - data_type: string
+    name: deletion_policy_version
+  - data_type: string
+    name: target_layer
+  name: int_customer_deletion_plan
+- columns:
+  - data_type: string
+    name: customer_key
+  - data_type: string
+    name: deletion_mode
+  name: int_terminal_deleted_customer_keys
+version: 2

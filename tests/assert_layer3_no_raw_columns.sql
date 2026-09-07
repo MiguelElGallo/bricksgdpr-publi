@@ -12,7 +12,7 @@
 select table_name, column_name
 from system.information_schema.columns
 where
-    table_catalog = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
+    table_catalog = '{{ var("project_catalog", env_var("DBT_PROJECT_CATALOG", "bricksgdpr")) }}'
     and table_schema = '{{ layer3_schema }}'
     and (
         (right(column_name, 6) = '_value' and column_name != 'measure_value')

@@ -80,9 +80,9 @@ stores the change identifier as `deletion_request_id`, the stable `customer_id`,
 the delete event, the source timestamp, the first processing timestamp, and constant status
 `DETECTED`.
 
-On an ordinary incremental run, an existing `deletion_request_id` is not inserted again. A
-`--full-refresh` reconstructs the demo relation from the current source fixture and therefore does
-not have the permanence guarantees required of a production records-management system.
+An existing `deletion_request_id` is not inserted again. The model sets `full_refresh: false`,
+and its post-hook archives rows outside the model graph. Missing archived control keys block a
+subsequent build. See [Deletion operations and recovery](deletion-operations.md).
 
 A decision revision becomes `AUTHORIZED` only when all of the following are true:
 
@@ -712,16 +712,16 @@ for the full fixture walkthrough.
 ### Incomplete or failed build
 
 An incomplete plan cannot create a new terminal-ledger candidate. After admission, however, the
-ledger can exist before every downstream relation finishes building. A failed target must be rebuilt
+ledger can exist before every downstream relation finishes building. The operations workflow records target completion separately from verification. A failed target must be rebuilt
 and tested; deleting the ledger row would reopen the identity link and is not a recovery strategy.
 
 ### Full refresh
 
-All three durable demo relations are dbt-managed incremental tables. Ordinary runs preserve request,
-plan, initial-ledger, and suppression evidence. `--full-refresh` deliberately reconstructs them from
-the current synthetic source and decision fixtures, resets processing timestamps, and can remove
-evidence no longer present upstream. A production design needs an append-only control system and a
-separate audited execution ledger outside rebuildable analytical relations.
+All three durable controls are incremental tables with `full_refresh: false`; even an explicit
+`--full-refresh` preserves retained requests, plans, and terminal-ledger state. Their post-hooks
+archive evidence in a separate append-only catalog. Use a fresh isolated schema for a new teaching
+walkthrough. See [Deletion operations and recovery](deletion-operations.md) for archive boundaries,
+execution states, failure handling, and explicit missing-table restoration.
 
 ### Policy or target-registry change
 

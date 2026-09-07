@@ -14,3 +14,6 @@ model resolved by `target/manifest.json`. Later regeneration steps create:
 
 Generated build artifacts belong under `target/model_generation/` and remain ignored. The durable
 command/evidence ledger is written to `docs/reference/model-generation-log.md` after validation.
+
+See [Deletion operations and recovery](../docs/reference/deletion-operations.md) for durable control archives, execution states,
+isolated private validation, and recovery rehearsal.

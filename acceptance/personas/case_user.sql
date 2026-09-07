@@ -12,22 +12,11 @@ select assert_true(
 );
 
 select assert_true(
-    (select count(*) from bricksgdpr.layer3.dim_customer) > 0
-    and (select count(*) from bricksgdpr.layer3.fct_customer_event) > 0
-    and (select count(*) from bricksgdpr.layer3.fct_invoice) > 0,
-    'Case user cannot read protected Layer3 relations'
-);
-
-select assert_true(
-    (select count(*) from bricksgdpr.layer3_case.case_dim_customer)
-        = (select count(*) from bricksgdpr.layer3.dim_customer)
-    and (select count(*) from bricksgdpr.layer3_case.case_dim_service)
-        = (select count(*) from bricksgdpr.layer3.dim_service)
-    and (select count(*) from bricksgdpr.layer3_case.case_fct_customer_event)
-        = (select count(*) from bricksgdpr.layer3.fct_customer_event)
-    and (select count(*) from bricksgdpr.layer3_case.case_fct_invoice)
-        = (select count(*) from bricksgdpr.layer3.fct_invoice),
-    'Case-view grains do not match protected parents'
+    (select count(*) from bricksgdpr.layer3_case.case_dim_customer) > 0
+    and (select count(*) from bricksgdpr.layer3_case.case_dim_service) > 0
+    and (select count(*) from bricksgdpr.layer3_case.case_fct_customer_event) > 0
+    and (select count(*) from bricksgdpr.layer3_case.case_fct_invoice) > 0,
+    'Case user cannot read the approved case views'
 );
 
 select assert_true(

@@ -34,12 +34,12 @@ this page remain local.
 
 | Command | Effect |
 | --- | --- |
-| `uv run dbt run-operation bootstrap_project_catalog` | Creates `DBT_PROJECT_CATALOG` when absent |
+| `uv run dbt run-operation bootstrap_project_catalog` | Creates the analytical and separate evidence catalogs when absent |
 | `uv run dbt build --select '*' --exclude tag:access_control` | Builds seeds, functions, models, unit tests, and non-access data tests |
 | `uv run dbt run-operation apply_access_controls` | Applies parent grants and the macro's explicit revocations |
-| `uv run dbt test --select tag:access_control` | Runs the four live Unity Catalog access tests |
+| `uv run dbt test --select tag:access_control` | Runs the live Unity Catalog access tests, including evidence isolation |
 | `uv run dbt build --select '*'` | Executes the complete dbt graph |
-| `uv run dbt build --full-refresh --exclude tag:access_control` | Replaces the full demo graph without access metadata tests |
+| `uv run dbt build --full-refresh --exclude tag:access_control` | Rebuilds replaceable relations; preserves the three durable controls |
 | `uv run dbt test --select tag:deletion_control` | Runs tests tagged for terminal-deletion behavior |
 | `uv run dbt test --select assert_priva_map_contract` | Runs the exact default mapping fixture contract |
 
@@ -68,8 +68,8 @@ forms.
 | `scripts/provision_identities.sh --apply` | Mutating | Creates or reconciles the permitted account groups/users, workspace assignments, memberships, and group warehouse permissions |
 | `scripts/validate_personas.sh --apply` | Mutating with cleanup | Creates temporary service principals and jobs, validates positive/denial task states, and deletes temporary resources |
 
-The persona validator requires the canonical `bricksgdpr` catalog and unprefixed schemas because
-its SQL files contain fixed three-part relation names.
+The persona validator renders `DBT_PROJECT_CATALOG` into temporary SQL and requires an empty
+schema prefix. The reviewed catalog must match `[a-z][a-z0-9_]*`.
 
 ## Databricks Asset Bundle commands
 

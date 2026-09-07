@@ -40,7 +40,7 @@ actual_schema_privileges as (
     select distinct grantee, schema_name
     from system.information_schema.schema_privileges
     where
-        catalog_name = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
+        catalog_name = '{{ var("project_catalog", env_var("DBT_PROJECT_CATALOG", "bricksgdpr")) }}'
         and privilege_type = 'USE_SCHEMA'
         and grantee in ('{{ privacy }}', '{{ restricted }}', '{{ case_users }}')
         and schema_name in (
@@ -67,7 +67,7 @@ catalog_differences as (
     select grantee, privilege_type as object_name
     from system.information_schema.catalog_privileges
     where
-        catalog_name = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
+        catalog_name = '{{ var("project_catalog", env_var("DBT_PROJECT_CATALOG", "bricksgdpr")) }}'
         and grantee in ('{{ privacy }}', '{{ restricted }}', '{{ case_users }}')
         and privilege_type != 'USE_CATALOG'
 ),
@@ -82,7 +82,7 @@ actual_catalog_privileges as (
     select distinct grantee
     from system.information_schema.catalog_privileges
     where
-        catalog_name = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
+        catalog_name = '{{ var("project_catalog", env_var("DBT_PROJECT_CATALOG", "bricksgdpr")) }}'
         and privilege_type = 'USE_CATALOG'
         and grantee in ('{{ privacy }}', '{{ restricted }}', '{{ case_users }}')
 ),
@@ -104,7 +104,7 @@ unexpected_schema_privileges as (
     select grantee, concat(schema_name, ':', privilege_type) as object_name
     from system.information_schema.schema_privileges
     where
-        catalog_name = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
+        catalog_name = '{{ var("project_catalog", env_var("DBT_PROJECT_CATALOG", "bricksgdpr")) }}'
         and grantee in ('{{ privacy }}', '{{ restricted }}', '{{ case_users }}')
         and privilege_type != 'USE_SCHEMA'
         and schema_name in (

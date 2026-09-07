@@ -19,7 +19,7 @@ for task-oriented instructions, and [Explanation](../explanation/index.md) for d
 | Seeds | 5 | Four source extracts and one independent deletion-confirmation control |
 | SQL functions | 3 | Created in the fixed `priva_internal` schema |
 | Model-generation macro API | 11 | Seven layer scaffolding operations plus four deletion generators |
-| Data tests | 336 | 293 generic tests and 43 singular tests |
+| Data tests | 338 | 293 generic tests and 45 singular tests |
 | Unit tests | 7 | Authorization, mode policy, service resolution, and invoice quality |
 | Sources | 0 | Seeds are referenced directly with `ref()` |
 | Snapshots | 0 | Current-state outputs use replacement; deletion request, plan, and execution ledgers are incremental |
@@ -66,3 +66,6 @@ implementation is Databricks- and Spark-specific.
 Each page lists repository-relative source paths as code, for example
 `models/layer2/int_invoice_resolution.sql`. These paths identify implementation evidence; they are
 not documentation-site routes.
+
+See [Deletion operations and recovery](deletion-operations.md) for durable control archives, execution states,
+isolated private validation, and recovery rehearsal.

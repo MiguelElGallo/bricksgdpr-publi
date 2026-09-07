@@ -6,9 +6,9 @@ models:
       Authorized deletion worklist at one row per historical customer key and governed target
       relation. It is created only for confirmed requests without a legal hold and enumerates all
       current-state delete, erased-member reassignment, and case-view exclusion actions.
-      Incremental merge retains authorized plan rows across ordinary runs so a later missing
-      decision cannot silently resurrect retained identity links; full-refresh remains a demo
-      rebuild, not a production records-management workflow.
+      Incremental merge retains authorized plan rows so a later missing decision cannot silently
+      resurrect retained identity links. Full refresh is disabled; post-hooks archive evidence
+      outside the model graph and pre-hooks guard retained keys.
     config:
       contract:
         enforced: true

@@ -1,23 +1,56 @@
 bundle:
   name: bricksgdpr
   uuid: 5c8a5dea-1acc-4756-9aa5-019b2c949c82
-  databricks_cli_version: ">= 1.7.0"
-
+  databricks_cli_version: '>= 1.7.0'
 include:
-  - resources/*.yml
-
+- resources/*.yml
 variables:
   warehouse_id:
     description: SQL warehouse used by the dbt task.
-
+  project_catalog:
+    description: Isolated analytical catalog for this deployment.
+    default: bricksgdpr_dev
+  evidence_catalog:
+    description: Separate durable evidence catalog.
+    default: bricksgdpr_dev_evidence
+  control_catalog:
+    description: Existing catalog for the generated dbt connection.
+    default: workspace
+  run_as_service_principal:
+    description: Application ID of the pre-provisioned job identity.
+    default: ''
+  failure_recipients:
+    description: Failure notification email addresses.
+    type: complex
+    default: []
 sync:
   exclude:
-    - acceptance/**
-    - docs/**
-    - scripts/**
-    - profiles.yml
-
+  - acceptance/**
+  - docs/**
+  - scripts/**
+  - profiles.yml
 targets:
   dev:
     mode: development
     default: true
+    variables:
+      project_catalog: bricksgdpr_dev
+      evidence_catalog: bricksgdpr_dev_evidence
+  validation:
+    mode: production
+    workspace:
+      root_path: /Shared/.bundle/${bundle.name}/${bundle.target}
+    run_as:
+      service_principal_name: ${var.run_as_service_principal}
+    variables:
+      project_catalog: bricksgdpr_validation
+      evidence_catalog: bricksgdpr_validation_evidence
+  prod:
+    mode: production
+    workspace:
+      root_path: /Shared/.bundle/${bundle.name}/${bundle.target}
+    run_as:
+      service_principal_name: ${var.run_as_service_principal}
+    variables:
+      project_catalog: bricksgdpr_prod
+      evidence_catalog: bricksgdpr_prod_evidence

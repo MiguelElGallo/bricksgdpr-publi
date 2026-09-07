@@ -6,7 +6,7 @@ icon: lucide/settings
 # Configuration
 
 Configuration is split between environment variables, dbt variables, fixed security names, and
-one bundle variable.
+bundle deployment variables.
 
 ## Storage and trust boundaries
 
@@ -53,11 +53,13 @@ entries are compile-time pins, not supported customization points.
 | `DATABRICKS_HTTP_PATH` | Yes | None | SQL warehouse HTTP path |
 | `DBT_CONTROL_CATALOG` | No | `workspace` | Connection-default catalog |
 | `DBT_CONTROL_SCHEMA` | No | `default` | Connection-default schema |
-| `DBT_PROJECT_CATALOG` | No | `bricksgdpr` | Catalog receiving seeds, functions, and models |
+| `DBT_PROJECT_CATALOG` | No | `bricksgdpr` | Fallback analytical catalog; dbt `project_catalog` variable takes precedence |
+| `DBT_EVIDENCE_CATALOG` | No | Analytical catalog + `_evidence` | Separate archive/events catalog; dbt `evidence_catalog` variable takes precedence |
 | `DBT_SCHEMA_PREFIX` | No | Empty | Prefix applied to data schemas |
 
 `DBT_CONTROL_CATALOG` and `DBT_CONTROL_SCHEMA` establish the adapter connection context. They do
-not change the governed output catalog, which is set by `DBT_PROJECT_CATALOG`.
+not change the governed output catalog, which is set by `project_catalog` (dbt variable) or
+`DBT_PROJECT_CATALOG` (environment fallback).
 
 **Source:** `profiles.yml`, `dbt_project.yml:29-73`.
 
@@ -104,16 +106,22 @@ first-provisioning and validation requirements last.
 **Source:** `.env.example`, `scripts/provision_identities.sh:10-24`,
 `scripts/validate_personas.sh:10-21`.
 
-## Bundle variable
+## Bundle variables
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `warehouse_id` | None | SQL warehouse used by the bundle's dbt task |
+| `warehouse_id` | None | SQL warehouse used by all bundle dbt tasks |
+| `project_catalog` | Target-specific | Analytical catalog, passed as a dbt variable |
+| `evidence_catalog` | Target-specific | Separate append-only evidence catalog |
+| `control_catalog` | `workspace` | Existing connection-default catalog |
+| `run_as_service_principal` | Empty | Required application ID for validation/prod |
+| `failure_recipients` | `[]` | Email list for failure notifications; empty means disabled |
 
 Sourcing `.env` exports `BUNDLE_VAR_warehouse_id` from the reviewed
-`DATABRICKS_WAREHOUSE_ID`. The bundle task sets its control catalog and schema to
-`workspace.default`. Governed outputs still use the dbt project's catalog and schema
-configurations.
+`DATABRICKS_WAREHOUSE_ID`. Set `BUNDLE_VAR_control_catalog` if `workspace` is unavailable.
+Bundle commands pass analytical/evidence catalogs as dbt variables, which take precedence over
+environment fallbacks. See [Bundle job](bundle-job.md) and
+[Deletion operations and recovery](deletion-operations.md).
 
 **Source:** `databricks.yml:9-12`, `resources/bricksgdpr.job.yml:16-27`.
 
@@ -134,7 +142,6 @@ operator-enforced invariants.
 
 ## Persona validation namespace
 
-The dbt model graph supports `DBT_PROJECT_CATALOG` and `DBT_SCHEMA_PREFIX`. Persona acceptance SQL
-does not: files under `acceptance/personas/` hardcode the `bricksgdpr` catalog and unprefixed schema
-names. `scripts/validate_personas.sh` therefore supports only the canonical catalog with an empty
+The model graph supports catalog variables and `DBT_SCHEMA_PREFIX`. The persona runner renders
+`DBT_PROJECT_CATALOG` into its SQL templates after validating the identifier. It requires an empty
 schema prefix.

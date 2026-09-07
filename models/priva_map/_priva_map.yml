@@ -91,7 +91,7 @@ models:
           personal_data_category: "SOURCE_RECORD_IDENTIFIER"
           personal_data_state: "RAW"
         column_mask:
-          function: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}.priva_internal.mask_priva_map_value"
+          function: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}.priva_internal.mask_priva_map_value"
           using_columns: "customer_pk_key"
       - name: customer_id_value
         data_type: string
@@ -100,7 +100,7 @@ models:
           personal_data_category: "CUSTOMER_IDENTIFIER"
           personal_data_state: "RAW"
         column_mask:
-          function: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}.priva_internal.mask_priva_map_value"
+          function: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}.priva_internal.mask_priva_map_value"
           using_columns: "customer_id_key"
       - name: customer_ssn_value
         data_type: string
@@ -109,7 +109,7 @@ models:
           personal_data_category: "NATIONAL_IDENTIFIER"
           personal_data_state: "RAW"
         column_mask:
-          function: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}.priva_internal.mask_priva_map_value"
+          function: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}.priva_internal.mask_priva_map_value"
           using_columns: "customer_key"
       - name: first_name_value
         data_type: string
@@ -118,7 +118,7 @@ models:
           personal_data_category: "NAME"
           personal_data_state: "RAW"
         column_mask:
-          function: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}.priva_internal.mask_priva_map_value"
+          function: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}.priva_internal.mask_priva_map_value"
           using_columns: "first_name_key"
       - name: last_name_value
         data_type: string
@@ -127,7 +127,7 @@ models:
           personal_data_category: "NAME"
           personal_data_state: "RAW"
         column_mask:
-          function: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}.priva_internal.mask_priva_map_value"
+          function: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}.priva_internal.mask_priva_map_value"
           using_columns: "last_name_key"
       - name: full_name_value
         data_type: string
@@ -136,7 +136,7 @@ models:
           personal_data_category: "NAME"
           personal_data_state: "RAW"
         column_mask:
-          function: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}.priva_internal.mask_priva_map_value"
+          function: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}.priva_internal.mask_priva_map_value"
           using_columns: "full_name_key"
       - name: email_value
         data_type: string
@@ -145,7 +145,7 @@ models:
           personal_data_category: "EMAIL"
           personal_data_state: "RAW"
         column_mask:
-          function: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}.priva_internal.mask_priva_map_value"
+          function: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}.priva_internal.mask_priva_map_value"
           using_columns: "email_key"
       - name: phone_value
         data_type: string
@@ -154,7 +154,7 @@ models:
           personal_data_category: "PHONE"
           personal_data_state: "RAW"
         column_mask:
-          function: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}.priva_internal.mask_priva_map_value"
+          function: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}.priva_internal.mask_priva_map_value"
           using_columns: "phone_key"
       - name: birth_date_value
         data_type: string
@@ -163,7 +163,7 @@ models:
           personal_data_category: "BIRTH_DATE"
           personal_data_state: "RAW"
         column_mask:
-          function: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}.priva_internal.mask_priva_map_value"
+          function: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}.priva_internal.mask_priva_map_value"
           using_columns: "birth_date_key"
       - name: address_value
         data_type: string
@@ -172,7 +172,7 @@ models:
           personal_data_category: "ADDRESS"
           personal_data_state: "RAW"
         column_mask:
-          function: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}.priva_internal.mask_priva_map_value"
+          function: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}.priva_internal.mask_priva_map_value"
           using_columns: "address_key"
       - name: customer_segment
         data_type: string
@@ -237,7 +237,7 @@ models:
           personal_data_category: "SERVICE_IDENTIFIER"
           personal_data_state: "RAW"
         column_mask:
-          function: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}.priva_internal.mask_priva_map_value"
+          function: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}.priva_internal.mask_priva_map_value"
           using_columns: "service_key"
       - name: customer_ssn_value
         data_type: string
@@ -246,7 +246,7 @@ models:
           personal_data_category: "NATIONAL_IDENTIFIER"
           personal_data_state: "RAW"
         column_mask:
-          function: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}.priva_internal.mask_priva_map_value"
+          function: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}.priva_internal.mask_priva_map_value"
           using_columns: "customer_key"
       - name: installation_address_value
         data_type: string
@@ -255,7 +255,7 @@ models:
           personal_data_category: "ADDRESS"
           personal_data_state: "RAW"
         column_mask:
-          function: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}.priva_internal.mask_priva_map_value"
+          function: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}.priva_internal.mask_priva_map_value"
           using_columns: "installation_address_key"
       - name: service_type
         data_type: string

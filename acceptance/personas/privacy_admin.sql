@@ -46,10 +46,24 @@ select assert_true(
 )
 from bricksgdpr.priva_map.fa_pd_service_address;
 
-with deleted_customers as (
-    select distinct customer_id, customer_ssn
-    from bricksgdpr.layer1.stg_customer
-    where source_operation = 'DELETE'
+-- Admission comes from the durable terminal ledger, not a raw DELETE event.
+-- Resolve historical SSNs through trusted Layer1 evidence without invoking the denied UDF.
+with admitted_requests as (
+    select deletion_request_id
+    from bricksgdpr.layer2.int_terminal_deleted_customer_keys
+    union
+    select initial_deletion_request_id
+    from bricksgdpr.layer2.int_terminal_deleted_customer_keys
+),
+
+suppressed_ssns as (
+    select distinct regexp_replace(trim(history.customer_ssn), '-', '') as normalized_ssn
+    from admitted_requests as admitted
+    inner join bricksgdpr.layer1.customer_deletion_requests as requests
+        on admitted.deletion_request_id = requests.deletion_request_id
+    inner join bricksgdpr.layer1.stg_customer as history
+        on requests.customer_id = history.customer_id
+    where history.customer_ssn is not null
 ),
 
 ranked_upserts as (
@@ -66,9 +80,8 @@ ranked_upserts as (
 current_source as (
     select *
     from ranked_upserts as upserts
-    left anti join deleted_customers as deletions
-        on upserts.customer_id = deletions.customer_id
-        or upserts.customer_ssn = deletions.customer_ssn
+    left anti join suppressed_ssns as deletions
+        on regexp_replace(trim(upserts.customer_ssn), '-', '') = deletions.normalized_ssn
     where upserts.change_rank = 1 and upserts.is_active
 )
 
@@ -106,10 +119,24 @@ inner join current_source as source
     on mapped.customer_id_value = source.customer_id
     and mapped.customer_ssn_value = source.customer_ssn;
 
-with deleted_customers as (
-    select distinct customer_id, customer_ssn
-    from bricksgdpr.layer1.stg_customer
-    where source_operation = 'DELETE'
+-- Admission comes from the durable terminal ledger, not a raw DELETE event.
+-- Resolve historical SSNs through trusted Layer1 evidence without invoking the denied UDF.
+with admitted_requests as (
+    select deletion_request_id
+    from bricksgdpr.layer2.int_terminal_deleted_customer_keys
+    union
+    select initial_deletion_request_id
+    from bricksgdpr.layer2.int_terminal_deleted_customer_keys
+),
+
+suppressed_ssns as (
+    select distinct regexp_replace(trim(history.customer_ssn), '-', '') as normalized_ssn
+    from admitted_requests as admitted
+    inner join bricksgdpr.layer1.customer_deletion_requests as requests
+        on admitted.deletion_request_id = requests.deletion_request_id
+    inner join bricksgdpr.layer1.stg_customer as history
+        on requests.customer_id = history.customer_id
+    where history.customer_ssn is not null
 ),
 
 ranked_upserts as (
@@ -126,9 +153,8 @@ ranked_upserts as (
 current_customers as (
     select upserts.customer_ssn
     from ranked_upserts as upserts
-    left anti join deleted_customers as deletions
-        on upserts.customer_id = deletions.customer_id
-        or upserts.customer_ssn = deletions.customer_ssn
+    left anti join suppressed_ssns as deletions
+        on regexp_replace(trim(upserts.customer_ssn), '-', '') = deletions.normalized_ssn
     where upserts.change_rank = 1 and upserts.is_active
 ),
 
@@ -136,7 +162,8 @@ eligible_services as (
     select services.*
     from bricksgdpr.layer1.stg_customer_services as services
     inner join current_customers as customers
-        on services.customer_ssn = customers.customer_ssn
+        on regexp_replace(trim(services.customer_ssn), '-', '')
+            = regexp_replace(trim(customers.customer_ssn), '-', '')
     where services.is_valid and services.valid_to >= services.valid_from
 )
 
@@ -178,12 +205,12 @@ select assert_true(
 
 select assert_true(
     (select count(*) from bricksgdpr.layer3_case.case_dim_customer)
-        = (select count(*) from bricksgdpr.layer3.dim_customer)
+        = (select count(*) from bricksgdpr.layer3.dim_customer where customer_key <> '-99999')
     and (select count(*) from bricksgdpr.layer3_case.case_dim_service)
-        = (select count(*) from bricksgdpr.layer3.dim_service)
+        = (select count(*) from bricksgdpr.layer3.dim_service where customer_key <> '-99999')
     and (select count(*) from bricksgdpr.layer3_case.case_fct_customer_event)
-        = (select count(*) from bricksgdpr.layer3.fct_customer_event)
+        = (select count(*) from bricksgdpr.layer3.fct_customer_event where customer_key <> '-99999')
     and (select count(*) from bricksgdpr.layer3_case.case_fct_invoice)
-        = (select count(*) from bricksgdpr.layer3.fct_invoice),
+        = (select count(*) from bricksgdpr.layer3.fct_invoice where customer_key <> '-99999'),
     'Privacy administrator case-view grains do not match protected parents'
 );
