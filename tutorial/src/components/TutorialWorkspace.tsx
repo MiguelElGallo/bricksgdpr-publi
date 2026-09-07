@@ -27,6 +27,7 @@ export function TutorialWorkspace({
   onStepSelect,
   onFileSelect,
   onFileChange,
+  onFileRestore,
   onRelationSelect,
   onTerminalSubmit,
 }: TutorialWorkspaceProps) {
@@ -62,6 +63,18 @@ export function TutorialWorkspace({
         onReset={onReset}
       />
       <BoundaryNotice />
+      <div className="runtime-guidance" aria-live="polite">
+        <strong>{engineStatus === "idle" ? "Start here" : engineStatus === "error" ? "Startup needs attention" : "In this tab"}</strong>
+        <span>{engineStatus === "idle"
+          ? "Boot the engine, read the step, then run it. The first boot downloads Python and dbt; it can take a minute."
+          : engineStatus === "booting"
+            ? `${engineMessage ?? "Starting…"}. Keep this tab open while the runtime loads.`
+            : engineStatus === "error"
+              ? "Check the terminal, then choose Boot engine to retry. Your SQL edits are kept; rebuild to verify them."
+              : engineStatus === "running"
+                ? "dbt is running. Follow the terminal output; Reset lab stops the runtime and clears this session."
+                : "Edit, run, and inspect the result. Reloading clears edits and data; Restore file undoes one experiment."}</span>
+      </div>
       <main className="studio-grid" id="tutorial-workspace">
         <LessonPanel
           lesson={lesson}
@@ -80,6 +93,7 @@ export function TutorialWorkspace({
             runLabel={runLabel}
             onFileSelect={onFileSelect}
             onFileChange={onFileChange}
+            onFileRestore={onFileRestore}
             onRun={runActiveLesson}
           />
           <TerminalPanel

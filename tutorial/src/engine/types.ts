@@ -28,6 +28,7 @@ export interface InvocationResult {
 export interface RawQueryResult {
   columns: Array<{ name: string; type: string }>;
   rows: unknown[][];
+  truncated?: boolean;
 }
 
 export interface CatalogRelation {

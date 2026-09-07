@@ -5,11 +5,27 @@
 #}
 
 {% macro demo_canonicalize_personal_data(value_expression, kind='text') -%}
-  {%- if kind in ['ssn', 'phone'] -%}
-    nullif(
-      regexp_replace(trim(cast({{ value_expression }} as varchar)), '[^0-9]', '', 'g'),
-      ''
-    )
+  {%- if kind is not string or kind | lower not in ['text', 'ssn', 'phone', 'date'] -%}
+    {{ exceptions.raise_compiler_error('kind must be text, ssn, phone, or date') }}
+  {%- endif -%}
+  {%- set kind = kind | lower -%}
+  {%- if kind == 'ssn' -%}
+    case
+      when {{ value_expression }} is null then null
+      when regexp_full_match(trim(cast({{ value_expression }} as varchar)),
+          '([0-9]{9}|[0-9]{3}-[0-9]{2}-[0-9]{4})')
+        then replace(trim(cast({{ value_expression }} as varchar)), '-', '')
+      else error('Invalid synthetic SSN: expected nine digits or XXX-XX-XXXX')
+    end
+  {%- elif kind == 'phone' -%}
+    case
+      when {{ value_expression }} is null then null
+      when regexp_full_match(trim(cast({{ value_expression }} as varchar)), '[+][1-9][0-9 ()-]*')
+        and length(regexp_replace(cast({{ value_expression }} as varchar), '[^0-9]', '', 'g'))
+          between 7 and 15
+        then regexp_replace(cast({{ value_expression }} as varchar), '[^0-9]', '', 'g')
+      else error('Invalid phone: supply an explicit international + prefix and 7-15 digits')
+    end
   {%- elif kind == 'date' -%}
     strftime(cast({{ value_expression }} as date), '%Y-%m-%d')
   {%- else -%}

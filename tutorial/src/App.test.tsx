@@ -7,6 +7,7 @@ const engineMock = vi.hoisted(() => ({
   catalog: vi.fn(),
   query: vi.fn(),
   terminate: vi.fn(),
+  isStopped: false,
   options: [] as Array<{
     onLog: (line: string, stream: "out" | "err") => void;
     onStatus: (phase: string, detail?: string) => void;
@@ -20,6 +21,8 @@ vi.mock("./engine", async (importOriginal) => {
     constructor(options: (typeof engineMock.options)[number]) {
       engineMock.options.push(options);
     }
+
+    get isStopped() { return engineMock.isStopped; }
 
     boot() {
       return engineMock.boot();
@@ -98,10 +101,12 @@ const customerRequiredResources: Record<CustomerStepId, string[]> = {
     "model.bricksgdpr_tutorial.int_current_customers",
     "test.bricksgdpr_tutorial.assert_current_customers_terminal_deletion",
     "test.bricksgdpr_tutorial.assert_deletion_confirmation_gate",
+    "test.bricksgdpr_tutorial.assert_deletion_gate_contract",
   ],
   mapping: [
     "model.bricksgdpr_tutorial.demo_customer_map",
     "test.bricksgdpr_tutorial.assert_demo_customer_key_contract",
+    "test.bricksgdpr_tutorial.assert_demo_normalization",
   ],
   layer2: [
     "model.bricksgdpr_tutorial.int_customer_protected",
@@ -307,6 +312,7 @@ beforeEach(() => {
   engineMock.catalog.mockReset().mockResolvedValue(combinedCatalog);
   engineMock.query.mockReset().mockResolvedValue(invoiceProofResult);
   engineMock.terminate.mockReset();
+  engineMock.isStopped = false;
   engineMock.options.length = 0;
 });
 
@@ -385,14 +391,14 @@ async function completeCustomerTutorial() {
 
 describe("App engine integration", () => {
   it("normalizes invalid deep links and opens the customer tutorial at staging", async () => {
-    window.history.replaceState(null, "", "/?lesson=not-a-lesson&step=layer3");
+    window.history.replaceState(null, "", "/?lesson=not-a-lesson&step=not-a-step");
     const first = render(<App />);
 
-    expect(screen.getByRole("heading", { name: "Trace an invoice into quarantine" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Build a customer flow from staging to Layer3" })).toBeVisible();
     await waitFor(() => {
       const parameters = new URL(window.location.href).searchParams;
-      expect(parameters.get("lesson")).toBe("invoice-quarantine");
-      expect(parameters.has("step")).toBe(false);
+      expect(parameters.get("lesson")).toBe("customer-flow");
+      expect(parameters.get("step")).toBe("staging");
     });
 
     first.unmount();
@@ -960,4 +966,39 @@ describe("App engine integration", () => {
     expect(engineMock.query).not.toHaveBeenCalled();
     expect(progressBar()).toHaveAttribute("aria-valuenow", "20");
   });
+});
+
+
+describe("experiment recovery", () => {
+  it("restores only the edited model without restarting the engine or retaining stale proof", async () => {
+    render(<App />);
+    await bootEngine();
+    const editor = screen.getByLabelText("Edit models/stg_invoices.sql") as HTMLTextAreaElement;
+    const original = editor.value;
+    fireEvent.change(editor, { target: { value: "select invalid_column" } });
+    fireEvent.click(screen.getByRole("button", { name: "Restore file" }));
+    expect(editor.value).toBe(original);
+    expect(screen.getByRole("button", { name: "Restore file" })).toBeDisabled();
+    expect(engineMock.terminate).not.toHaveBeenCalled();
+    expect(engineMock.boot).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("No query result yet")).toBeVisible();
+  });
+});
+
+
+it("offers a fresh engine after a fatal worker error while keeping edits and clearing proof", async () => {
+  render(<App />);
+  await bootEngine();
+  fireEvent.change(screen.getByLabelText("Edit models/stg_invoices.sql"), {
+    target: { value: "select 'keep my experiment' as note" },
+  });
+  engineMock.isStopped = true;
+  engineMock.invoke.mockRejectedValueOnce(new Error("Worker crashed"));
+  fireEvent.click(screen.getByRole("button", { name: "Run lesson" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Boot engine" })).toBeEnabled());
+  engineMock.isStopped = false;
+  fireEvent.click(screen.getByRole("button", { name: "Boot engine" }));
+  await waitFor(() => expect(engineMock.boot).toHaveBeenCalledTimes(2));
+  expect(screen.getByLabelText("Edit models/stg_invoices.sql")).toHaveValue("select 'keep my experiment' as note");
+  expect(screen.getByText("No query result yet")).toBeVisible();
 });

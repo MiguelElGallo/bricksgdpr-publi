@@ -40,6 +40,7 @@ export function LessonPanel({
     : lesson.tasks.filter((task) => task.status === "complete").length;
   const progressTotal = hasGuide ? guideSteps.length : lesson.tasks.length;
   const progress = progressTotal === 0 ? 0 : Math.round((completed / progressTotal) * 100);
+  const experiment = selectedStep?.experiment ?? lesson.experiment;
   const previousStep = selectedStepIndex > 0 ? guideSteps[selectedStepIndex - 1] : null;
   const nextStep =
     selectedStepIndex >= 0 && selectedStepIndex < guideSteps.length - 1
@@ -104,6 +105,15 @@ export function LessonPanel({
           </div>
         </div>
 
+        {progress === 100 ? (
+          <section className="lesson-complete" aria-label="Lesson complete">
+            <strong>Lesson complete</strong>
+            <p>The fixture checks passed. Try the experiment below, or choose the other lesson.</p>
+          </section>
+        ) : selectedStep?.status === "complete" ? (
+          <p className="checkpoint-complete">Checkpoint passed. Inspect the result, then choose Next.</p>
+        ) : null}
+
         {hasGuide && selectedStep ? (
           <>
             <section className="guide-card" aria-labelledby="selected-guide-step-title">
@@ -137,7 +147,7 @@ export function LessonPanel({
                   <dd>{selectedStep.observe}</dd>
                 </div>
               </dl>
-              <div className="guide-step-controls" aria-label="Customer tutorial step navigation">
+              <div className="guide-step-controls" aria-label="Tutorial step navigation">
                 <button
                   type="button"
                   disabled={selectionDisabled || !previousStep}
@@ -227,6 +237,15 @@ export function LessonPanel({
             </ol>
           </section>
         )}
+        {experiment ? (
+          <section className="experiment-card" aria-labelledby="experiment-title">
+            <h2 id="experiment-title">Try an experiment</h2>
+            <p>{experiment.prompt}</p>
+            <details><summary>Show a hint</summary><p>{experiment.hint}</p></details>
+            <details><summary>Explain the result</summary><p>{experiment.explanation}</p></details>
+            <small>Use Restore file after experimenting, then rerun the step to restore its proof.</small>
+          </section>
+        ) : null}
       </div>
 
       <footer className="lesson-footer">

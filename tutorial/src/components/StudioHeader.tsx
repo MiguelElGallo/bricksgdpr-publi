@@ -76,7 +76,7 @@ export function StudioHeader({
             type="button"
             onClick={onReset}
             aria-label="Reset lab"
-            title="Reset lab"
+            title="Clear edited files, the database, and lesson progress"
           >
             <Icon name="refresh" />
           </button>

@@ -13,6 +13,11 @@ export interface LessonProofSpec {
 }
 
 export interface LessonRunSpec {
+  experiment?: {
+    prompt: string;
+    hint: string;
+    explanation: string;
+  };
   command: string;
   requiredSuccessfulResources: readonly string[];
   proof: LessonProofSpec;
@@ -48,7 +53,7 @@ export interface TutorialLocation {
   stepId: string | null;
 }
 
-export const DEFAULT_LESSON_ID: LessonId = "invoice-quarantine";
+export const DEFAULT_LESSON_ID: LessonId = "customer-flow";
 export const DEFAULT_CUSTOMER_STEP_ID = "staging";
 
 const CUSTOMER_KEY =
@@ -190,6 +195,11 @@ function firstRowByColumn(result: RawQueryResult): Record<string, unknown> | nul
 const customerSteps: readonly LessonStepSpec[] = [
   {
     id: "staging",
+    experiment: {
+      prompt: "Predict what happens when a staging model drops a source change.",
+      hint: "In stg_customer.sql, append a WHERE clause excluding CUST-0001. Build this checkpoint, inspect the failure, then restore the file and rebuild.",
+      explanation: "Staging must preserve source changes at their original grain. The checkpoint rejects a missing customer even if the SQL itself executes successfully.",
+    },
     title: "Start with the staged change",
     buildsOn: "The synthetic customer seed",
     why: "Layer1 needs typed, normalized source events before downstream models can rely on them.",
@@ -226,11 +236,16 @@ const customerSteps: readonly LessonStepSpec[] = [
   },
   {
     id: "current",
+    experiment: {
+      prompt: "Can a source DELETE alone authorize removal from analytical customer outputs?",
+      hint: "In int_current_customers.sql, add `and upserts.customer_id != 'CUST-0095'` to its WHERE clause. Build, read the confirmation-gate failure, then restore and rebuild.",
+      explanation: "CUST-0095 has a detected tombstone but no independent decision. Its latest active UPSERT remains visible until a valid confirmation produces a complete plan. The browser rebuilds this state from fixtures; it does not retain a production suppression ledger.",
+    },
     title: "Reduce the feed to current customers",
     buildsOn: "Step 1 · the typed staging change feed",
     why: "Staging contains source events, but analytical models need one current active row per customer.",
     change:
-      "Store source deletions, join a separate privacy decision, plan every target only when authorized, then exclude planned identities.",
+      "Detect source deletions, require a separate decision and all six target actions, then exclude authorized identities. FULL wins if complete plans overlap.",
     observe:
       "CUST-0001 and unconfirmed CUST-0095 remain; SPECIAL CUST-0097 and FULL CUST-0099 are absent; 15 current customers survive.",
     focusFilePath: "models/int_current_customers.sql",
@@ -239,6 +254,7 @@ const customerSteps: readonly LessonStepSpec[] = [
       "models/int_customer_deletion_requests.sql",
       "models/int_customer_deletion_authorizations.sql",
       "models/int_customer_deletion_plan.sql",
+      "macros/tutorial_deletion_gate.sql",
       "models/int_terminal_deleted_customer_ssns.sql",
       "models/int_current_customers.sql",
     ],
@@ -256,6 +272,7 @@ const customerSteps: readonly LessonStepSpec[] = [
       "int_current_customers",
       "assert_current_customers_terminal_deletion",
       "assert_deletion_confirmation_gate",
+      "assert_deletion_gate_contract",
     ],
     proof: {
       sql: currentValidationSql,
@@ -282,11 +299,16 @@ const customerSteps: readonly LessonStepSpec[] = [
   },
   {
     id: "mapping",
+    experiment: {
+      prompt: "What happens to stored keys when a field’s domain changes?",
+      hint: "In demo_customer_map.sql, change the email key domain from 'customer.email' to 'customer.ssn'. Build and inspect the checkpoint, then restore and rebuild.",
+      explanation: "The domain is part of the key contract: the same value used for different purposes must hash differently. Existing keys stay stable only while canonicalization, domain, version, and teaching constant stay unchanged. All ingredients are public here, so these keys provide no confidentiality.",
+    },
     title: "Create domain-separated demo keys",
     buildsOn: "Step 2 · one current active row per customer",
     why: "Analytics needs stable join keys without carrying readable identifiers into protected layers.",
     change:
-      "Create public demo-v1 keys beside readable synthetic values inside the browser-only mapping boundary.",
+      "Validate SSN/phone formats, normalize accepted values, and create public demo-v1 keys beside readable synthetic values. The browser map remains accessible.",
     observe:
       "CUST-0001 receives exact customer and email keys that are stable and different; the map contains 15 rows.",
     focusFilePath: "models/demo_customer_map.sql",
@@ -298,7 +320,7 @@ const customerSteps: readonly LessonStepSpec[] = [
       "demo_customer_map",
     ],
     command: "dbt build --select +demo_customer_map --indirect-selection cautious",
-    requiredSuccessfulResources: ["demo_customer_map", "assert_demo_customer_key_contract"],
+    requiredSuccessfulResources: ["demo_customer_map", "assert_demo_customer_key_contract", "assert_demo_normalization"],
     proof: {
       sql: mappingValidationSql,
       label: "Step 3 · mapped CUST-0001",
@@ -321,6 +343,11 @@ const customerSteps: readonly LessonStepSpec[] = [
   },
   {
     id: "layer2",
+    experiment: {
+      prompt: "Can a model accidentally reintroduce a readable identifier?",
+      hint: "In int_customer_protected.sql, add customer_ssn_value to the SELECT list. Build and inspect assert_customer_protected_schema, then restore and rebuild.",
+      explanation: "An explicit column allowlist catches readable fields even when row counts and join keys are unchanged. This proves a projection contract; a browser user can still query the readable map directly.",
+    },
     title: "Cross into protected Layer2",
     buildsOn: "Step 3 · readable values beside public demo keys in the mapping",
     why: "The protected analytical boundary must keep keys and useful business facts without readable identity values.",
@@ -366,6 +393,11 @@ const customerSteps: readonly LessonStepSpec[] = [
   },
   {
     id: "layer3",
+    experiment: {
+      prompt: "Does a successful SELECT guarantee the dimension preserves its input grain?",
+      hint: "In dim_customer.sql, add a WHERE clause that excludes small_business customers. Build and inspect the integrity test, then restore and rebuild.",
+      explanation: "A downstream dimension can lose valid customers without a SQL error. Tests compare the complete protected rows and require one row per key, while the checkpoint follows CUST-0001 end to end.",
+    },
     title: "Publish the protected Layer3 dimension",
     buildsOn: "Step 4 · the protected Layer2 customer contract",
     why: "An analytics-facing dimension should preserve the protected grain without reaching back to readable data.",
@@ -419,7 +451,12 @@ if (!customerFinalStep) throw new Error("Customer tutorial requires at least one
 const lessonSpecs: readonly LessonSpec[] = [
   {
     id: "invoice-quarantine",
-    number: 1,
+    number: 2,
+    experiment: {
+      prompt: "What changes when a missing service is classified as accepted?",
+      hint: "In int_invoice_resolution.sql, change the SERVICE_NOT_FOUND branch to return ACCEPTED. Build the invoice path, inspect INV-0105, then restore the original and rebuild.",
+      explanation: "A partition test can still pass when a row is assigned to the wrong partition. The semantic checkpoint also requires SERVICE_NOT_FOUND and zero accepted rows. Classification needs both structural and business-rule proofs.",
+    },
     title: "Trace an invoice into quarantine",
     summary:
       "Run real dbt Core in your browser and follow one deliberately invalid synthetic invoice through deterministic classification.",
@@ -431,7 +468,10 @@ const lessonSpecs: readonly LessonSpec[] = [
       "models/stg_invoices.sql",
       "models/int_invoice_resolution.sql",
       "models/quarantine_invoices.sql",
+      "models/int_invoices_resolved.sql",
+      "macros/customer_deletion_policy.sql",
       "tests/assert_invoice_partition.sql",
+      "tests/assert_deletion_mode_invoice_behavior.sql",
     ],
     visibleRelationNames: [
       "customer",
@@ -495,7 +535,7 @@ const lessonSpecs: readonly LessonSpec[] = [
   },
   {
     id: "customer-flow",
-    number: 2,
+    number: 1,
     title: "Build a customer flow from staging to Layer3",
     summary:
       "Start with one readable staged change, then add one dbt model at a time until it becomes a protected Layer3 customer dimension.",
@@ -516,9 +556,9 @@ const lessonSpecs: readonly LessonSpec[] = [
   },
 ];
 
-export const LESSONS = lessonSpecs;
+export const LESSONS = [...lessonSpecs].sort((left, right) => left.number - right.number);
 
-export const LESSON_OPTIONS: LessonOption[] = lessonSpecs.map(({ id, number, title }) => ({
+export const LESSON_OPTIONS: LessonOption[] = LESSONS.map(({ id, number, title }) => ({
   id,
   number,
   title,

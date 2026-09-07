@@ -62,12 +62,12 @@ function validateDbtArgs(args) {
       if (
         typeof value !== "string" ||
         value.length === 0 ||
-        value.startsWith("--") ||
+        value.startsWith("-") ||
         /[\0\r\n]/.test(value)
       ) {
         throw new Error(`${token} requires a safe value`);
       }
-      if (token === "--limit" && !/^\d+$/.test(value)) {
+      if (token === "--limit" && (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value)))) {
         throw new Error("--limit must be a positive integer");
       }
       if (token === "--indirect-selection" && value !== "cautious") {
@@ -97,7 +97,7 @@ function validateProjectFiles(files) {
 }
 
 async function installRuntime(wheelhouseBase) {
-  sendStatus("loading-pyodide", `Loading Python ${PYODIDE_VERSION}`);
+  sendStatus("loading-pyodide", `Loading Pyodide ${PYODIDE_VERSION}`);
   self.importScripts(`${PYODIDE_BASE}pyodide.js`);
   pyodide = await self.loadPyodide({
     indexURL: PYODIDE_BASE,
@@ -317,16 +317,23 @@ def json_value(value):
 def browser_query(sql):
     import duckdb
     close_dbt_connections()
+    if not DATABASE.exists():
+        raise ValueError("Run a dbt build before exploring the lesson database.")
     connection = duckdb.connect(str(DATABASE), read_only=True)
     try:
         connection.execute("SET TimeZone = 'UTC'")
+        connection.execute("SET enable_external_access = false")
+        statements = connection.extract_statements(sql)
+        if len(statements) != 1 or statements[0].type != duckdb.StatementType.SELECT:
+            raise ValueError("Enter one read-only SELECT query, including WITH queries.")
         cursor = connection.execute(sql)
         columns = [
             {"name": item[0], "type": str(item[1])}
             for item in (cursor.description or [])
         ]
-        rows = [[json_value(value) for value in row] for row in cursor.fetchall()]
-        return {"columns": columns, "rows": rows}
+        fetched = cursor.fetchmany(1001)
+        rows = [[json_value(value) for value in row] for row in fetched[:1000]]
+        return {"columns": columns, "rows": rows, "truncated": len(fetched) > 1000}
     finally:
         connection.close()
 
@@ -412,8 +419,9 @@ async function invoke(payload) {
   if (invocationActive) throw new Error("A dbt command is already running");
   invocationActive = true;
   try {
+    const args = validateDbtArgs(payload.args);
     await syncProject(payload.files);
-    pyodide.globals.set("browser_command_args", validateDbtArgs(payload.args));
+    pyodide.globals.set("browser_command_args", args);
     const resultJson = await pyodide.runPythonAsync(
       "json.dumps(browser_invoke(list(browser_command_args)))",
     );
@@ -424,12 +432,17 @@ async function invoke(payload) {
 }
 
 async function query(payload) {
+  if (!pyodide) throw new Error("The browser engine has not been booted");
+  if (typeof payload.sql !== "string" || !payload.sql.trim()) {
+    throw new Error("Enter a read-only SELECT query");
+  }
   pyodide.globals.set("browser_sql", payload.sql);
   const resultJson = await pyodide.runPythonAsync("json.dumps(browser_query(str(browser_sql)))");
   return JSON.parse(resultJson);
 }
 
 async function catalog() {
+  if (!pyodide) throw new Error("The browser engine has not been booted");
   const resultJson = await pyodide.runPythonAsync("json.dumps(browser_catalog())");
   return JSON.parse(resultJson);
 }

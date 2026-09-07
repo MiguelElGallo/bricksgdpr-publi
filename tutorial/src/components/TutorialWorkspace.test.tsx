@@ -335,3 +335,40 @@ describe("TutorialWorkspace", () => {
     expect(props.onRelationSelect).not.toHaveBeenCalled();
   });
 });
+
+it("exposes experiments with optional hints without hiding the original lesson", () => {
+  const props = createProps();
+  props.lesson.experiment = {
+    prompt: "Predict the result before removing the quarantine filter.",
+    hint: "Edit the WHERE clause.",
+    explanation: "The partition test should fail because the invoice appears twice.",
+  };
+  render(<TutorialWorkspace {...props} />);
+  expect(screen.getByRole("heading", { name: "Try an experiment" })).toBeVisible();
+  expect(screen.getByText(props.lesson.experiment.prompt)).toBeVisible();
+  expect(screen.getByText(props.lesson.experiment.hint)).not.toBeVisible();
+  fireEvent.click(screen.getByText("Show a hint"));
+  expect(screen.getByText(props.lesson.experiment.hint)).toBeVisible();
+});
+
+it("keeps normal Tab navigation and prevents indentation from changing a read-only file", () => {
+  const props = createProps();
+  props.files[0].editable = false;
+  render(<TutorialWorkspace {...props} />);
+  const editor = screen.getByLabelText("Edit models/quarantine_invoices.sql");
+  expect(fireEvent.keyDown(editor, { key: "Tab", code: "Tab" })).toBe(true);
+  fireEvent.keyDown(editor, { key: "Tab", code: "Tab", altKey: true });
+  expect(props.onFileChange).not.toHaveBeenCalled();
+});
+
+it("shows failed proof status, query provenance, and bounded result previews", () => {
+  const props = createProps({ result: {
+    columns: [{ key: "count", label: "count" }], rows: [{ count: 0 }], rowCount: 1,
+    label: "Expected invoice", verification: "failed", truncated: true, sql: "select count(*) from invoices",
+  } });
+  render(<TutorialWorkspace {...props} />);
+  expect(screen.getByText(/Checkpoint failed/)).toBeVisible();
+  expect(screen.getByText(/preview limit/)).toBeVisible();
+  fireEvent.click(screen.getByText("Query behind this result"));
+  expect(screen.getByText("select count(*) from invoices")).toBeVisible();
+});

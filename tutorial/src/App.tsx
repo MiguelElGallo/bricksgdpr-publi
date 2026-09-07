@@ -11,7 +11,7 @@ import {
   tutorialLocationFromSearch,
 } from "./lesson/lessons";
 import type { LessonRunSpec, LessonStepSpec, TutorialLocation } from "./lesson/lessons";
-import { createTutorialFiles, filesForLesson, mergeProjectFiles } from "./lesson/project";
+import { createTutorialFiles, filesForLesson, initialProjectFiles, mergeProjectFiles } from "./lesson/project";
 import type {
   EngineStatus,
   LessonDefinition,
@@ -115,6 +115,7 @@ function toLessonDefinition(
     summary: lesson.summary,
     objective: lesson.objective,
     duration: lesson.duration,
+    experiment: lesson.experiment,
     tasks: session.tasks,
     guideSteps: lesson.steps?.map((step, index) => ({
       id: step.id,
@@ -125,6 +126,7 @@ function toLessonDefinition(
       why: step.why,
       change: step.change,
       observe: step.observe,
+      experiment: step.experiment,
       command: step.command,
       status: taskById.get(step.id)?.status ?? "pending",
     })),
@@ -138,7 +140,7 @@ function resultCell(value: unknown): ResultCell {
   return String(value);
 }
 
-function toQueryResult(raw: RawQueryResult, label: string, elapsedMs?: number): QueryResult {
+function toQueryResult(raw: RawQueryResult, label: string, elapsedMs?: number, sql?: string): QueryResult {
   const columns = raw.columns.map((column, index) => ({
     key: `${column.name}-${index}`,
     label: column.name,
@@ -147,6 +149,8 @@ function toQueryResult(raw: RawQueryResult, label: string, elapsedMs?: number): 
   return {
     label,
     elapsedMs,
+    sql,
+    truncated: raw.truncated,
     rowCount: raw.rows.length,
     columns,
     rows: raw.rows.map((values) =>
@@ -158,14 +162,15 @@ function toQueryResult(raw: RawQueryResult, label: string, elapsedMs?: number): 
 function relationLayer(name: string) {
   if (name === "demo_customer_map") return "Mapping";
   if (name === "int_current_customers") return "Current state";
-  if (["customer", "customer_services", "invoices"].includes(name)) return "Sources";
+  if (["customer", "customer_services", "invoices", "customer_deletion_confirmations"].includes(name)) return "Sources";
+  if (["int_customer_deletion_requests", "int_customer_deletion_authorizations", "int_customer_deletion_plan", "int_terminal_deleted_customer_ssns"].includes(name)) return "Deletion controls";
   if (name.startsWith("stg_") || name.startsWith("quarantine_")) return "Layer1";
   if (name.startsWith("dim_") || name.startsWith("fct_")) return "Layer3";
   return "Layer2";
 }
 
 function relationKind(relation: CatalogRelation): RelationKind {
-  if (["customer", "customer_services", "invoices"].includes(relation.name)) return "seed";
+  if (["customer", "customer_services", "invoices", "customer_deletion_confirmations"].includes(relation.name)) return "seed";
   return relation.tableType.toUpperCase().includes("VIEW") ? "view" : "table";
 }
 
@@ -357,6 +362,8 @@ export default function App() {
     const previousEngine = engineRef.current;
     engineRef.current = null;
     previousEngine?.terminate();
+    invalidateAllLessonProofs(false);
+    setRelations([]);
     const engine = createEngine();
     engineRef.current = engine;
     setEngineStatus("booting");
@@ -403,8 +410,10 @@ export default function App() {
       raw,
       runSpec.proof.label,
       Math.round(performance.now() - startedAt),
+      runSpec.proof.sql,
     );
     const passed = runSpec.proof.validate(raw);
+    queryResult.verification = passed ? "passed" : "failed";
     setLessonSessions((current) => {
       const session = current[lessonId];
       if (stepId && lessonSpec.steps) {
@@ -557,8 +566,8 @@ export default function App() {
       setEngineMessage("Engine ready for another command");
     } catch (error) {
       if (!isCurrentEngine(engine)) return;
-      setEngineStatus("ready");
-      setEngineMessage("Command failed; edit and retry");
+      setEngineStatus(engine.isStopped ? "error" : "ready");
+      setEngineMessage(engine.isStopped ? "Runtime stopped; boot again to keep your SQL edits" : "Command failed; edit and retry");
       appendTerminal("error", error instanceof Error ? error.message : String(error));
     }
   }
@@ -643,7 +652,7 @@ export default function App() {
     if (engineStatus === "booting" || engineStatus === "running") return;
     invalidatePendingRelationQueries();
     setFiles((current) =>
-      current.map((file) => (file.path === path ? { ...file, content, dirty: true } : file)),
+      current.map((file) => (file.path === path ? { ...file, content, dirty: content !== initialProjectFiles[path] } : file)),
     );
     const customerLesson = getLessonSpec("customer-flow");
     const owningCustomerStep = customerLesson.steps?.find((step) =>
@@ -663,6 +672,13 @@ export default function App() {
     setRelations([]);
   }
 
+  function handleFileRestore(path: string) {
+    const original = initialProjectFiles[path];
+    if (typeof original !== "string") return;
+    handleFileChange(path, original);
+    appendTerminal("info", `Restored ${path}. Run the step again to verify it.`);
+  }
+
   async function handleRelationSelect(name: string) {
     if (engineStatus !== "ready") return;
     relationRequestGeneration.current += 1;
@@ -680,7 +696,8 @@ export default function App() {
     const quotedName = `"${relation.name.replaceAll('"', '""')}"`;
     try {
       const startedAt = performance.now();
-      const raw = await engine.query(`select * from ${quotedSchema}.${quotedName} limit 50`);
+      const previewSql = `select * from ${quotedSchema}.${quotedName} limit 50`;
+      const raw = await engine.query(previewSql);
       if (
         !isCurrentEngine(engine) ||
         relationRequestGeneration.current !== requestGeneration
@@ -691,7 +708,9 @@ export default function App() {
         raw,
         `${relation.schema}.${relation.name}`,
         Math.round(performance.now() - startedAt),
+        previewSql,
       );
+      queryResult.truncated = raw.truncated || (relation.rowCount ?? raw.rows.length) > raw.rows.length;
       setLessonSessions((current) => ({
         ...current,
         [lessonId]:
@@ -705,6 +724,10 @@ export default function App() {
         relationRequestGeneration.current !== requestGeneration
       ) {
         return;
+      }
+      if (engine.isStopped) {
+        setEngineStatus("error");
+        setEngineMessage("Runtime stopped; boot again to keep your SQL edits");
       }
       appendTerminal("error", error instanceof Error ? error.message : String(error));
     }
@@ -751,6 +774,7 @@ export default function App() {
       onStepSelect={handleStepSelect}
       onFileSelect={handleFileSelect}
       onFileChange={handleFileChange}
+      onFileRestore={handleFileRestore}
       onRelationSelect={(name) => void handleRelationSelect(name)}
       onTerminalSubmit={handleTerminalSubmit}
     />
