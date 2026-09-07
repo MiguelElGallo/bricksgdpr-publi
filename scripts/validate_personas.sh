@@ -27,11 +27,18 @@ for command_name in databricks jq uuidgen; do
   fi
 done
 
+catalog="${DBT_PROJECT_CATALOG:-bricksgdpr}"
+if [[ ! "$catalog" =~ ^[a-z][a-z0-9_]*$ || -n "${DBT_SCHEMA_PREFIX:-}" ]]; then
+  echo "Persona validation requires a safe catalog identifier and an empty schema prefix." >&2
+  exit 1
+fi
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 profile="$DATABRICKS_CONFIG_PROFILE"
 warehouse_id="$DATABRICKS_WAREHOUSE_ID"
 nonce="$(uuidgen | tr '[:upper:]' '[:lower:]')"
 workspace_dir="/Shared/bricksgdpr-persona-acceptance/${nonce}"
+local_sql_dir=""
 cleanup_done=false
 cleanup_retry_attempts=10
 cleanup_retry_delay_seconds=2
@@ -389,6 +396,7 @@ cleanup_resources() {
 on_exit() {
   local original_status="$1"
   trap - EXIT
+  if [[ -n "$local_sql_dir" ]]; then rm -rf -- "$local_sql_dir"; fi
   trap '' INT TERM HUP
   if [[ "$cleanup_done" != "true" ]] && ! cleanup_resources; then
     echo "Persona acceptance cleanup failed; inspect the named resources immediately." >&2
@@ -518,6 +526,7 @@ negative_specs_for() {
         'deny_layer1:deny_layer1.sql' \
         'deny_quarantine:deny_quarantine.sql' \
         'deny_layer2:deny_layer2.sql' \
+        'deny_layer3:deny_layer3.sql' \
         'deny_priva_map:deny_priva_map.sql' \
         'deny_udf:deny_udf.sql'
       ;;
@@ -692,7 +701,12 @@ for index in 0 1 2; do
 done
 
 databricks workspace mkdirs "$workspace_dir" -p "$profile"
-for sql_file in "${repo_root}"/acceptance/personas/*.sql; do
+local_sql_dir="$(mktemp -d "${TMPDIR:-/tmp}/bricksgdpr-personas.XXXXXX")"
+for template in "${repo_root}"/acceptance/personas/*.sql; do
+  # The catalog is validated above; only qualified relation prefixes are substituted.
+  sed "s/bricksgdpr[.]/${catalog}./g" "$template" > "$local_sql_dir/$(basename "$template")"
+done
+for sql_file in "$local_sql_dir"/*.sql; do
   databricks workspace import "${workspace_dir}/$(basename "$sql_file")" \
     --file "$sql_file" --format RAW --overwrite -p "$profile"
 done

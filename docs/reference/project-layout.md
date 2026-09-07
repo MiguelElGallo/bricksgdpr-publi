@@ -13,7 +13,7 @@ The repository is a dbt project with Databricks deployment and identity helpers.
 | --- | --- |
 | `dbt_project.yml` | Project name, resource paths, variables, model defaults, grants, and tags |
 | `profiles.yml` | Local Databricks OAuth target |
-| `databricks.yml` | Databricks Asset Bundle definition and `dev` target |
+| `databricks.yml` | Databricks Asset Bundle definition and `dev`, `validation`, and `prod` targets |
 | `resources/bricksgdpr.job.yml` | Bundle job and dbt task commands |
 | `pyproject.toml` | Python version, pinned dbt packages, and development tools |
 | `uv.lock` | Locked Python dependency graph |
@@ -25,11 +25,14 @@ The repository is a dbt project with Databricks deployment and identity helpers.
 | `seeds/` | Four deterministic CSV source simulators, one deletion-confirmation control, and metadata |
 | `functions/` | Three dbt-managed Databricks SQL functions |
 | `macros/` | Jinja implementations for layer-model scaffolds, keys, deletion generation, access, schema, and catalog controls |
-| `tests/` | Forty-three singular dbt data tests |
-| `acceptance/personas/` | Three positive and six denial SQL file tasks |
+| `tests/` | Forty-five singular dbt data tests |
+| `acceptance/personas/` | Three positive and seven denial SQL file templates, assigned by persona |
 | `scripts/generate_seeds.py` | Deterministic CSV generator |
 | `scripts/provision_identities.sh` | Persona identity topology preflight and apply operation |
 | `scripts/validate_personas.sh` | Temporary-service-principal persona acceptance runner |
+| `scripts/validate_integration.py` | Private isolated validation with sanitized stage reports |
+| `scripts/validate_recovery.py` | Synthetic Databricks archive/recovery rehearsal with marked-resource cleanup |
+| `acceptance/operations/` | Disposable SQL fixture project for recovery and failure checks |
 | `docs/` | Diataxis documentation source |
 
 ## Model paths
@@ -81,3 +84,6 @@ membership predicates, `left anti join`, `count_if`, `max_by`, `explode(sequence
 information-schema relations.
 
 **Sources:** `dbt_project.yml`, `.gitignore`, `models/`, `functions/`, `macros/`, `tests/`.
+
+See [Deletion operations and recovery](deletion-operations.md) for durable control archives, execution states,
+isolated private validation, and recovery rehearsal.

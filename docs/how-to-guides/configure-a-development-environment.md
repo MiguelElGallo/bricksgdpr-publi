@@ -117,3 +117,8 @@ credential-free offline validation; configure that boundary in
 
 Consult [Project configuration](../reference/configuration.md) for every environment variable,
 storage boundary, and default.
+
+Direct `dbt debug` can use the adapter's own browser OAuth flow, separate from a working CLI login.
+The [private validation runner](../reference/deletion-operations.md) uses the selected CLI session
+without persisting its short-lived access token. Configure `DBT_EVIDENCE_CATALOG` as well as the
+analytical catalog before bootstrapping durable evidence.

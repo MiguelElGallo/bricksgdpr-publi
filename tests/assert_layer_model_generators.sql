@@ -82,7 +82,7 @@
                 'personal_data_state': 'RAW'
             },
             'column_mask': {
-                'function': "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}.priva_internal.mask_priva_map_value",
+                'function': "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}.priva_internal.mask_priva_map_value",
                 'using_columns': 'order_key'
             }
         }

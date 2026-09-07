@@ -1,6 +1,6 @@
 {% macro apply_access_controls() %}
   {% if execute %}
-    {% set catalog = adapter.quote(env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) %}
+    {% set catalog = adapter.quote(var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr'))) %}
     {% set prefix = var('schema_prefix', '') | trim %}
     {% set privacy = '`privacy_admins`' %}
     {% set restricted = '`restricted_users`' %}
@@ -119,5 +119,6 @@
         ~ ' from ' ~ restricted
       ) %}
     {% endfor %}
+    {% do apply_deletion_evidence_access() %}
   {% endif %}
 {% endmacro %}

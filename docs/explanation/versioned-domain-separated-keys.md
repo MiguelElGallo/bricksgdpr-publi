@@ -19,10 +19,12 @@ v1:<sha256 digest>
 Stable matching is impossible if equivalent input is formatted differently. Before hashing, the
 macros normalize values by kind:
 
-- SSNs and phone numbers keep digits only;
+- synthetic SSNs accept nine digits or `XXX-XX-XXXX`, then remove the separators;
+- phone numbers require an explicit international `+` prefix and 7–15 digits; permitted display
+  separators are removed; letters and ambiguous local numbers fail before hashing;
 - dates use ISO `YYYY-MM-DD`;
 - other text is trimmed, lowercased, and has repeated whitespace collapsed;
-- an empty normalized value becomes `null`.
+- empty normalized text becomes `null`; empty SSNs/phones fail validation, while explicit nulls remain null.
 
 Composed addresses and full names are assembled in a fixed order before this normalization.
 

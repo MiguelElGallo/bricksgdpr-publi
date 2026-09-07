@@ -62,3 +62,6 @@ If the change affects grants, masks, or case access, also follow
 [Reconcile access controls](reconcile-access-controls.md).
 
 Consult [Tests and selectors](../reference/tests-and-selectors.md) for the full selector contract.
+
+See [Deletion operations and recovery](../reference/deletion-operations.md) for durable control archives, execution states,
+isolated private validation, and recovery rehearsal.

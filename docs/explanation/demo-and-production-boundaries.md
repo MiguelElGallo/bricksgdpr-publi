@@ -35,17 +35,16 @@ and recovery procedures.
 
 ## The deployment target assumes one trusted operator
 
-The checked-in `dev` bundle target writes the canonical demo catalog. It deploys one unscheduled,
-UI-locked job beneath the deployer's private bundle path and runs as the deployer. A shared
-production deployment needs an explicit service principal, centrally owned job or isolated
-catalogs, separation of duties, and monitored scheduling.
+The `dev` bundle target runs as its deployer. `validation` and `prod` require an explicit
+service-principal Run As identity and use distinct catalog defaults. Every target is unscheduled.
+Use distinct catalog pairs for concurrent deployers; configure failure recipients and provision
+the identity before deployment. These settings do not themselves establish separation of duties.
 
 ## Configuration has intentional sharp edges
 
 dbt can prefix the data schemas and target another catalog, while functions remain in the fixed
-`priva_internal` schema. However, the persona SQL files currently hardcode the canonical
-`bricksgdpr` catalog and unprefixed schemas. Automated persona acceptance therefore supports only
-that canonical layout unless the SQL and runner are parameterized.
+`priva_internal` schema. Persona acceptance now renders the reviewed catalog into temporary SQL
+files, but still requires unprefixed schemas. Isolate complete acceptance runs by catalog.
 
 The `as_of_date` is also a fixed demo clock, and the date dimension has configured 2025–2028
 bounds. Production logic needs an explicit policy for business time and calendar extension.

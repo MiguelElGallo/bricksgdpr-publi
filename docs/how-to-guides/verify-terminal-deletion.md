@@ -24,15 +24,17 @@ relations.
 ## 2. Build the canonical final state
 
 ```bash
-uv run dbt build --full-refresh --exclude tag:access_control
+uv run dbt run-operation bootstrap_project_catalog
+uv run dbt build --select '*' --exclude tag:access_control
 uv run dbt run-operation apply_access_controls
 uv run dbt test --select tag:access_control
 uv run dbt build --select '*'
 ```
 
 !!! warning
-    `--full-refresh` replaces current demo relations and reconstructs the incremental control
-    ledgers. Production decision/audit history must live in a durable append-only control system.
+    Full refresh cannot reset the three durable controls. Evidence is archived outside the model
+    graph. Use the [operations workflow](../reference/deletion-operations.md) for tracked execution
+    and recovery; the manual commands here verify the fixture without a shared execution ID.
 
 ## 3. Check the authorization states
 

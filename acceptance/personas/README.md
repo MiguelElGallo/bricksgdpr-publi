@@ -13,7 +13,13 @@ membership fails.
 | --- | --- | --- |
 | `privacy_admins` | `privacy_admin.sql` | `deny_udf.sql` |
 | `restricted_users` | `restricted_user.sql` | `deny_layer1.sql`, `deny_quarantine.sql`, `deny_layer3_case.sql`, `deny_udf.sql` |
-| `case_users` | `case_user.sql` | `deny_layer1.sql`, `deny_quarantine.sql`, `deny_layer2.sql`, `deny_priva_map.sql`, `deny_udf.sql` |
+| `case_users` | `case_user.sql` | `deny_layer1.sql`, `deny_quarantine.sql`, `deny_layer2.sql`, `deny_layer3.sql`, `deny_priva_map.sql`, `deny_udf.sql` |
+
+The privacy positive check derives excluded source identities from terminal-admitted deletions
+and their historical identifiers. A detected but unconfirmed DELETE remains eligible. Its
+case-view grain comparisons exclude the erased member `-99999` from protected parents.
+The case positive file reads only authorized case views; direct protected Layer3 access is tested
+separately by `deny_layer3.sql` and must fail.
 
 Create one separate one-time run per persona and put that persona's independent tasks in the run
 with no dependencies. Each parent run is expected to be failed because negative tasks intentionally
@@ -41,3 +47,8 @@ Primary Databricks references:
 - [SQL file tasks](https://docs.databricks.com/aws/en/jobs/tasks/sql)
 - [Service Principal User role](https://docs.databricks.com/aws/en/security/auth/access-control/service-principal-acl)
 - [Email sign-in and verification](https://docs.databricks.com/aws/en/security/auth/email-login)
+
+The SQL files are templates. The runner validates `DBT_PROJECT_CATALOG`, substitutes only the
+`bricksgdpr.` relation prefix in temporary copies, and removes those copies on exit. Schema prefixes
+remain unsupported. Use the [private integration workflow](../../docs/reference/deletion-operations.md)
+to validate an isolated catalog and retain a sanitized stage summary.

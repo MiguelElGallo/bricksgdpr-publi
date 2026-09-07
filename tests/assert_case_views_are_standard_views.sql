@@ -26,7 +26,7 @@ actual_relations as (
         and tables.table_schema = views.table_schema
         and tables.table_name = views.table_name
     where
-        tables.table_catalog = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
+        tables.table_catalog = '{{ var("project_catalog", env_var("DBT_PROJECT_CATALOG", "bricksgdpr")) }}'
         and tables.table_schema = '{{ case_schema }}'
         and tables.table_name in (
             'case_dim_customer',

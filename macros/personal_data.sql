@@ -36,9 +36,20 @@
 {% macro canonicalize_personal_data(value_expression, kind='text') -%}
   {%- set normalized_kind = _validate_personal_data_kind(kind) -%}
   {%- if normalized_kind == 'ssn' -%}
-    nullif(regexp_replace(trim(cast({{ value_expression }} as string)), '[^0-9]', ''), '')
+    case
+      when {{ value_expression }} is null then null
+      when trim(cast({{ value_expression }} as string)) rlike '^([0-9]{9}|[0-9]{3}-[0-9]{2}-[0-9]{4})$'
+        then regexp_replace(trim(cast({{ value_expression }} as string)), '-', '')
+      else raise_error('Invalid synthetic SSN: expected nine digits or XXX-XX-XXXX')
+    end
   {%- elif normalized_kind == 'phone' -%}
-    nullif(regexp_replace(trim(cast({{ value_expression }} as string)), '[^0-9]', ''), '')
+    case
+      when {{ value_expression }} is null then null
+      when trim(cast({{ value_expression }} as string)) rlike '^[+][1-9][0-9 ()-]*$'
+        and length(regexp_replace(cast({{ value_expression }} as string), '[^0-9]', '')) between 7 and 15
+        then regexp_replace(cast({{ value_expression }} as string), '[^0-9]', '')
+      else raise_error('Invalid phone: supply an explicit international + prefix and 7-15 digits')
+    end
   {%- elif normalized_kind == 'date' -%}
     date_format(cast({{ value_expression }} as date), 'yyyy-MM-dd')
   {%- else -%}

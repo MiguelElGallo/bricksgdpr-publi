@@ -4,7 +4,7 @@ with catalog_violations as (
     select 'catalog' as object_type, grantee, privilege_type, catalog_name as object_name
     from system.information_schema.catalog_privileges
     where
-        catalog_name = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
+        catalog_name = '{{ var("project_catalog", env_var("DBT_PROJECT_CATALOG", "bricksgdpr")) }}'
         and grantee not in ('privacy_admins', 'restricted_users', 'case_users', current_user())
 ),
 
@@ -12,7 +12,7 @@ schema_violations as (
     select 'schema' as object_type, grantee, privilege_type, schema_name as object_name
     from system.information_schema.schema_privileges
     where
-        catalog_name = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
+        catalog_name = '{{ var("project_catalog", env_var("DBT_PROJECT_CATALOG", "bricksgdpr")) }}'
         and grantee not in ('privacy_admins', 'restricted_users', 'case_users', current_user())
         and not (
             grantee = 'account users'
@@ -29,7 +29,7 @@ relation_violations as (
         concat(table_schema, '.', table_name) as object_name
     from system.information_schema.table_privileges
     where
-        table_catalog = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
+        table_catalog = '{{ var("project_catalog", env_var("DBT_PROJECT_CATALOG", "bricksgdpr")) }}'
         and grantee not in ('privacy_admins', 'restricted_users', 'case_users', current_user())
         and not (
             grantee = 'account users'
@@ -46,7 +46,7 @@ routine_violations as (
         concat(specific_schema, '.', specific_name) as object_name
     from system.information_schema.routine_privileges
     where
-        specific_catalog = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
+        specific_catalog = '{{ var("project_catalog", env_var("DBT_PROJECT_CATALOG", "bricksgdpr")) }}'
         and grantee not in ('privacy_admins', 'restricted_users', 'case_users', current_user())
 )
 

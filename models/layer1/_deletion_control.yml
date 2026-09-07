@@ -61,8 +61,8 @@ models:
   - name: customer_deletion_authorization_history
     description: >
       Evaluated privacy decision history at one row per revision. It preserves every authorized
-      SPECIAL and FULL governed-output policy so a full refresh can reconstruct initial admission
-      and later monotonic escalation.
+      SPECIAL and FULL governed-output policy in the current input. A post-hook archives evaluated
+      rows outside the model graph for retained decision evidence.
     config:
       contract:
         enforced: true
@@ -96,8 +96,8 @@ models:
     description: >
       Persisted detection ledger at one row per source DELETE change. Incremental merge retains a
       detected request across ordinary dbt runs even if the replay window later moves; a deliberate
-      full refresh rebuilds this demo ledger and is not equivalent to a production append-only case
-      system.
+      full refresh is disabled, and post-hooks archive rows outside the model graph. Missing archived
+      keys block subsequent builds.
     config:
       contract:
         enforced: true

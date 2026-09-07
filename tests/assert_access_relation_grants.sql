@@ -65,7 +65,7 @@ actual_grants as (
     select distinct grantee, table_schema, table_name
     from system.information_schema.table_privileges
     where
-        table_catalog = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
+        table_catalog = '{{ var("project_catalog", env_var("DBT_PROJECT_CATALOG", "bricksgdpr")) }}'
         and privilege_type = 'SELECT'
         and grantee in ('{{ privacy }}', '{{ restricted }}', '{{ case_users }}')
         and table_schema in (
@@ -99,7 +99,7 @@ unexpected_relation_privileges as (
         false as is_missing
     from system.information_schema.table_privileges
     where
-        table_catalog = '{{ env_var("DBT_PROJECT_CATALOG", "bricksgdpr") }}'
+        table_catalog = '{{ var("project_catalog", env_var("DBT_PROJECT_CATALOG", "bricksgdpr")) }}'
         and grantee in ('{{ privacy }}', '{{ restricted }}', '{{ case_users }}')
         and privilege_type != 'SELECT'
         and table_schema in (

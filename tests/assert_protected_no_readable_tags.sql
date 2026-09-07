@@ -13,7 +13,7 @@
 {% set schema_prefix = var('schema_prefix', '') | trim %}
 {% set layer2_schema = schema_prefix ~ '_layer2' if schema_prefix else 'layer2' %}
 {% set layer3_schema = schema_prefix ~ '_layer3' if schema_prefix else 'layer3' %}
-{% set project_catalog = env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') %}
+{% set project_catalog = var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) %}
 
 select schema_name, table_name, column_name, tag_value as personal_data_state
 from {{ project_catalog }}.information_schema.column_tags

@@ -2,34 +2,100 @@ resources:
   jobs:
     bricksgdpr_dbt_workflow:
       name: bricksgdpr_dbt_workflow
-      description: Builds and validates the GDPR Personal Data demo with dbt.
+      description: Build governed outputs, preserve deletion evidence, reconcile access, and verify completion.
       max_concurrent_runs: 1
       timeout_seconds: 3600
-
       tasks:
-        - task_key: build_and_validate
-          description: Build every governed layer, enforce access controls, and run the full dbt test suite.
-          environment_key: dbt_environment
-          timeout_seconds: 3600
-          max_retries: 0
-          retry_on_timeout: false
-          dbt_task:
-            source: WORKSPACE
-            project_directory: ../
-            warehouse_id: ${var.warehouse_id}
-            catalog: workspace
-            schema: default
-            commands:
-              - dbt run-operation bootstrap_project_catalog
-              - dbt build --exclude tag:access_control
-              - dbt run-operation apply_access_controls
-              - dbt test --select tag:access_control
-              - dbt build
-
+      - task_key: prepare_controls
+        environment_key: dbt_environment
+        timeout_seconds: 3600
+        max_retries: 0
+        disable_auto_optimization: true
+        retry_on_timeout: false
+        dbt_task:
+          source: WORKSPACE
+          project_directory: ../
+          warehouse_id: ${var.warehouse_id}
+          catalog: ${var.control_catalog}
+          schema: default
+          commands:
+          - dbt run-operation bootstrap_project_catalog --vars '{"project_catalog":"${var.project_catalog}","evidence_catalog":"${var.evidence_catalog}","deletion_execution_id":"{{job.run_id}}"}'
+          - dbt build --warn-error-options '{"error":["NoNodesForSelectionCriteria"]}' --select +int_terminal_deleted_customer_keys --indirect-selection cautious --exclude tag:access_control --vars '{"project_catalog":"${var.project_catalog}","evidence_catalog":"${var.evidence_catalog}","deletion_execution_id":"{{job.run_id}}"}'
+          - dbt run-operation begin_deletion_execution --vars '{"project_catalog":"${var.project_catalog}","evidence_catalog":"${var.evidence_catalog}","deletion_execution_id":"{{job.run_id}}"}'
+      - task_key: build_outputs
+        environment_key: dbt_environment
+        timeout_seconds: 3600
+        max_retries: 0
+        disable_auto_optimization: true
+        retry_on_timeout: false
+        dbt_task:
+          source: WORKSPACE
+          project_directory: ../
+          warehouse_id: ${var.warehouse_id}
+          catalog: ${var.control_catalog}
+          schema: default
+          commands:
+          - dbt build --warn-error-options '{"error":["NoNodesForSelectionCriteria"]}' --select "*" --exclude tag:access_control --vars '{"project_catalog":"${var.project_catalog}","evidence_catalog":"${var.evidence_catalog}","deletion_execution_id":"{{job.run_id}}","track_deletion_execution":true}'
+        depends_on:
+        - task_key: prepare_controls
+      - task_key: access_controls
+        environment_key: dbt_environment
+        timeout_seconds: 3600
+        max_retries: 0
+        disable_auto_optimization: true
+        retry_on_timeout: false
+        dbt_task:
+          source: WORKSPACE
+          project_directory: ../
+          warehouse_id: ${var.warehouse_id}
+          catalog: ${var.control_catalog}
+          schema: default
+          commands:
+          - dbt run-operation apply_access_controls --vars '{"project_catalog":"${var.project_catalog}","evidence_catalog":"${var.evidence_catalog}","deletion_execution_id":"{{job.run_id}}"}'
+        depends_on:
+        - task_key: build_outputs
+      - task_key: verify
+        environment_key: dbt_environment
+        timeout_seconds: 3600
+        max_retries: 0
+        disable_auto_optimization: true
+        retry_on_timeout: false
+        dbt_task:
+          source: WORKSPACE
+          project_directory: ../
+          warehouse_id: ${var.warehouse_id}
+          catalog: ${var.control_catalog}
+          schema: default
+          commands:
+          - dbt test --warn-error-options '{"error":["NoNodesForSelectionCriteria"]}' --select "*" --vars '{"project_catalog":"${var.project_catalog}","evidence_catalog":"${var.evidence_catalog}","deletion_execution_id":"{{job.run_id}}","track_deletion_execution":true}'
+        depends_on:
+        - task_key: access_controls
+      - task_key: record_failure
+        environment_key: dbt_environment
+        timeout_seconds: 3600
+        max_retries: 0
+        disable_auto_optimization: true
+        retry_on_timeout: false
+        dbt_task:
+          source: WORKSPACE
+          project_directory: ../
+          warehouse_id: ${var.warehouse_id}
+          catalog: ${var.control_catalog}
+          schema: default
+          commands:
+          - dbt run-operation record_deletion_failure_and_raise --vars '{"project_catalog":"${var.project_catalog}","evidence_catalog":"${var.evidence_catalog}","deletion_execution_id":"{{job.run_id}}"}'
+        depends_on:
+        - task_key: prepare_controls
+        - task_key: build_outputs
+        - task_key: access_controls
+        - task_key: verify
+        run_if: AT_LEAST_ONE_FAILED
       environments:
-        - environment_key: dbt_environment
-          spec:
-            environment_version: "4"
-            dependencies:
-              - dbt-core==1.11.12
-              - dbt-databricks==1.12.2
+      - environment_key: dbt_environment
+        spec:
+          environment_version: '4'
+          dependencies:
+          - dbt-core==1.11.12
+          - dbt-databricks==1.12.2
+      email_notifications:
+        on_failure: ${var.failure_recipients}

@@ -37,12 +37,12 @@ upserts cannot restore a key retained by the incremental authorized plan.
 
 The table retains initial and effective decision revision, request, mode, policy, and timestamps.
 Newer same-mode evidence advances the effective fields, SPECIAL can escalate to FULL, and ordinary
-incremental runs never downgrade or remove an admitted key. A deliberate `--full-refresh` can
-still rebuild this demo ledger.
+incremental runs never downgrade or remove an admitted key. `full_refresh: false` also prevents
+the CLI full-refresh flag from rebuilding this ledger.
 
 Admission is not atomic completion evidence: downstream relations build afterward, and one may
-fail while others succeed. The full build result and post-build tests are the demo's completion
-evidence.
+fail while others succeed. The [operations workflow](deletion-operations.md) records target
+completion and only records verification after the required tests and current-plan completion checks.
 
 ## Event classifier
 

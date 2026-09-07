@@ -89,3 +89,6 @@ pretend universal procedure for physical erasure.
     pseudonymization wrapper. Ordinary persona sessions are intentionally denied those privileges.
     A case-view check must be performed separately through an authorized aggregate query or by a
     trusted owner session that can execute the dbt test.
+
+See [Deletion operations and recovery](../reference/deletion-operations.md) for durable control archives, execution states,
+isolated private validation, and recovery rehearsal.

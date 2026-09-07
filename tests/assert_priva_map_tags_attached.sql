@@ -4,7 +4,7 @@
 {% do ref('fa_pd_service_address') %}
 {% set schema_prefix = var('schema_prefix', '') | trim %}
 {% set priva_map_schema = schema_prefix ~ '_priva_map' if schema_prefix else 'priva_map' %}
-{% set project_catalog = env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') %}
+{% set project_catalog = var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) %}
 
 with expected_columns as (
     select *

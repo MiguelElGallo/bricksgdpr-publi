@@ -50,3 +50,6 @@ ignored `.env` and CLI-managed OAuth profile.
 
 The separate `Publication safety` workflow scans the checked-out tree and reachable Git history.
 Its output contains rule names and source locations only, never matched values.
+
+See [Deletion operations and recovery](../reference/deletion-operations.md) for durable control archives, execution states,
+isolated private validation, and recovery rehearsal.

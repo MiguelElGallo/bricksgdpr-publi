@@ -44,10 +44,12 @@ change of identifier cannot evade deletion.
 
 ## Build state 1: detected but not authorized
 
-Use an isolated prefix. The cutoff is one second before the first decision.
+Use a new, previously unused prefix for each walkthrough. The cutoff is one second before the
+first decision. Reusing a prefix preserves its terminal controls even with full refresh.
 
 ```bash
-export DBT_SCHEMA_PREFIX=deletion_walkthrough
+export DBT_SCHEMA_PREFIX="deletion_walkthrough_$(date +%Y%m%d%H%M%S)"
+uv run dbt run-operation bootstrap_project_catalog
 
 uv run dbt seed --full-refresh \
   --vars '{deletion_decision_as_of: "2026-02-16 07:59:59"}'
@@ -268,8 +270,9 @@ uv run dbt test --select assert_layer3_deletion_walkthrough_fixture \
 ```
 
 Both keys remain FULL, their initial mode remains SPECIAL, and the final Layer3 totals do not
-revert. A deliberate `--full-refresh` is a demo rebuild and is not the production durability
-mechanism.
+revert. The three durable controls also resist `--full-refresh`. Start a fresh walkthrough in a new
+isolated prefix; never delete ledger rows to reset a retained identity. See
+[Deletion operations and recovery](../reference/deletion-operations.md).
 
 ## Query the summary yourself
 

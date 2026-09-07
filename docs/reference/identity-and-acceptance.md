@@ -69,10 +69,16 @@ deliberately blank in `.env.example`; exact values belong only in the ignored lo
 | --- | --- | --- |
 | `privacy_admins` | `privacy_admin.sql` | `deny_udf.sql` |
 | `restricted_users` | `restricted_user.sql` | `deny_layer1.sql`, `deny_quarantine.sql`, `deny_layer3_case.sql`, `deny_udf.sql` |
-| `case_users` | `case_user.sql` | `deny_layer1.sql`, `deny_quarantine.sql`, `deny_layer2.sql`, `deny_priva_map.sql`, `deny_udf.sql` |
+| `case_users` | `case_user.sql` | `deny_layer1.sql`, `deny_quarantine.sql`, `deny_layer2.sql`, `deny_layer3.sql`, `deny_priva_map.sql`, `deny_udf.sql` |
 
 Positive files assert the exact `session_user()`, a mutually exclusive persona-group vector,
 non-admin state, and aggregate access properties. They do not return readable Personal Data.
+
+The privacy check excludes terminal-admitted identities and their historical identifiers when
+deriving expected current source rows; detected but unconfirmed deletions remain eligible.
+It compares case-view grain with protected parents after excluding the erased member `-99999`.
+The case positive check reads case views only. Its separate Layer3 denial check verifies that
+the case persona cannot query protected parent tables directly.
 
 Negative files each contain one prohibited query.
 
@@ -108,14 +114,15 @@ observations at two-second intervals and requires two consecutive absent observa
 ## Namespace restriction
 
 Persona SQL contains literal `bricksgdpr.layer1`, `bricksgdpr.priva_map`, `bricksgdpr.layer2`,
-`bricksgdpr.layer3`, `bricksgdpr.layer3_case`, and `bricksgdpr.priva_internal` names. The runner
-does not substitute the catalog or schema prefix.
+`bricksgdpr.layer3`, `bricksgdpr.layer3_case`, and `bricksgdpr.priva_internal` names as templates.
+The runner substitutes the reviewed catalog in temporary files and removes them during cleanup.
+It does not substitute a schema prefix.
 
 Persona validation therefore supports only:
 
 | Setting | Required value |
 | --- | --- |
-| `DBT_PROJECT_CATALOG` | `bricksgdpr` |
+| `DBT_PROJECT_CATALOG` | Reviewed catalog matching `[a-z][a-z0-9_]*` |
 | `DBT_SCHEMA_PREFIX` | Empty |
 
 ## Acceptance limits

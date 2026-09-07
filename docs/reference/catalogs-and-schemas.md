@@ -5,18 +5,20 @@ icon: lucide/database
 
 # Catalogs and schemas
 
-The default deployment uses one governed catalog and seven schemas.
+The deployment uses an analytical catalog with seven schemas and a separate evidence catalog
+with a `deletion_control` schema. The connection-default catalog is configured independently.
 
 ## Catalogs
 
 | Configuration | Default | Use |
 | --- | --- | --- |
-| `DBT_PROJECT_CATALOG` | `bricksgdpr` | Database/catalog for all project seeds, functions, and models |
+| `project_catalog` / `DBT_PROJECT_CATALOG` | `bricksgdpr` locally; target-specific in bundle | Analytical catalog; dbt variable takes precedence |
+| `evidence_catalog` / `DBT_EVIDENCE_CATALOG` | Analytical name + `_evidence` | Separate append-only evidence; dbt variable takes precedence |
 | `DBT_CONTROL_CATALOG` | `workspace` | Local dbt connection-default catalog |
-| Bundle dbt task `catalog` | `workspace` | Run-scoped connection-default catalog for the job |
+| Bundle `control_catalog` | `workspace` | Run-scoped connection-default catalog for the job |
 
-`bootstrap_project_catalog()` creates only the governed project catalog. Schemas are created by dbt
-as resources are materialized.
+`bootstrap_project_catalog()` creates the analytical and evidence catalogs, the evidence schema,
+and its two append-only tables. Analytical schemas are created by dbt as resources materialize.
 
 ## Schemas
 
@@ -56,9 +58,10 @@ Persona acceptance SQL does not follow prefixed schema names. It supports only t
 
 | Resource class | Catalog rule | Schema rule |
 | --- | --- | --- |
-| Seeds | `DBT_PROJECT_CATALOG` | `layer1_source`, with optional prefix |
-| Models | `DBT_PROJECT_CATALOG` | Folder-level schema, with optional prefix |
-| Functions | `DBT_PROJECT_CATALOG` | Fixed `priva_internal` |
+| Seeds | `project_catalog` variable, then `DBT_PROJECT_CATALOG` | `layer1_source`, with optional prefix |
+| Models | `project_catalog` variable, then `DBT_PROJECT_CATALOG` | Folder-level schema, with optional prefix |
+| Functions | `project_catalog` variable, then `DBT_PROJECT_CATALOG` | Fixed `priva_internal` |
+| Evidence tables | `evidence_catalog` variable, then `DBT_EVIDENCE_CATALOG`, then analytical name + `_evidence` | Fixed `deletion_control` in separate catalog |
 | Local dbt scratch/default context | `DBT_CONTROL_CATALOG` | `DBT_CONTROL_SCHEMA` |
 
 ## Parent privilege contract
@@ -74,3 +77,6 @@ boundary also depends on account-group nesting and caller metadata visibility.
 
 **Sources:** `dbt_project.yml:29-73`, `macros/generate_schema_name.sql`,
 `macros/apply_access_controls.sql`, `tests/assert_access_parent_privileges.sql`.
+
+See [Deletion operations and recovery](deletion-operations.md) for durable control archives, execution states,
+isolated private validation, and recovery rehearsal.

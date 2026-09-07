@@ -74,3 +74,6 @@ The right interpretation is **bounded evidence**, not a blanket security proof.
 
 See [Tests and selectors](../reference/tests-and-selectors.md) for the complete inventory and
 [Identity and acceptance](../reference/identity-and-acceptance.md) for the task-state matrix.
+
+See [Deletion operations and recovery](../reference/deletion-operations.md) for durable control archives, execution states,
+isolated private validation, and recovery rehearsal.

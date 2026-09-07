@@ -204,7 +204,7 @@ Every readable Personal Data column in a MAPPING scaffold must carry its Unity C
     personal_data_category: NATIONAL_IDENTIFIER
     personal_data_state: RAW
   column_mask:
-    function: "{{ env_var('DBT_PROJECT_CATALOG', 'bricksgdpr') }}.priva_internal.mask_priva_map_value"
+    function: "{{ var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) }}.priva_internal.mask_priva_map_value"
     using_columns: customer_key
 ```
 
@@ -350,3 +350,21 @@ measures, dates, joins, authorization scope, or other model-specific business ru
 
 **Implementation and argument metadata:** `macros/customer_deletion_generators.sql` and
 `macros/customer_deletion_generators.yml`.
+
+See [Deletion operations and recovery](deletion-operations.md) for durable control archives, execution states,
+isolated private validation, and recovery rehearsal.
+
+## Operational macros
+
+The [operations reference](deletion-operations.md) owns the evidence schema and recovery contract.
+`bootstrap_project_catalog()` creates analytical/evidence catalogs; `begin_deletion_execution()`
+records pending targets; `restore_deletion_control(model_name)` restores only a missing durable
+control from reviewed archived evidence. `record_deletion_failure()` records a workflow failure;
+the bundle-only `record_deletion_failure_and_raise()` then fails deliberately so the parent job
+retains a failed status and notification eligibility. Archive, guard, digest, and results macros
+are internal hooks. Do not call `append_deletion_event` manually to claim verification.
+
+The `on-run-end` hook in `dbt_project.yml` assigns `ref('int_customer_deletion_plan')` to a Jinja
+variable unconditionally before calling `record_deletion_results`. This makes the dependency
+visible during parsing without emitting a standalone SQL comment or querying the plan when
+execution tracking is disabled.

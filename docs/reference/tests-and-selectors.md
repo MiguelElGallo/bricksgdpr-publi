@@ -5,7 +5,7 @@ icon: lucide/test-tube-2
 
 # Tests and selectors
 
-The project contains 336 data tests and 7 unit tests.
+The project contains 338 data tests and 7 unit tests.
 
 ## Test counts
 
@@ -16,10 +16,10 @@ The project contains 336 data tests and 7 unit tests.
 | `relationships` generic data tests | 14 | Model YAML files |
 | `accepted_values` generic data tests | 22 | Model YAML files |
 | Generated deletion-contract data tests | 5 | Model YAML files and generator macro |
-| Singular data tests | 43 | `tests/*.sql` |
+| Singular data tests | 45 | `tests/*.sql` |
 | Unit tests | 7 | Deletion-control, erased-fact, invoice-quality, and service-resolution model YAML files |
-| **Total data tests** | **336** | Generic plus singular |
-| **Total including unit tests** | **343** | Data tests plus unit tests |
+| **Total data tests** | **338** | Generic plus singular |
+| **Total including unit tests** | **345** | Data tests plus unit tests |
 
 The count does not include positive/negative persona SQL tasks under `acceptance/personas/`; those
 are external acceptance checks, not dbt test nodes.
@@ -166,3 +166,12 @@ Other classification tags include `gdpr`, `personal_data`, `non_personal_data`, 
 | `--exclude tag:access_control` | Removes live access tests from the selected graph |
 
 No `selectors.yml` file or named selector is defined.
+
+See [Deletion operations and recovery](deletion-operations.md) for durable control archives, execution states,
+isolated private validation, and recovery rehearsal.
+
+`assert_identity_normalization` checks valid fixture equivalence and null preservation.
+`assert_deletion_evidence_access` is an access-control test for consumer and ambient grants on the
+separate evidence catalog. `scripts/tests` covers validation isolation and artifact redaction;
+`uv run --locked python -m unittest discover -s scripts/tests -v` runs those offline checks.
+The separate `validate_recovery.py --apply` rehearsal covers real Databricks recovery mechanics.

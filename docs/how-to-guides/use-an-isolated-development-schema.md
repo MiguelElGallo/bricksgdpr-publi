@@ -61,7 +61,7 @@ dbt writes the selected data relations into the prefixed schemas.
     isolation mechanism.
 
     The temporary-principal persona validator is also unavailable for this prefixed build. Its SQL
-    files hardcode the canonical `bricksgdpr` catalog and unprefixed schemas.
+    templates are rendered for the reviewed catalog, but require unprefixed schemas.
 
 ## Return the shell to the default
 
