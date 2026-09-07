@@ -21,12 +21,14 @@ export class BrowserDbtEngine {
   private pending = new Map<number, PendingCall>();
   private nextId = 1;
   private assetBase: URL;
+  private stoppedError: Error | null = null;
 
   constructor(private options: EngineClientOptions) {
     this.assetBase = new URL(import.meta.env.BASE_URL, window.location.href);
     this.worker = new Worker(new URL("dbt-worker.js", this.assetBase));
     this.worker.addEventListener("message", this.handleMessage);
     this.worker.addEventListener("error", this.handleWorkerError);
+    this.worker.addEventListener("messageerror", this.handleMessageError);
   }
 
   boot(): Promise<RuntimeInfo> {
@@ -47,16 +49,27 @@ export class BrowserDbtEngine {
     return this.call("catalog", {});
   }
 
+  get isStopped(): boolean {
+    return this.stoppedError !== null;
+  }
+
   terminate() {
+    this.stop(new Error("The browser dbt engine was reset"));
+  }
+
+  private stop(error: Error) {
+    if (this.stoppedError) return;
+    this.stoppedError = error;
     this.worker.terminate();
     this.worker.removeEventListener("message", this.handleMessage);
     this.worker.removeEventListener("error", this.handleWorkerError);
-    const error = new Error("The browser dbt engine was reset");
+    this.worker.removeEventListener("messageerror", this.handleMessageError);
     for (const call of this.pending.values()) call.reject(error);
     this.pending.clear();
   }
 
   private call<T>(type: string, payload: unknown): Promise<T> {
+    if (this.stoppedError) return Promise.reject(this.stoppedError);
     const id = this.nextId;
     this.nextId += 1;
     return new Promise<T>((resolve, reject) => {
@@ -64,7 +77,12 @@ export class BrowserDbtEngine {
         resolve: resolve as (value: unknown) => void,
         reject,
       });
-      this.worker.postMessage({ id, type, payload });
+      try {
+        this.worker.postMessage({ id, type, payload });
+      } catch (error) {
+        this.pending.delete(id);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
     });
   }
 
@@ -88,8 +106,10 @@ export class BrowserDbtEngine {
   };
 
   private handleWorkerError = (event: ErrorEvent) => {
-    const error = new Error(event.message || "The browser dbt worker stopped unexpectedly");
-    for (const call of this.pending.values()) call.reject(error);
-    this.pending.clear();
+    this.stop(new Error(event.message || "The browser dbt worker stopped unexpectedly"));
+  };
+
+  private handleMessageError = () => {
+    this.stop(new Error("The browser dbt worker returned an unreadable response. Reset the lab to retry."));
   };
 }

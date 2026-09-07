@@ -11,11 +11,18 @@ export interface LessonTask {
   status: TaskStatus;
 }
 
+export interface LessonExperiment {
+  prompt: string;
+  hint: string;
+  explanation: string;
+}
+
 export interface LessonGuideStep {
   id: string;
   number: number;
   total: number;
   title: string;
+  experiment?: LessonExperiment;
   buildsOn: string;
   why: string;
   change: string;
@@ -34,6 +41,7 @@ export interface LessonDefinition {
   duration: string;
   tasks: LessonTask[];
   guideSteps?: LessonGuideStep[];
+  experiment?: LessonExperiment;
 }
 
 export interface LessonOption {
@@ -84,6 +92,9 @@ export interface QueryResult {
   rowCount: number;
   elapsedMs?: number;
   label?: string;
+  sql?: string;
+  truncated?: boolean;
+  verification?: "passed" | "failed";
 }
 
 export type TerminalEntryTone = "command" | "info" | "success" | "error";
@@ -124,6 +135,7 @@ export interface TutorialWorkspaceProps {
   onStepSelect: (stepId: string) => void;
   onFileSelect: (path: string) => void;
   onFileChange: (path: string, content: string) => void;
+  onFileRestore?: (path: string) => void;
   onRelationSelect: (name: string) => void;
   onTerminalSubmit: (command: string) => void;
 }

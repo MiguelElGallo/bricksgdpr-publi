@@ -2,6 +2,14 @@ import { describe, expect, it } from "vitest";
 import { parseDbtCommand } from "./command";
 
 describe("parseDbtCommand", () => {
+  it.each(["0", "-1", "1.5", "9007199254740992"])("rejects invalid row limit %s", (limit) => {
+    expect(() => parseDbtCommand(`dbt show --limit ${limit}`)).toThrow();
+  });
+
+  it("does not consume a short flag as another flag's value", () => {
+    expect(() => parseDbtCommand("dbt build --select -s model")).toThrow("requires a value");
+  });
+
   it("accepts the invoice lesson's cautious indirect selection", () => {
     expect(
       parseDbtCommand(

@@ -39,16 +39,18 @@ uv run --locked --only-group docs zensical serve
 ### Browser tutorials
 
 [Open the browser lab](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/) to run real dbt
-Core against DuckDB entirely in your browser. Choose:
+Core against DuckDB entirely in your browser. Start with the customer flow, then explore quarantine:
 
 - [Follow a customer through the teaching flow](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/?lesson=customer-flow)
   to build synthetic `CUST-0001` cumulatively through staging, current state, mapping, protected
-  Layer2, and Layer3, with commented SQL and an exact result at each checkpoint;
+  Layer2, and Layer3, with commented SQL, exact results, and an optional experiment at each checkpoint;
 - [Trace an invoice into quarantine](https://miguelelgallo.github.io/bricksgdpr-publi/tutorial/?lesson=invoice-quarantine)
   to prove that `INV-0105` is classified as `SERVICE_NOT_FOUND` and excluded from accepted output.
 
 The browser lessons use only synthetic fixtures and require no Databricks workspace, credentials,
-or backend service. The customer lesson's deterministic `demo-v1:` keys are a local teaching
+or backend service. Each experiment includes a hint and explanation; **Restore file** undoes an edit
+without restarting the engine. Displayed results include their SQL so you can inspect the proof.
+The customer lesson's deterministic `demo-v1:` keys are a local teaching
 convention, not the canonical Databricks `v1:` pseudonymization implementation. The lessons
 demonstrate portable transformation, key propagation, testing, and quarantine behavior; they do
 not implement or prove Unity Catalog grants, tags, masks, secrets, identity isolation, or case-view

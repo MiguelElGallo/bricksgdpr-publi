@@ -42,6 +42,24 @@ function loadWorkerContract() {
 }
 
 describe("dbt worker contract", () => {
+  it.each(["0", "-1", "1.5", "9007199254740992"])("rejects invalid row limit %s inside the worker", (limit) => {
+    const { contract } = loadWorkerContract();
+    expect(() => contract.validateDbtArgs(["show", "--limit", limit])).toThrow();
+  });
+
+  it("recovers the request queue after a failed handler", async () => {
+    const { contract, messages, send } = loadWorkerContract();
+    contract.setHandlers({
+      query: async () => { throw new Error("invalid SQL"); },
+      catalog: async () => [],
+    });
+    send({ id: 1, type: "query", payload: { sql: "bad" } });
+    send({ id: 2, type: "catalog" });
+    await vi.waitFor(() => expect(messages).toHaveLength(2));
+    expect(messages[0]).toMatchObject({ id: 1, ok: false, error: "invalid SQL" });
+    expect(messages[1]).toEqual({ type: "result", id: 2, ok: true, result: [] });
+  });
+
   it("accepts only safe project paths and text contents", () => {
     const { contract } = loadWorkerContract();
 

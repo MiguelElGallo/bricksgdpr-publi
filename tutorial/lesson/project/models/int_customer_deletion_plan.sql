@@ -16,24 +16,7 @@ with historical_identifiers as (
 ),
 
 targets as (
-    select *
-    from (
-        values
-            ('layer1', 'int_current_customers', 'DELETE_CURRENT_ROWS', 'DELETE_CURRENT_ROWS'),
-            ('priva_map', 'demo_customer_map', 'DELETE_CURRENT_ROWS', 'DELETE_CURRENT_ROWS'),
-            ('layer2', 'int_customer_protected', 'DELETE_CURRENT_ROWS', 'DELETE_CURRENT_ROWS'),
-            (
-                'layer2', 'int_invoices_resolved',
-                'DELETE_CURRENT_ROWS', 'REASSIGN_TO_ERASED_MEMBER'
-            ),
-            ('layer1', 'quarantine_invoices', 'DELETE_CURRENT_ROWS', 'DELETE_CURRENT_ROWS'),
-            ('layer3', 'dim_customer', 'DELETE_CURRENT_ROWS', 'DELETE_CURRENT_ROWS')
-    ) as target_relations(
-        target_layer,
-        target_relation,
-        full_deletion_action,
-        special_deletion_action
-    )
+    {{ tutorial_deletion_targets() }}
 )
 
 select

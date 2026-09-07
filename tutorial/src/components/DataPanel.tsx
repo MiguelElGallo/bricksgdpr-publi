@@ -74,19 +74,26 @@ export function DataPanel({
             <>
               <header className="result-summary">
                 <div>
-                  <span className="result-success-mark" aria-hidden="true">
-                    <Icon name="check" size={14} />
+                  <span className="result-success-mark" data-verification={result.verification} aria-hidden="true">
+                    {result.verification === "failed" ? "!" : <Icon name="check" size={14} />}
                   </span>
                   <span>
                     <strong>{result.label ?? "Query complete"}</strong>
                     <small>
-                      {result.rowCount} {result.rowCount === 1 ? "row" : "rows"}
+                      {result.rowCount} {result.rowCount === 1 ? "row" : "rows"}{result.truncated ? " shown · preview limit" : ""}
+                      {result.verification ? ` · Checkpoint ${result.verification}` : ""}
                     </small>
                   </span>
                 </div>
                 {result.elapsedMs !== undefined ? <span>{result.elapsedMs} ms</span> : null}
               </header>
-              <div className="table-scroll">
+              {result.sql ? (
+                <details className="result-query">
+                  <summary>Query behind this result</summary>
+                  <pre>{result.sql}</pre>
+                </details>
+              ) : null}
+              <div className="table-scroll" tabIndex={0} aria-label="Scrollable query results">
                 <table className="result-table">
                   <caption className="sr-only">Query results</caption>
                   <thead>
@@ -117,7 +124,7 @@ export function DataPanel({
                 <Icon name="table" size={22} />
               </span>
               <h2>No query result yet</h2>
-              <p>Boot the engine, then run this lesson to inspect its semantic proof.</p>
+              <p>Run the current step to see its fixture checks here. Editing a model clears its earlier proof until you rebuild.</p>
               <button type="button" onClick={() => setActiveTab("database")}>
                 Browse loaded relations
                 <Icon name="chevron" size={14} />
@@ -176,6 +183,10 @@ export function DataPanel({
                   Columns <strong>{selected.columns.length}</strong>
                 </span>
               </div>
+              <button type="button" className="preview-rows" disabled={disabled}
+                onClick={() => { onRelationSelect(selected.name); setActiveTab("results"); }}>
+                Preview up to 50 rows
+              </button>
               <table className="schema-table">
                 <caption className="sr-only">Columns in {selected.name}</caption>
                 <thead>

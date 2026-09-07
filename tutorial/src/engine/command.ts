@@ -51,8 +51,8 @@ export function parseDbtCommand(command: string): string[] {
     }
     if (valueFlags.has(token)) {
       const value = tokens[index + 1];
-      if (!value || value.startsWith("--")) throw new Error(`${token} requires a value`);
-      if (token === "--limit" && !/^\d+$/.test(value)) {
+      if (!value || value.startsWith("-")) throw new Error(`${token} requires a value`);
+      if (token === "--limit" && (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value)))) {
         throw new Error("--limit must be a positive integer");
       }
       if (token === "--indirect-selection" && value !== "cautious") {

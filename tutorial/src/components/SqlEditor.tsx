@@ -10,6 +10,7 @@ interface SqlEditorProps {
   runLabel?: string;
   onFileSelect: (path: string) => void;
   onFileChange: (path: string, content: string) => void;
+  onFileRestore?: (path: string) => void;
   onRun: () => void;
 }
 
@@ -20,6 +21,7 @@ export function SqlEditor({
   runLabel = "Run lesson",
   onFileSelect,
   onFileChange,
+  onFileRestore,
   onRun,
 }: SqlEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -42,23 +44,21 @@ export function SqlEditor({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (disabled) return;
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
       event.preventDefault();
       onRun();
       return;
     }
 
-    if (event.key !== "Tab" || event.metaKey || event.ctrlKey || event.altKey) return;
-
+    // Preserve normal Tab navigation so keyboard users can leave the editor.
+    if (event.key !== "Tab" || !event.altKey || event.metaKey || event.ctrlKey || !activeFile.editable) return;
     event.preventDefault();
     const target = event.currentTarget;
     const start = target.selectionStart;
     const end = target.selectionEnd;
-    const nextValue = `${activeFile.content.slice(0, start)}  ${activeFile.content.slice(end)}`;
-    onFileChange(activeFile.path, nextValue);
-    requestAnimationFrame(() => {
-      textareaRef.current?.setSelectionRange(start + 2, start + 2);
-    });
+    onFileChange(activeFile.path, `${activeFile.content.slice(0, start)}  ${activeFile.content.slice(end)}`);
+    requestAnimationFrame(() => textareaRef.current?.setSelectionRange(start + 2, start + 2));
   }
 
   function syncGutter(event: UIEvent<HTMLTextAreaElement>) {
@@ -93,6 +93,12 @@ export function SqlEditor({
           <h2 id="editor-heading">{activeFile.path}</h2>
         </div>
         <div className="editor-toolbar-meta">
+          {onFileRestore && activeFile.editable ? (
+            <button type="button" className="restore-file" disabled={disabled || !activeFile.dirty}
+              onClick={() => onFileRestore(activeFile.path)} title="Restore this file to the lesson version">
+              Restore file
+            </button>
+          ) : null}
           <span>{activeFile.language.toUpperCase()}</span>
           {activeFile.editable ? <span className="editable-badge">Editable</span> : null}
         </div>
@@ -129,11 +135,11 @@ export function SqlEditor({
 
       <footer className="editor-footer">
         <span>
-          <span className="keyboard-key">⌘</span>
+          <span className="keyboard-key">Ctrl / ⌘</span>
           <span className="keyboard-key">↵</span>
           {runLabel}
         </span>
-        <span>{activeFile.content.split("\n").length} lines</span>
+        <span>Tab moves focus · {activeFile.content.split("\n").length} lines</span>
       </footer>
     </section>
   );

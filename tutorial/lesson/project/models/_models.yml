@@ -35,7 +35,7 @@ models:
                 values: [true]
 
   - name: int_customer_deletion_requests
-    description: Browser demo registry at one row per detected source DELETE change.
+    description: Rebuilt browser demo registry at one row per detected source DELETE change; not durable control state.
     columns:
       - name: deletion_request_id
         data_tests: [not_null, unique]
@@ -57,7 +57,14 @@ models:
     description: >
       Authorized browser worklist at one row per historical SSN and tutorial target relation.
       Pending or rejected requests produce no plan rows. Actions are mode-specific: invoice facts
-      are removed for FULL and reassigned to the erased member for SPECIAL.
+      are removed for FULL and reassigned to the erased member for SPECIAL. All six target/action
+      pairs are required before execution; duplicate rows cannot complete a partial plan.
+
+  - name: int_terminal_deleted_customer_ssns
+    description: >
+      Ephemeral browser execution gate with one mode per historical SSN from complete authorized
+      plans. FULL wins across overlapping complete requests in the current snapshot. This model
+      does not persist suppression when source requests or decisions disappear.
 
   - name: demo_customer_map
     description: >

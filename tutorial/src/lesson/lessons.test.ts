@@ -201,8 +201,8 @@ const customerStepCases = [
 describe("lesson specifications", () => {
   it("defines two uniquely numbered lessons whose visible files exist", () => {
     expect(LESSONS.map((lesson) => lesson.id)).toEqual([
-      "invoice-quarantine",
       "customer-flow",
+      "invoice-quarantine",
     ]);
     expect(new Set(LESSONS.map((lesson) => lesson.number)).size).toBe(LESSONS.length);
 
@@ -241,11 +241,11 @@ describe("lesson specifications", () => {
   it("normalizes lesson and step query parameters for defaults and deep links", () => {
     expect(tutorialLocationFromSearch("")).toEqual({
       lessonId: DEFAULT_LESSON_ID,
-      stepId: null,
+      stepId: DEFAULT_CUSTOMER_STEP_ID,
     });
     expect(tutorialLocationFromSearch("?lesson=invalid&step=layer3")).toEqual({
       lessonId: DEFAULT_LESSON_ID,
-      stepId: null,
+      stepId: "layer3",
     });
     expect(tutorialLocationFromSearch("?lesson=invoice-quarantine&step=staging")).toEqual({
       lessonId: "invoice-quarantine",
