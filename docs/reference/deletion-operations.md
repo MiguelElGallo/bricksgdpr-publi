@@ -27,7 +27,9 @@ Post-hooks archive requests, decision inputs, evaluated authorization history, a
 and terminal-ledger states. Reusing a decision revision ID with changed content fails the build;
 submit a new revision instead. The raw evidence remains Personal Data and is not a public artifact.
 `apply_access_controls` removes the three persona groups' catalog, schema, and table privileges on
-this evidence. The deployment owner and platform administrators retain administrative authority;
+this evidence. It also discovers and removes grants to `account users` and `users` at those
+boundaries, without requiring both ambient groups to exist in every workspace.
+The deployment owner and platform administrators retain administrative authority;
 append-only properties do not prevent an administrator from changing properties or dropping tables.
 Production separation of duties and independent backup remain operator responsibilities.
 

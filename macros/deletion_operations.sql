@@ -273,8 +273,29 @@
     {% set events = deletion_evidence_relation('execution_events') %}
     {% set schema = history.rsplit('.', 1)[0] %}
     {% set catalog = schema.rsplit('.', 1)[0] %}
+    {# Discover ambient grants first: some workspaces do not contain a `users` principal. #}
+    {% set project = var('project_catalog', env_var('DBT_PROJECT_CATALOG', 'bricksgdpr')) %}
+    {% set evidence = var('evidence_catalog', env_var('DBT_EVIDENCE_CATALOG', project ~ '_evidence')) %}
+    {% set ambient_grants %}
+      select distinct grantee from (
+        select grantee from system.information_schema.catalog_privileges
+        where catalog_name = '{{ evidence | replace("'", "''") }}'
+        union all
+        select grantee from system.information_schema.schema_privileges
+        where catalog_name = '{{ evidence | replace("'", "''") }}'
+          and schema_name = 'deletion_control'
+        union all
+        select grantee from system.information_schema.table_privileges
+        where table_catalog = '{{ evidence | replace("'", "''") }}'
+          and table_schema = 'deletion_control'
+      ) grants where grantee in ('account users', 'users')
+    {% endset %}
+    {% set principals = ['privacy_admins', 'restricted_users', 'case_users'] %}
+    {% for row in run_query(ambient_grants).rows %}
+      {% do principals.append(row[0]) %}
+    {% endfor %}
     {# Consumers must not inherit access to raw control evidence. The owner retains access. #}
-    {% for principal in ['privacy_admins', 'restricted_users', 'case_users'] %}
+    {% for principal in principals %}
       {% do run_query('revoke all privileges on catalog ' ~ catalog
           ~ ' from ' ~ adapter.quote(principal)) %}
       {% do run_query('revoke all privileges on schema ' ~ schema

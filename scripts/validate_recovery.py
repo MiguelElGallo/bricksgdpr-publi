@@ -13,7 +13,19 @@ import uuid
 from pathlib import Path
 
 import yaml
-from validate_integration import ROOT, checked_configuration, cli_json, preflight
+
+if __package__:
+    from .validate_integration import ROOT, checked_configuration, cli_json, preflight
+else:
+    from validate_integration import ROOT, checked_configuration, cli_json, preflight
+
+
+def operation_passed(result: subprocess.CompletedProcess[str], expected_error: str | None) -> bool:
+    """Require the expected outcome, recognizing dbt diagnostics on either output stream."""
+    if expected_error is None:
+        return result.returncode == 0
+    combined_output = result.stdout + "\n" + result.stderr
+    return result.returncode != 0 and expected_error in combined_output
 
 
 def main() -> int:
@@ -105,11 +117,7 @@ def main() -> int:
                 check=False,
             )
             (output / (operation + ".log")).write_text(result.stdout + result.stderr)
-            passed = (
-                result.returncode == 0
-                if expected_error is None
-                else result.returncode != 0 and expected_error in result.stdout
-            )
+            passed = operation_passed(result, expected_error)
             report["checks"].append(
                 {
                     "operation": operation,
